@@ -1,8 +1,8 @@
 # Babylon Light Stealth Grid
 
-Babylon Light Stealth Grid is a clean starting point for a new portrait-oriented Babylon Light game.
+Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game prototype.
 
-The project intentionally contains no gameplay, scene code, or assets. Its only browser-visible structure is an empty 9:16 game frame that stays centered and resizes to fit the available viewport without cropping.
+The current demo repeats a Tiny Swords terrain tile across the playfield and places an animated archer in its center. Move the archer with WASD or the arrow keys. The game uses quadrant-I world coordinates: positive X points right and positive Y points up.
 
 ## Getting Started
 
@@ -23,8 +23,12 @@ The project intentionally contains no gameplay, scene code, or assets. Its only 
 
 ## Project Structure
 
-- `index.html`: Minimal browser page and empty portrait game frame.
+- `index.html`: Browser page, portrait canvas, and compact control/coordinate overlays.
+- `src/main.js`: Babylon Lite sprite renderer, terrain, animation, and keyboard input.
+- `src/game-logic.js`: Quadrant-I movement and coordinate conversion.
 - `src/style.css`: Centering and responsive 9:16 frame sizing.
+- `public/assets`: Local Tiny Swords terrain and archer sprite sheets.
+- `test/game-logic.test.js`: Movement and coordinate-contract tests.
 - `vite.config.js`: Vite configuration for local development and production builds.
 
 ## Portrait Frame Contract
@@ -42,4 +46,3 @@ Future visuals, controls, text, spacing, borders, and effects should size and po
 ## License
 
 Provided as-is under the MIT License.
-

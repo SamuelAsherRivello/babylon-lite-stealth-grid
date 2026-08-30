@@ -9,7 +9,22 @@
   </head>
   <body>
     <main class="stage" aria-label="Babylon Light Stealth Grid game">
-      <div class="game-frame"></div>
+      <div class="game-frame">
+        <canvas
+          id="renderCanvas"
+          width="576"
+          height="1024"
+          aria-label="Tiny Swords movement demo"
+        ></canvas>
+        <div class="coordinate-guide" aria-hidden="true">
+          <span class="axis-y">+Y</span>
+          <span class="axis-x">+X</span>
+        </div>
+        <output id="coordinates" class="coordinates">X 288 · Y 512</output>
+        <p class="controls">Move with WASD or arrow keys</p>
+        <p id="error" class="error" role="alert"></p>
+      </div>
     </main>
+    <script type="module" src="./src/main.js"></script>
   </body>
 </html>

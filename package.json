@@ -6,13 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "@babylonjs/core": "^8.32.0"
+    "preview": "vite preview",
+    "test": "node --test"
   },
   "devDependencies": {
     "vite": "^7.1.3"
+  },
+  "dependencies": {
+    "@babylonjs/lite": "^1.25.0"
   }
 }
-
