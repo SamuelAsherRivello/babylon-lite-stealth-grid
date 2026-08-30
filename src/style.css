@@ -1,0 +1,31 @@
+:root {
+  background: #090c16;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.stage {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+}
+
+.game-frame {
+  width: min(100vw, 56.25vh);
+  aspect-ratio: 9 / 16;
+  overflow: hidden;
+}
