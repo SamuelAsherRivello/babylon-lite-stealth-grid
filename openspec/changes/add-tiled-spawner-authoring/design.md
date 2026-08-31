@@ -10,8 +10,8 @@ The Tiled project already uses external JSON tilesets and a designated `Spawners
 
 - Provide three obvious reusable palette entries that can be dragged or placed in Tiled.
 - Make the loaded map the sole source of normal Player, Sheep, and Goblin spawner presence and position.
-- Keep role (`player`, `sheep`, `enemy`) separate from character (`player`, `sheep`, `goblin`, `warrior`).
-- Centralize defaults and validation so editor metadata, normalized data, and runtime configuration cannot silently diverge.
+- Author only a single uppercase `type` property and derive all other configuration in Babylon.
+- Centralize defaults and validation so Tiled metadata and runtime configuration cannot silently diverge.
 - Preserve the current level's intended behavior through explicit authored migration.
 
 **Non-Goals:**
@@ -26,37 +26,37 @@ The Tiled project already uses external JSON tilesets and a designated `Spawners
 
 ### Use a collection-of-images object tileset as the Tiled spawner palette
 
-Add one external spawner tileset with three named tile definitions. Each tile uses a small repository-owned editor icon and supplies class/properties for its stable role, character, counts, and initial behavior. Designers place the tiles as tile objects on `Spawners`, which provides the normal visual palette, selection, move, and duplication workflow in Tiled.
+Add one external spawner tileset with three named tile definitions. Each tile uses a small repository-owned editor icon and supplies one custom `type` property: `PLAYER`, `SHEEP`, or `GOBLIN`. Designers place the tiles as tile objects on `Spawners`; an Enemy instance selects Warrior by overriding that single property with `WARRIOR`.
 
-Baseline icons can be simple labeled SVG or PNG assets such as `P`, `S`, and `G` with distinct silhouettes or labels. The stretch implementation may derive dedicated editor assets from the in-game marker appearance, but Tiled assets remain editor-only and are not loaded as game sprites.
+Baseline icons can be simple labeled SVG or PNG assets such as `P`, `S`, and `E` with distinct labels. The stretch implementation may derive dedicated editor assets from the in-game marker appearance, but Tiled assets remain editor-only and are not loaded as game sprites.
 
 Alternative considered: three free-standing `.tx` object templates. Templates carry defaults but are less discoverable as a compact visual palette and make the requested icon browsing experience weaker. Plain point objects were also rejected as the primary workflow because authors would repeatedly enter properties by hand.
 
-### Resolve tile defaults first and instance overrides second
+### Normalize one authored type and derive the runtime configuration
 
-During normalization, resolve the placed object's tile definition from its GID. Merge the tile definition's properties with explicitly authored object properties, with instance properties winning. Emit a plain spawner record containing source identity for diagnostics, stable role and character values, origin-relative game cell, population values, and initial-population behavior.
+During normalization, resolve the placed object's tile definition from its GID. Read the tile definition's `type` property and allow an instance `type` to override it. Emit only source identity, the normalized uppercase type, and the origin-relative game cell. The Babylon catalog maps that value to role, character, population values, interval, and initial-population behavior.
 
-This retains flexibility for intentional per-placement count changes without making the common placement workflow depend on manual property entry. Legacy point spawners remain readable during migration by using their object-level properties, which protects the concurrent Warrior work.
+The existing Warrior point placement is migrated by deleting its old custom properties and retaining only `type: WARRIOR` before it is converted to the Enemy palette representation.
 
 Alternative considered: hardcode item-to-configuration mapping in JavaScript by tile ID. Rejected because it duplicates authoring metadata and makes tileset reordering or extension brittle.
 
 ### Validate normalized records before game composition
 
-Add a dedicated spawner validation pass after normalization and before actor factories or renderer resources are created. Validation checks supported role/character pairs, integer count invariants, finite coordinates, Boolean initial-population data, and the single Player Spawner constraint. Errors include the layer/object name or ID and offending field.
+Add a dedicated spawner validation pass after normalization and before actor factories or renderer resources are created. Validation checks the four supported type values, finite coordinates, and exactly one `PLAYER`. The player-count failure uses the exact requested error; other errors include the layer/object name or ID and offending value.
 
 Alternative considered: rely on generic spawner-controller validation after composition. Rejected because it cannot explain Tiled source identity as clearly and could fail after partial level setup.
 
 ### Make authored arrays replace defaults rather than extend them
 
-Change the catalog boundary to translate the complete normalized authored list. It no longer prepends hardcoded defaults. Empty is a meaningful level definition and yields no spawners; it does not trigger fallback behavior. Multiple non-player objects remain separate configurations even when they share the same role or character.
+Change the catalog boundary to translate the complete normalized authored list. It no longer prepends hardcoded placements. The catalog owns a definition for each supported uppercase type and produces full runtime configurations. Multiple non-player objects remain separate configurations even when they share the same type.
 
 The Player constraint is validated before the existing type-based lookup can collapse duplicate keys. This preserves current single-player input semantics while allowing future work to revise that constraint explicitly.
 
-Alternative considered: use hardcoded defaults only when no authored objects exist. Rejected because an empty or partially populated map could not intentionally omit a spawner and would make map authority conditional and surprising.
+Alternative considered: store role, character, counts, and spawn flags as separate Tiled properties. Rejected because the requested level contract needs only one stable type discriminator and Babylon owns behavior defaults.
 
 ### Migrate Level01 using cell-aligned placements
 
-Add Player, Sheep, and Goblin tile objects at the cells nearest their current hardcoded world positions, using center anchoring consistently for all authored spawners. Preserve their `(1,1)`, `(2,2)`, and `(1,1)` population ranges and existing initial-population settings. Keep the Warrior point placement valid until it is optionally converted to a palette item by its own change.
+Add Player, Sheep, and Goblin tile objects at suitable cells near their current positions, using center anchoring consistently. Convert the current Warrior placement to an Enemy palette object with only `type: WARRIOR`. Level01 therefore has exactly one placement for each of Player, Sheep, Goblin, and Warrior.
 
 The sheep's old fractional world position cannot be represented exactly by one cell-centered editor item. The migration deliberately selects and records the intended map cell; acceptance checks compare against that authored cell rather than the old fractional pixel value.
 
@@ -64,7 +64,7 @@ Alternative considered: permit arbitrary pixel positions to reproduce the fracti
 
 ### Test authoring metadata, normalization, composition, and visible editor output separately
 
-Fixture tests verify the three palette definitions and default properties. Normalizer tests cover tile defaults, instance overrides, legacy point compatibility, origin conversion, malformed data, and source-rich errors. Catalog/integration tests prove authored records replace defaults, omissions remain omissions, non-player duplicates remain independent, and duplicate players fail.
+Fixture tests verify the three palette definitions and their one-property contract. Normalizer tests cover tile defaults, the Warrior instance override, origin conversion, malformed data, and source-rich errors. Catalog/integration tests prove authored records replace placement defaults, Babylon derives behavior defaults, optional non-player omissions remain omissions, non-player duplicates remain independent, and non-singleton player counts fail.
 
 Open the project and migrated map in Tiled for final visual QA, confirming all three items appear in the palette and are distinguishable on the `Spawners` layer. Runtime browser QA verifies actors originate at authored cells and no hardcoded duplicates appear.
 
@@ -74,15 +74,15 @@ Open the project and migrated map in Tiled for final visual QA, confirming all t
 - [The old sheep position is fractional rather than cell-centered] -> Select an explicit nearest authored cell and document the intentional migration in tests.
 - [Tile-object coordinates use a bottom edge while point objects use a point] -> Normalize through one documented anchor rule and cover both representations with coordinate tests.
 - [Editor icon assets could accidentally enter the runtime renderer] -> Keep them under the Tiled authoring tree and exclude spawner palette tile objects from visual terrain/object rendering.
-- [Instance overrides can create invalid combinations] -> Merge first, then validate the complete normalized record before composition.
-- [A map without a player can load but may not be controllable] -> Treat omission as authoritative per the requested contract; gameplay code must handle the no-player collection safely and tests must cover it.
+- [An instance type override can name an unsupported actor] -> Normalize case consistently and validate against the four-value catalog before composition.
+- [A missing or duplicate player makes the level unusable] -> Reject either case with the exact required invalid-level error before game setup.
 
 ## Migration Plan
 
 1. Add the external spawner palette and temporary editor icons, register it with the Tiled project/map, and verify the three named items in Tiled.
-2. Add tests for tile-property resolution, validation, coordinates, omission, multiplicity, and legacy Warrior compatibility.
-3. Extend normalization to produce validated records from palette objects while retaining legacy point objects.
-4. Change composition to translate authored records without hardcoded defaults and make no-player paths safe.
-5. Place Player, Sheep, and Goblin objects in Level01, retain the existing Warrior record, then run unit tests, build, Tiled visual QA, and browser acceptance checks.
+2. Add tests for the one-property contract, validation, coordinates, optional non-player omission, multiplicity, and the Warrior override.
+3. Extend normalization to produce validated `{ type, gameCell }` records from palette objects.
+4. Change composition to translate authored records through Babylon-owned catalog defaults.
+5. Place Player, Sheep, and Goblin objects in Level01, convert Warrior to the one-property Enemy item, then run unit tests, build, Tiled visual QA, and browser acceptance checks.
 
 Rollback is additive at the data layer: restore the prior catalog fallback and remove the three new authored placements and palette reference. Retain the tileset and icons if maps outside Level01 have begun using them; removing those assets before migrating dependent maps would break their Tiled references.

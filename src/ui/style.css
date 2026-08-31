@@ -187,9 +187,9 @@ body {
 
 .game-window {
   position: relative;
-  width: min(76cqw, 30rem, 100%);
+  width: min(83.6cqw, 33rem, 100%);
   max-height: 100%;
-  min-height: min(55cqw, 34rem, 100%);
+  min-height: min(54.45cqw, 33.66rem, 90%);
   padding: clamp(2.5rem, 8cqw, 4rem) clamp(2rem, 7cqw, 3.5rem) clamp(2rem, 7cqw, 3.5rem);
   border: 0.65cqw solid rgb(255 255 255 / 78%);
   border-radius: 3cqw;
@@ -198,12 +198,13 @@ body {
   color: #eef6ff;
   overflow: auto;
   container-type: inline-size;
+  transform: translateY(-10%);
   z-index: var(--z-settings-window);
 }
 
 .game-window-title {
   margin: 0 8cqw 6cqw 0;
-  font: 750 6cqw/1.05 system-ui, sans-serif;
+  font: 750 10cqw/1.05 system-ui, sans-serif;
 }
 
 .game-window-close {
@@ -263,7 +264,7 @@ body {
 .volume-control {
   display: grid;
   gap: 2cqw;
-  font: 750 4cqw/1.2 system-ui, sans-serif;
+  font: 750 8cqw/1.2 system-ui, sans-serif;
 }
 
 .volume-label {
@@ -275,7 +276,7 @@ body {
   align-items: center;
   grid-template-columns: 5cqw 1fr 9cqw;
   gap: 2cqw;
-  font: 650 3cqw/1 system-ui, sans-serif;
+  font: 650 6cqw/1 system-ui, sans-serif;
 }
 
 .volume-scale input[type="range"] {
@@ -286,12 +287,17 @@ body {
   touch-action: pan-x;
 }
 
+.settings-section-title {
+  margin: 4cqw 0 2cqw;
+  font: 750 8cqw/1.2 system-ui, sans-serif;
+}
+
 .collider-control {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 3cqw;
-  font: 750 4cqw/1.2 system-ui, sans-serif;
+  font: 750 8cqw/1.2 system-ui, sans-serif;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -301,7 +307,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 3cqw;
-  font: 750 4cqw/1.2 system-ui, sans-serif;
+  font: 750 8cqw/1.2 system-ui, sans-serif;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -329,7 +335,7 @@ body {
   border-radius: 1.8cqw;
   background: #273654;
   color: #fff;
-  font: 750 3.6cqw/1 system-ui, sans-serif;
+  font: 750 8cqw/1 system-ui, sans-serif;
   cursor: pointer;
   justify-self: center;
   touch-action: manipulation;

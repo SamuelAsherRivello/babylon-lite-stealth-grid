@@ -58,7 +58,7 @@ export function normalizeTiledMap(map, externalTilesets) {
         const column = index % map.width;
         const row = Math.floor(index / map.width);
         return [{
-          frame, gid, source: source.source,
+          frame, gid, source: source.source, image: source.tileset.image,
           collisionShapes: normalizeTileCollisionShapes(
             tileDefinition,
             source.tileset.tilewidth,
@@ -112,21 +112,25 @@ export function normalizeTiledMap(map, externalTilesets) {
     }));
   const spawners = map.layers.filter(({ type }) => type === "objectgroup")
     .flatMap((layer) => (layer.objects ?? []).flatMap((object) => {
-      if ((object.class || object.type) !== "spawner") return [];
-      const properties = propertiesToObject(object.properties);
+      const gid = object.gid ? object.gid & ~FLIP_FLAGS : 0;
+      const source = gid ? resolveTileset(tilesets, gid) : null;
+      const tile = source?.tileset?.tiles?.find(({ id }) => id === gid - source.firstgid);
+      const className = object.class || object.type || tile?.class || tile?.type || "";
+      if (className.toLowerCase() !== "spawner") return [];
+      const properties = {
+        ...propertiesToObject(tile?.properties),
+        ...propertiesToObject(object.properties),
+      };
       const column = Math.floor(object.x / map.tilewidth);
-      const row = Math.floor(object.y / map.tileheight);
+      const row = Math.floor(object.y / map.tileheight) - (object.gid ? 1 : 0);
       return [{
-        type: properties.type,
-        character: properties.character,
+        id: object.id,
+        name: object.name ?? "",
+        type: String(properties.type ?? "").toUpperCase(),
         gameCell: { x: column - originColumn, y: originRow - row },
-        minimumCount: Number(properties.minimumCount),
-        maximumCount: Number(properties.maximumCount),
-        guaranteeInitialPopulation: Boolean(
-          properties.guaranteeInitialPopulation,
-        ),
       }];
     }));
+  validateSpawners(spawners);
   return {
     width: map.width, height: map.height,
     tileWidth: map.tilewidth, tileHeight: map.tileheight,
@@ -144,6 +148,13 @@ export async function loadTiledMap(url, fetchImpl = fetch) {
     externalTilesets.set(source, await fetchJson(new URL(source, mapUrl), fetchImpl));
   }));
   const level = normalizeTiledMap(map, externalTilesets);
+  level.layers = level.layers.map((layer) => ({
+    ...layer,
+    tiles: layer.tiles.map((tile) => ({
+      ...tile,
+      image: new URL(tile.image, new URL(tile.source, mapUrl)).href,
+    })),
+  }));
   level.reactiveDecorations = level.reactiveDecorations.map((object) => ({
     ...object,
     decoration: {
@@ -249,6 +260,25 @@ function validateReactiveDecorations(map, externalTilesets) {
     }
   }
   return errors;
+}
+
+function validateSpawners(spawners) {
+  const playerCount = spawners.filter(({ type }) => type === "PLAYER").length;
+  if (playerCount !== 1) {
+    throw new Error("Invalid Level Format: Must contain 1 Player Spawner");
+  }
+  const supportedTypes = new Set(["PLAYER", "SHEEP", "GOBLIN", "WARRIOR"]);
+  for (const spawner of spawners) {
+    if (!supportedTypes.has(spawner.type)) {
+      const name = spawner.name ? ` ("${spawner.name}")` : "";
+      throw new Error(
+        `Spawner object ${spawner.id ?? "(unknown)"}${name} has unsupported type "${spawner.type}"`,
+      );
+    }
+    if (!Number.isFinite(spawner.gameCell.x) || !Number.isFinite(spawner.gameCell.y)) {
+      throw new Error(`Spawner object ${spawner.id ?? "(unknown)"} has an invalid position`);
+    }
+  }
 }
 
 function formatCoordinate(value) { return String(value).padStart(2, "0"); }

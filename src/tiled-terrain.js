@@ -10,18 +10,26 @@ export function createLevelTerrainTiles(
       y: screenHeight - (gameCell.y + 1) * tileSize,
     };
     const valid = !emptyFrames.has(frame);
-    const collider = valid && collisionShapes.length > 0
-      ? collisionShapeToWorld(collisionShapes[0], screenPosition.x, gameCell.y * tileSize, tileSize)
-      : null;
+    const colliders = valid
+      ? collisionShapes
+        .map((shape) => collisionShapeToWorld(
+          shape,
+          screenPosition.x,
+          gameCell.y * tileSize,
+          tileSize,
+        ))
+        .filter(Boolean)
+      : [];
     return {
       ...placement,
       frame,
       gameCell,
       collisionShapes,
+      colliders,
       screenPosition,
       valid,
-      blocked: collider !== null,
-      collider,
+      blocked: colliders.length > 0,
+      collider: colliders[0] ?? null,
     };
   });
 }

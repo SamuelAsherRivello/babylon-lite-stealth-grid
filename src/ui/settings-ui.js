@@ -114,6 +114,9 @@ export function createSettingsUi({
     const sfxControl = createVolumeControl(
       documentRef, store, "SFX", AUDIO_SETTING_KEYS.sfx,
     );
+    const developerTitle = documentRef.createElement("h2");
+    developerTitle.className = "settings-section-title";
+    developerTitle.textContent = "Developer";
     const colliderControl = createDebugControl(
       documentRef,
       store,
@@ -152,6 +155,7 @@ export function createSettingsUi({
     content.append(
       musicControl.row,
       sfxControl.row,
+      developerTitle,
       colliderControl.row,
       particleFxControl.row,
       animatedTileControl.row,

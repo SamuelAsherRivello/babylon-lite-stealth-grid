@@ -27,11 +27,17 @@ import {
 
 export const WARRIOR_FRAME = Object.freeze({ width: 192, height: 192 });
 export const WARRIOR_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
-export const WARRIOR_COLLIDER = Object.freeze({
+export const WARRIOR_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 96,
   y: 123,
   radius: 24,
+});
+export const WARRIOR_COMBAT_COLLIDER = Object.freeze({
+  x: 60,
+  y: WARRIOR_FRAME.height * WARRIOR_PIVOT.y - 112,
+  width: 72,
+  height: 112,
 });
 
 const DEFAULT_API = Object.freeze({
@@ -78,7 +84,7 @@ export function createWarrior({
   const character = {
     frame: WARRIOR_FRAME,
     pivot: WARRIOR_PIVOT,
-    collider: WARRIOR_COLLIDER,
+    collider: WARRIOR_MOVEMENT_COLLIDER,
   };
   const stateMachine = createWarriorStateMachine();
   let position = { ...initialPosition };
@@ -239,12 +245,20 @@ export function createWarrior({
       for (const sprite of Object.values(sprites)) api.removeSprite2D(sprite);
       for (const layer of Object.values(layers)) layer.visible = false;
     },
-    getCollider() {
+    getMovementCollider() {
       return getCharacterCollider(
         position,
         character.frame,
         character.pivot,
         character.collider,
+      );
+    },
+    getCombatCollider() {
+      return getCharacterCollider(
+        position,
+        character.frame,
+        character.pivot,
+        WARRIOR_COMBAT_COLLIDER,
       );
     },
     getGridPosition(tileSize) {

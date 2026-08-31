@@ -8,6 +8,11 @@ The current ecosystem review found no maintained package that directly connects 
 
 ## Public API
 
-- `validateTiledMap(map)` returns structural errors.
-- `normalizeTiledMap(map, externalTilesets)` returns ordered tile placements with Tiled and origin-relative game cells.
+- `validateTiledMap(map, externalTilesets?)` returns structural and supported
+  object-contract errors.
+- `normalizeTiledMap(map, externalTilesets)` returns ordered tile placements,
+  tile objects, class/property metadata, reactive-decoration descriptors,
+  origin-relative game coordinates, normalized spawner records, and normalized
+  sensor geometry. Spawner objects carry one uppercase `type` value; exactly one
+  `PLAYER` is required per level.
 - `loadTiledMap(url, fetchImpl)` loads a TMJ and its referenced TSJ files in a browser.

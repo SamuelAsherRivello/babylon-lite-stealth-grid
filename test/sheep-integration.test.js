@@ -23,10 +23,11 @@ test("main supplies active player context to sheep only during active gameplay",
   assert.match(source, /for \(const spawner of spawners\)[\s\S]*for \(const layer of record\.actor\.layers\)[\s\S]*layer\.view\.zoom = viewportScale/);
 });
 
-test("main starts the player four cells from the sheep and draws yellow NPC diagnostics", async () => {
+test("main starts the player four cells from the sheep and uses shared collider-role diagnostics", async () => {
   const source = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
   assert.match(source, /createInitialSpawnerConfigs/);
   assert.match(source, /SpawnerType\.SHEEP/);
-  assert.match(source, /"rgb\(255 220 64 \/ 24%\)"/);
-  assert.match(source, /"#ffe066"/);
+  assert.match(source, /createCharacterColliderDrawCommands/);
+  assert.match(source, /combatCollider: combat\.getCombatCollider\(\)/);
+  assert.match(source, /movementCollider: actor\.getMovementCollider\(\)/);
 });

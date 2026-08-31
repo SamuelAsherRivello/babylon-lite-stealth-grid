@@ -1,8 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { SHEEP_COLLIDER, createSheep } from "../src/npc/sheep/sheep.js";
-import { PLAYER_COLLIDER } from "../src/player.js";
+import { SHEEP_MOVEMENT_COLLIDER, createSheep } from "../src/npc/sheep/sheep.js";
 import { CharacterType, SheepState } from "../src/npc/sheep/sheep-state.js";
 
 function createApi() {
@@ -61,15 +60,14 @@ test("sheep exposes and validates its AI configuration", () => {
   assert.throws(() => createTestSheep({ frighteningTypes: ["dragon"] }));
 });
 
-test("sheep exposes a hero-sized typed NPC circle collider", () => {
+test("sheep retains its own typed NPC circle collider size", () => {
   const { sheep } = createTestSheep();
-  assert.equal(SHEEP_COLLIDER.radius, PLAYER_COLLIDER.radius);
-  const typedCollider = sheep.getCollider();
-  assert.equal(typedCollider.type, "npc");
-  assert.equal(typedCollider.collider.type, "circle");
-  assert.equal(typedCollider.collider.x, 224);
-  assert.ok(Math.abs(typedCollider.collider.y - 270.52) < 1e-10);
-  assert.equal(typedCollider.collider.radius, 26);
+  assert.equal(SHEEP_MOVEMENT_COLLIDER.radius, 26);
+  const collider = sheep.getMovementCollider();
+  assert.equal(collider.type, "circle");
+  assert.equal(collider.x, 224);
+  assert.ok(Math.abs(collider.y - 270.52) < 1e-10);
+  assert.equal(collider.radius, 26);
 });
 
 test("sheep remains stationary through the complete bounce before running", () => {

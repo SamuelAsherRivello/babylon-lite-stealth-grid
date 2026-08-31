@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { createCoordinatesUi } from "../src/ui/coordinates-ui.js";
 
 test("Coordinates UI lives in src/ui and contains separate pixel and grid output lines", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
@@ -16,6 +17,26 @@ test("Coordinates UI lives in src/ui and contains separate pixel and grid output
   assert.match(source, /export function createCoordinatesUi/);
   assert.doesNotMatch(html, /id="coordinates"|class="coordinates"/);
   assert.doesNotMatch(css, /\.coordinates(?:\s|,|\{)/);
+});
+
+test("Coordinates UI visibility follows the collider diagnostic setting", () => {
+  const container = { hidden: false };
+  const pixelOutput = { value: "" };
+  const gridOutput = { value: "" };
+  const elements = new Map([
+    ["#coordinates-ui", container],
+    ["#coordinates-ui-pixel", pixelOutput],
+    ["#coordinates-ui-grid", gridOutput],
+  ]);
+  const ui = createCoordinatesUi({
+    querySelector: (selector) => elements.get(selector),
+  });
+
+  ui.setVisible(false);
+  assert.equal(container.hidden, true);
+
+  ui.setVisible(true);
+  assert.equal(container.hidden, false);
 });
 
 test("virtual controller contains matching Move, Jump (C), and Shoot (V) labels", async () => {
@@ -37,6 +58,6 @@ test("archer uses the circular body collider", async () => {
 
   assert.match(
     player,
-    /PLAYER_COLLIDER = \{[\s\S]*type: "circle",[\s\S]*x: 93,[\s\S]*y: 126,[\s\S]*radius: 26,/,
+    /PLAYER_MOVEMENT_COLLIDER = \{[\s\S]*type: "circle",[\s\S]*x: 93,[\s\S]*y: 126,[\s\S]*radius: 18\.2,/,
   );
 });

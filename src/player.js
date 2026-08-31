@@ -8,6 +8,7 @@ import {
 } from "@babylonjs/lite";
 
 import {
+  createGridAlignedMovementController,
   createJumpState,
   getCharacterCollider,
   getMovementVector,
@@ -18,6 +19,7 @@ import {
   worldToGrid,
   worldToScreen,
 } from "./game-logic.js";
+import { GRID } from "./grid-contract.js";
 import { PlayerState, createPlayerStateMachine } from "./player-state.js";
 import { createVirtualController } from "./ui/virtual-controller.js";
 import { GAME_DEPTH } from "./render-depth.js";
@@ -28,14 +30,26 @@ import {
 
 export const PLAYER_FRAME = { width: 192, height: 192 };
 export const PLAYER_PIVOT = { x: 0.5, y: 0.78 };
-export const PLAYER_COLLIDER = {
+export const PLAYER_MOVEMENT_COLLIDER = {
   type: "circle",
   x: 93,
   y: 126,
-  radius: 26,
+  radius: 18.2,
+};
+export const PLAYER_COMBAT_COLLIDER = {
+  x: 64,
+  y: PLAYER_FRAME.height * PLAYER_PIVOT.y - 128,
+  width: 64,
+  height: 128,
+};
+const PLAYER_CHARACTER = {
+  frame: PLAYER_FRAME,
+  pivot: PLAYER_PIVOT,
+  collider: PLAYER_MOVEMENT_COLLIDER,
 };
 
 const PLAYER_SPEED = 210;
+const ENABLE_QUANTIZE_MOVEMENT = false;
 const ARROW_SPAWN_OFFSETS = new Map([
   ["1,0", { x: 64, y: 55 }],
   ["-1,0", { x: -64, y: 55 }],
@@ -114,6 +128,10 @@ export function createPlayer({
   let activeAnimation = null;
   const shotDirectionMemory = createCardinalDirectionMemory(
     CardinalDirection.RIGHT,
+  );
+  const gridAlignedMovement = createGridAlignedMovementController(
+    PLAYER_CHARACTER,
+    GRID.tileSizePx,
   );
 
   function getSelectedMovement() {
@@ -230,6 +248,7 @@ export function createPlayer({
   function resetInput() {
     pressedKeys.clear();
     virtualController.reset();
+    gridAlignedMovement.reset();
   }
 
   function setKey(event, isPressed) {
@@ -313,12 +332,20 @@ export function createPlayer({
         stopSpriteAnimation(activeAnimation);
       }
     },
-    getCollider() {
+    getMovementCollider() {
       return getCharacterCollider(
         position,
         PLAYER_FRAME,
         PLAYER_PIVOT,
-        PLAYER_COLLIDER,
+        PLAYER_MOVEMENT_COLLIDER,
+      );
+    },
+    getCombatCollider() {
+      return getCharacterCollider(
+        position,
+        PLAYER_FRAME,
+        PLAYER_PIVOT,
+        PLAYER_COMBAT_COLLIDER,
       );
     },
     getPosition() {
@@ -369,21 +396,40 @@ export function createPlayer({
       const distance = knockbackMovement
         ? Math.hypot(knockbackMovement.x, knockbackMovement.y) * deltaSeconds
         : PLAYER_SPEED * deltaSeconds;
-      position = moveWithCollisions(
-        position,
-        movement,
-        distance,
-        bounds,
-        {
-          frame: PLAYER_FRAME,
-          pivot: PLAYER_PIVOT,
-          collider: PLAYER_COLLIDER,
-        },
-        [
-          ...obstacles,
-          ...dynamicColliders.map(({ collider }) => collider),
-        ],
-      );
+      const activeObstacles = [
+        ...obstacles,
+        ...dynamicColliders.map(({ collider }) => collider),
+      ];
+      if (knockbackMovement) {
+        gridAlignedMovement.reset();
+        position = moveWithCollisions(
+          position,
+          movement,
+          distance,
+          bounds,
+          PLAYER_CHARACTER,
+          activeObstacles,
+        );
+      } else if (ENABLE_QUANTIZE_MOVEMENT) {
+        position = gridAlignedMovement.move(
+          position,
+          movement,
+          distance,
+          deltaSeconds,
+          bounds,
+          activeObstacles,
+        );
+      } else {
+        gridAlignedMovement.reset();
+        position = moveWithCollisions(
+          position,
+          movement,
+          distance,
+          bounds,
+          PLAYER_CHARACTER,
+          activeObstacles,
+        );
+      }
 
       const screenPosition = worldToScreen(position, 1, bounds.height);
       const jumpOffset = updateJump(jumpState, deltaSeconds);

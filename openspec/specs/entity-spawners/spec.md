@@ -1,8 +1,10 @@
+# Entity Spawners Specification
+
 ## Purpose
 
 Provide reusable level spawn points that maintain configured actor populations independently from their optional diagnostic visualization.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: Generic spawner configuration
 The system SHALL represent each spawner as one spawn position, exactly one actor type, an inclusive minimum population, an inclusive maximum population, and a positive check interval measured in seconds. The default check interval SHALL be one second when no interval is supplied, and the minimum population SHALL NOT exceed the maximum population.
@@ -80,11 +82,11 @@ The system SHALL replace direct startup creation with a player spawner at the cu
 - **THEN** subsequent checks do not create another player
 
 ### Requirement: Diagnostic spawner marker
-The system SHALL give every spawner a permanent, non-animated, non-interactive visual marker at its configured position. The marker SHALL use the corresponding actor's static idle appearance, render in grayscale black and white at 50% of the live actor's rendered width and height, share the actor's placement anchor, have no gameplay collider, and render beneath spawned actors.
+The system SHALL give every spawner a permanent, non-animated, non-interactive visual marker in the grid cell containing its configured position. The marker SHALL use the corresponding actor's static idle appearance, center the marker artwork in that grid cell, render in grayscale black and white at 50% of the live actor's rendered width and height and 50% opacity, have no gameplay collider, and render beneath spawned actors.
 
 #### Scenario: Marker identifies each spawner type
 - **WHEN** collider diagnostics are enabled
-- **THEN** the player, sheep, and enemy spawner positions display their corresponding static grayscale actor markers
+- **THEN** the player, sheep, and enemy spawner grid cells display their corresponding static grayscale actor markers centered in the cell at 50% opacity
 
 #### Scenario: Spawned actor appears over its marker
 - **WHEN** a spawner creates an actor at its position while diagnostics are enabled
@@ -104,3 +106,4 @@ The system SHALL use the existing collider diagnostic setting as the sole visibi
 #### Scenario: Collider diagnostics disabled
 - **WHEN** the existing collider diagnostic setting changes to disabled
 - **THEN** all spawner markers become hidden while the spawners continue population maintenance
+

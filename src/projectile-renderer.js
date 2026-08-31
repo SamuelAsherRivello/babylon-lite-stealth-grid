@@ -19,7 +19,7 @@ import { GAME_DEPTH } from "./render-depth.js";
 // Keep the frame square so the artwork is not vertically clipped or squashed.
 const ARROW_ATLAS_FRAME = { width: 64, height: 64 };
 // The opaque artwork is then covered by a separate tight gameplay collider.
-const ARROW_RENDER_SIZE = 107;
+const ARROW_RENDER_SIZE = 64;
 const ARROW_CAPACITY = 32;
 
 export function getProjectileRotation(direction) {

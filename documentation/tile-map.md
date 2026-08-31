@@ -20,6 +20,7 @@ For `Level01`, use these repository files:
 - Tiled project: `public/levels/tiled/stealth-grid.tiled-project`
 - Level map: `public/levels/tiled/maps/Level01.tmj`
 - Terrain tileset: `public/levels/tiled/tilesets/Tilemap_color3.tsj`
+- Spawner palette: `public/levels/tiled/tilesets/SpawnerTypes.tsj`
 
 1. Ask the AI which level to edit. The AI will give you the exact `.tiled-project` and `.tmj` paths.
 2. Open Tiled.
@@ -29,6 +30,30 @@ For `Level01`, use these repository files:
 
 Do not substitute another map or create a new map from Tiled's menus. If a new level is required, ask the AI to create its configured TMJ file first.
 
+## Place Spawners
+
+Select the `Spawners` object layer, then choose one of the three items in the
+`Spawner Types` palette:
+
+- `Player Spawner` uses `type: PLAYER`;
+- `Sheep Spawner` uses `type: SHEEP`;
+- `Enemy Spawner` defaults to `type: GOBLIN`.
+
+Each placement has only one gameplay custom property: `type`. To make an Enemy
+Spawner create a Warrior, override that property on the placed object with
+`WARRIOR`. Babylon code owns the actor role, population counts, check interval,
+and initial-spawn behavior for all four supported values. Do not add those
+settings as Tiled custom properties.
+
+Every level must contain exactly one Player Spawner. Sheep and Enemy spawners
+are optional, and a level may contain multiple non-player spawners. A missing or
+duplicate Player Spawner stops loading with:
+
+`Invalid Level Format: Must contain 1 Player Spawner`
+
+The black circles labeled P, S, and E are editor-only placement icons. The game
+continues to render its own small black-and-white diagnostic spawner markers.
+
 ## Edit and Save
 
 1. Select the existing layer whose content you want to change.
@@ -36,6 +61,76 @@ Do not substitute another map or create a new map from Tiled's menus. If a new l
 3. Leave layer names, ordering, map dimensions, tilesets, and the editor-only origin marker unchanged.
 4. Press **Ctrl+S** or select **File > Save**.
 5. Tell the AI the path of the TMJ file you saved so it can inspect and validate the changes.
+
+## AI Workflow: Create a Placeable Object
+
+Use this pattern when artwork represents one independently selectable thing in
+Tiled, such as a bush, prop, door, trigger, spawn marker, or interaction. Do not
+paint it into a terrain tile layer merely because its artwork is tile-like.
+
+1. Inspect the source artwork, its complete frame dimensions, visible alpha
+   bounds, animation frames, intended anchor, interaction behavior, and whether
+   its collider blocks movement or acts only as a sensor.
+2. Add one external image-collection TSJ entry for the logical object. The
+   Tilesets panel must present one named item, not every animation frame as a
+   separately placeable tile.
+3. Give the Tiled item and its placements the appropriate project class. Put
+   reusable behavior and asset metadata on the tileset item; use object
+   properties only for placement-specific overrides.
+4. Place it as a tile object on the designated object layer. Reactive visual
+   props in this project belong on `Y-Sorted Props`, use a bottom-center anchor,
+   and keep independent object IDs and state.
+5. Keep sensor geometry distinct from blocking terrain collision. A sensor may
+   detect supported character colliders without entering movement or projectile
+   obstacle collections.
+6. Extend the pure TMJ/TSJ normalizer, validation, runtime controller, rendering,
+   disposal, and tests only as required by the object's declared contract.
+
+### Editor Preview and Selection Bounds
+
+The Tiled preview controls editor appearance and selection bounds; it does not
+have to be the runtime spritesheet.
+
+- Default the tile-object selection footprint to exactly one map tile. This
+  project uses `64 x 64`, so the preview PNG, TSJ `tilewidth`/`tileheight`, tile
+  `imagewidth`/`imageheight`, and placed TMJ object `width`/`height` are all
+  `64 x 64` unless the user explicitly chooses another footprint.
+- Fit artwork proportionally inside the preview without stretching it. Preserve
+  nearest-neighbor sampling for pixel art and center the visible alpha bounds.
+- Use TSJ `tileoffset` when necessary to preserve the artwork's intended visual
+  location relative to its bottom-center object anchor.
+- Keep the untouched runtime image and true runtime frame dimensions in separate
+  properties. Cropping or fitting an editor preview must not change in-game
+  scale, animation frames, sensor coordinates, or runtime texture sampling.
+- Update existing placed object dimensions when the preview footprint changes,
+  then close and reopen the map or tileset in Tiled to clear its cached preview.
+
+The verified bush example uses:
+
+- one `64 x 64` editor preview:
+  `public/assets/terrain/decorations/bushes/Bushe1-frame0.png`;
+- one untouched eight-frame `1024 x 128` runtime sheet:
+  `public/assets/terrain/decorations/bushes/Bushe1.png`;
+- one placeable image-collection tile:
+  `public/levels/tiled/tilesets/TinySwordsBushDecorations.tsj`;
+- one `ReactiveDecoration` tile object on `Y-Sorted Props` in `Level01.tmj`;
+- runtime frame metadata of eight `128 x 128` frames, independent of the
+  `64 x 64` editor selection footprint.
+
+### Required Verification
+
+Add a focused test before implementation and confirm it fails for the missing
+object contract. After implementation, verify:
+
+- preview and runtime PNG dimensions;
+- exactly one placeable tileset item;
+- class/default/placement override resolution;
+- object layer, anchor, authored position, and selection dimensions;
+- sensor geometry and blocking classification;
+- animation trigger, looping/reset/rearm rules, and independent instances;
+- runtime size, non-blocking passage, Y ordering, and disposal;
+- focused tests, full tests, production build, Tiled JSON contract, and a real
+  browser interaction when the object has runtime behavior.
 
 ## Inspect Terrain Collision
 
@@ -99,6 +194,8 @@ public/
 |   +-- terrain/
 |       +-- tilesets/
 |           +-- Tilemap_color3.png   Tiny Swords terrain atlas
+|       +-- decorations/
+|           +-- bushes/              Runtime sheet and editor preview
 |
 +-- levels/
     +-- tiled/
@@ -106,11 +203,18 @@ public/
         +-- maps/
         |   +-- Level01.tmj      Editable source and runtime level
         +-- tilesets/
-            +-- Tilemap_color3.tsj   Terrain frames and collision objects
+            +-- Tilemap_color3.tsj               Terrain and collision objects
+            +-- TinySwordsBushDecorations.tsj    One-item object tileset
+            +-- SpawnerTypes.tsj                 Player, Sheep, and Enemy palette
+
+        +-- icons/
+            +-- *-spawner.svg                    Editor-only placement icons
 
 test/
 +-- tiled-level.test.js          Level data, origin, and collision import
 +-- tiled-terrain.test.js        Runtime collision conversion
++-- reactive-decoration-tiled.test.js  Object authoring and asset contract
++-- tiled-spawner-authoring.test.js     Spawner palette and level validation
 ```
 
 The TMJ is both the authored file and the runtime file. Saving `Level01.tmj` updates what the game loads on its next start or browser refresh.

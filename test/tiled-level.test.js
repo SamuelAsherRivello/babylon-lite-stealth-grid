@@ -14,12 +14,17 @@ const LEVEL_PATH = new URL(
   "../public/levels/tiled/maps/Level01.tmj",
   import.meta.url,
 );
+const MAIN_PATH = new URL("../src/main.js", import.meta.url);
 const TILESET_NAMES = Array.from({ length: 5 }, (_, index) => `Tilemap_color${index + 1}`);
 const TILESET_URLS = TILESET_NAMES.map((name) => new URL(
   `../public/levels/tiled/tilesets/${name}.tsj`,
   import.meta.url,
 ));
 const COLOR_THREE_SOURCE = "../tilesets/Tilemap_color3.tsj";
+const COLOR_THREE_COLLIDABLE_IDS = [
+  0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 14, 16, 18, 19, 20, 21, 23, 24, 25,
+  27, 28, 29, 30, 32, 33, 34, 36, 39, 41, 42, 43, 44, 45, 48, 50, 51, 52, 53,
+];
 const LEVEL01_AUTHORED_CONTENT_SHA256 =
   "aecddd9663b61bb6dd9e5124c3aae88f8db7352ff165b2f1f81f752447048f38";
 
@@ -102,18 +107,89 @@ test("all five filename-matched Tiny Swords tilesets share the 64 pixel grid", a
   }
 });
 
-test("color-three collision shapes are authored in its Tiled tileset", async () => {
+test("normalization preserves the image for each tile's source tileset", async () => {
+  const { map, externalTilesets } = await readLevelWithTilesets();
+  const level = normalizeTiledMap(map, externalTilesets);
+  const midgroundImages = new Set(
+    level.layers.find(({ name }) => name === "Midground").tiles.map(({ image }) => image),
+  );
+
+  assert.deepEqual(midgroundImages, new Set([
+    "../../../assets/terrain/tilesets/Tilemap_color3.png",
+    "../../../assets/terrain/tilesets/Tilemap_color1.png",
+  ]));
+});
+
+test("runtime registers and scales every tileset-specific terrain layer", async () => {
+  const source = await readFile(MAIN_PATH, "utf8");
+
+  assert.match(source, /\.\.\.terrainLayers/);
+  assert.match(source, /for \(const layer of terrainLayers\)/);
+  assert.doesNotMatch(source, /\bterrainLayer\b/);
+});
+
+test("color-three retains its baseline collision shapes and accepts authored additions", async () => {
   const tileset = await readJson(TILESET_URLS[2]);
   const collidableIds = tileset.tiles
     .filter(({ objectgroup }) => objectgroup?.objects?.length > 0)
     .map(({ id }) => id);
 
-  assert.deepEqual(collidableIds, [41, 42, 43, 44, 45, 48, 50, 51, 52, 53]);
+  for (const frame of [41, 42, 43, 44, 45, 48, 50, 51, 52, 53]) {
+    assert.ok(collidableIds.includes(frame));
+  }
+  assert.equal(tileset.tiles.find(({ id }) => id === 0).objectgroup.objects.length, 2);
   assert.equal(tileset.tiles.find(({ id }) => id === 41).objectgroup.objects[0].width, 64);
   assert.deepEqual(
     tileset.tiles.find(({ id }) => id === 48).objectgroup.objects[0].polygon,
     [{ x: 0, y: 0 }, { x: 64, y: 64 }, { x: 0, y: 64 }],
   );
+});
+
+test("color-three collider geometry is quantized without expanding collider scope", async () => {
+  const tileset = await readJson(TILESET_URLS[2]);
+  const collidableTiles = tileset.tiles
+    .filter(({ objectgroup }) => objectgroup?.objects?.length > 0);
+
+  assert.deepEqual(collidableTiles.map(({ id }) => id), COLOR_THREE_COLLIDABLE_IDS);
+
+  const canonicalRectangleKeys = new Set([
+    "0,0,64,64",
+    "0,0,4,64",
+    "60,0,4,64",
+    "0,0,64,4",
+    "0,60,64,4",
+  ]);
+  const tileCorners = new Set(["0,0", "64,0", "64,64", "0,64"]);
+
+  for (const tile of collidableTiles) {
+    for (const object of tile.objectgroup.objects) {
+      if (object.polygon) {
+        const absoluteVertices = object.polygon.map(({ x, y }) => `${object.x + x},${object.y + y}`);
+        assert.equal(absoluteVertices.length, 3, `tile ${tile.id} polygon must have three vertices`);
+        assert.equal(new Set(absoluteVertices).size, 3, `tile ${tile.id} polygon vertices must be unique`);
+        assert.ok(absoluteVertices.every((vertex) => tileCorners.has(vertex)), `tile ${tile.id} polygon must use tile corners`);
+        continue;
+      }
+
+      assert.ok(object.width !== 0 && object.height !== 0, `tile ${tile.id} has zero-area rectangle ${object.id}`);
+      const rectangleKey = [object.x, object.y, object.width, object.height].join(",");
+      assert.ok(canonicalRectangleKeys.has(rectangleKey), `tile ${tile.id} has noncanonical rectangle ${rectangleKey}`);
+    }
+  }
+});
+
+test("color-one copies color-three collider object groups one-to-one", async () => {
+  const [colorOne, colorThree] = await Promise.all([
+    readJson(TILESET_URLS[0]),
+    readJson(TILESET_URLS[2]),
+  ]);
+  const objectGroupsById = (tileset) => Object.fromEntries(
+    (tileset.tiles ?? []).map(({ id, objectgroup }) => [id, objectgroup]),
+  );
+
+  assert.equal(colorOne.name, "Tilemap_color1");
+  assert.equal(colorOne.image, "../../../assets/terrain/tilesets/Tilemap_color1.png");
+  assert.deepEqual(objectGroupsById(colorOne), objectGroupsById(colorThree));
 });
 
 test("normalization imports Tiled collision objects into bottom-left local coordinates", async () => {
@@ -138,17 +214,15 @@ test("normalization imports Tiled collision objects into bottom-left local coord
   }]);
 });
 
-test("Level01 exposes the Warrior spawner at grid 05,09", async () => {
+test("Level01 exposes one Player, Sheep, Goblin, and Warrior spawner", async () => {
   const { map, externalTilesets } = await readLevelWithTilesets();
   const level = normalizeTiledMap(map, externalTilesets);
-  assert.deepEqual(level.spawners, [{
-    type: "enemy",
-    character: "warrior",
-    gameCell: { x: 5, y: 9 },
-    minimumCount: 1,
-    maximumCount: 1,
-    guaranteeInitialPopulation: true,
-  }]);
+  assert.deepEqual(level.spawners.map(({ type, gameCell }) => ({ type, gameCell })), [
+    { type: "PLAYER", gameCell: { x: 3, y: 7 } },
+    { type: "SHEEP", gameCell: { x: 6, y: 4 } },
+    { type: "GOBLIN", gameCell: { x: 2, y: 5 } },
+    { type: "WARRIOR", gameCell: { x: 5, y: 9 } },
+  ]);
 });
 
 test("level coordinate labels use zero-padded column row values", () => {

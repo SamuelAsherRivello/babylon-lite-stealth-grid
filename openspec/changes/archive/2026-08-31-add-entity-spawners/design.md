@@ -66,7 +66,7 @@ Alternative considered: preallocate dormant actors up to every maximum. Rejected
 
 ### Render markers as grayscale sprite layers beneath actors
 
-For each spawner, create one dedicated marker sprite using frame zero of the corresponding idle atlas, the actor's existing pivot, and half the actor's live rendered width and height. A small shared Sprite2D custom fragment shader converts sampled RGB to luminance while retaining alpha. Marker layers use an order between terrain and actors and mirror the current viewport zoom. Their `visible` state subscribes to or is updated from the existing collider diagnostic setting.
+For each spawner, create one dedicated marker sprite using frame zero of the corresponding idle atlas and half the actor's live rendered width and height. Give the marker an independent centered pivot and place it at the center of the grid cell containing the configured spawn position rather than inheriting the live actor's ground anchor. A small shared Sprite2D custom fragment shader converts sampled RGB to luminance and multiplies retained alpha by `0.5`, making every marker black and white at 50% opacity. Marker layers use an order between terrain and actors and mirror the current viewport zoom. Their `visible` state subscribes to or is updated from the existing collider diagnostic setting.
 
 Per-sprite color multiplication is not sufficient because tinting cannot remove the source artwork's color. Drawing markers on the diagnostic canvas was also rejected because that canvas renders above the game canvas, which would place the marker over the live actor instead of beneath it.
 

@@ -10,6 +10,7 @@ import {
 const MAP_URL = new URL("../public/levels/tiled/maps/Level01.tmj", import.meta.url);
 const TERRAIN_URL = new URL("../public/levels/tiled/tilesets/Tilemap_color3.tsj", import.meta.url);
 const BUSH_URL = new URL("../public/levels/tiled/tilesets/TinySwordsBushDecorations.tsj", import.meta.url);
+const SPAWNER_URL = new URL("../public/levels/tiled/tilesets/SpawnerTypes.tsj", import.meta.url);
 
 async function json(url) {
   return JSON.parse(await readFile(url, "utf8"));
@@ -26,7 +27,7 @@ test("bush source and editor preview are valid PNGs with expected dimensions", a
     readFile(new URL("../public/assets/terrain/decorations/bushes/Bushe1-frame0.png", import.meta.url)),
   ]);
   assert.deepEqual(pngDimensions(source), { width: 1024, height: 128 });
-  assert.deepEqual(pngDimensions(preview), { width: 68, height: 46 });
+  assert.deepEqual(pngDimensions(preview), { width: 64, height: 64 });
   assert.equal(source[25], 6);
   assert.equal(preview[25], 6);
 });
@@ -36,17 +37,20 @@ test("bush tileset exposes exactly one placeable reactive decoration item", asyn
   assert.equal(tileset.tilecount, 1);
   assert.equal(tileset.tiles.length, 1);
   assert.equal(tileset.tiles[0].class, "ReactiveDecoration");
-  assert.equal(tileset.tiles[0].imagewidth, 68);
-  assert.equal(tileset.tiles[0].imageheight, 46);
-  assert.deepEqual(tileset.tileoffset, { x: 0, y: -49 });
+  assert.equal(tileset.tiles[0].imagewidth, 64);
+  assert.equal(tileset.tiles[0].imageheight, 64);
+  assert.deepEqual(tileset.tileoffset, { x: 0, y: -41 });
   assert.equal(tileset.tiles[0].objectgroup.objects[0].class, "Sensor");
 });
 
 test("Level01 normalizes the bush as a bottom-centered independent object", async () => {
-  const [map, terrain, bush] = await Promise.all([json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL)]);
+  const [map, terrain, bush, spawners] = await Promise.all([
+    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL),
+  ]);
   const external = new Map([
     ["../tilesets/Tilemap_color3.tsj", terrain],
     ["../tilesets/TinySwordsBushDecorations.tsj", bush],
+    ["../tilesets/SpawnerTypes.tsj", spawners],
   ]);
   assert.deepEqual(validateTiledMap(map, external), []);
   const level = normalizeTiledMap(map, external);
@@ -55,8 +59,8 @@ test("Level01 normalizes the bush as a bottom-centered independent object", asyn
   assert.equal(object.name, "Bush 1");
   assert.equal(object.layerName, "Y-Sorted Props");
   const placed = map.layers.find(({ name }) => name === "Y-Sorted Props").objects[0];
-  assert.equal(placed.width, 68);
-  assert.equal(placed.height, 46);
+  assert.equal(placed.width, 64);
+  assert.equal(placed.height, 64);
   assert.deepEqual(object.position, {
     x: placed.x,
     y: 1024 - placed.y,
@@ -91,12 +95,18 @@ test("reactive decoration property precedence is class then tile then object", (
   const map = {
     type: "map", orientation: "orthogonal", infinite: false,
     width: 1, height: 1, tilewidth: 64, tileheight: 64,
-    tilesets: [{ firstgid: 1, source: "bush.tsj" }],
+    tilesets: [
+      { firstgid: 1, source: "bush.tsj" },
+      { firstgid: 2, source: "spawners.tsj" },
+    ],
     layers: [
       { type: "tilelayer", name: "World Origin", data: [1] },
       { type: "objectgroup", name: "Y-Sorted Props", objects: [{
         id: 7, gid: 1, x: 32, y: 64,
         properties: [{ name: "frameDurationMs", value: 175 }],
+      }] },
+      { type: "objectgroup", name: "Spawners", objects: [{
+        id: 8, gid: 2, x: 32, y: 64,
       }] },
     ],
   };
@@ -104,7 +114,12 @@ test("reactive decoration property precedence is class then tile then object", (
     classDefaults: { ReactiveDecoration: { frameDurationMs: 80, resetAfterPlay: true } },
     tiles: [tile],
   };
-  const object = normalizeTiledMap(map, new Map([["bush.tsj", tileset]])).reactiveDecorations[0];
+  const spawnerTileset = {
+    tiles: [{ id: 0, class: "Spawner", properties: [{ name: "type", value: "PLAYER" }] }],
+  };
+  const object = normalizeTiledMap(map, new Map([
+    ["bush.tsj", tileset], ["spawners.tsj", spawnerTileset],
+  ])).reactiveDecorations[0];
   assert.equal(object.properties.frameDurationMs, 175);
   assert.equal(object.properties.resetAfterPlay, true);
 });

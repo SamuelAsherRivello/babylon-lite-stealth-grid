@@ -6,7 +6,9 @@ import {
   aabbsOverlap,
   calculateJoystickInput,
   circleOverlapsPolygon,
+  classifyCardinalMovement,
   collidersOverlap,
+  createGridAlignmentSession,
   createTerrainReviewTiles,
   createJumpState,
   getCharacterCollider,
@@ -19,6 +21,7 @@ import {
   moveWithCollisions,
   moveWithinBounds,
   selectMovementInput,
+  stepGridAlignment,
   startJump,
   updateJump,
   worldToGrid,
@@ -29,6 +32,63 @@ import {
   NON_WALKABLE_TERRAIN_FRAMES,
   PARTIAL_TERRAIN_COLLIDERS,
 } from "../src/terrain-collision-config.js";
+
+test("cardinal movement classification includes the 10 percent boundary", () => {
+  assert.deepEqual(classifyCardinalMovement({ x: 0, y: 1 }), {
+    axis: "y",
+    direction: 1,
+  });
+  assert.deepEqual(classifyCardinalMovement({ x: -0.1, y: -1 }), {
+    axis: "y",
+    direction: -1,
+  });
+  assert.deepEqual(classifyCardinalMovement({ x: 0.5, y: 0.05 }), {
+    axis: "x",
+    direction: 1,
+  });
+});
+
+test("cardinal movement classification rejects zero and intentional diagonals", () => {
+  assert.equal(classifyCardinalMovement({ x: 0, y: 0 }), null);
+  assert.equal(classifyCardinalMovement({ x: 0.10001, y: 1 }), null);
+  assert.equal(classifyCardinalMovement({ x: -1, y: 0.11 }), null);
+  assert.equal(classifyCardinalMovement({ x: 1, y: 1 }), null);
+});
+
+test("grid alignment targets the current cell center from the circle collider center", () => {
+  const character = {
+    frame: { width: 192, height: 192 },
+    pivot: { x: 0.5, y: 0.78 },
+    collider: { type: "circle", x: 93, y: 126, radius: 18.2 },
+  };
+
+  const vertical = createGridAlignmentSession(
+    { x: 210, y: 300 },
+    character,
+    64,
+    { axis: "y", direction: 1 },
+  );
+  const horizontal = createGridAlignmentSession(
+    { x: 210, y: 300 },
+    character,
+    64,
+    { axis: "x", direction: -1 },
+  );
+
+  assert.equal(vertical.correctionAxis, "x");
+  assert.equal(vertical.target, 227);
+  assert.equal(horizontal.correctionAxis, "y");
+  assert.ok(Math.abs(horizontal.target - 328.24) < 1e-10);
+});
+
+test("grid alignment correction is frame-rate independent and clamps its last step", () => {
+  const session = { correctionAxis: "x", target: 32, speed: 160 };
+
+  assert.equal(stepGridAlignment(session, { x: 0, y: 10 }, 0.05), 8);
+  assert.equal(stepGridAlignment(session, { x: 0, y: 10 }, 0.1), 16);
+  assert.equal(stepGridAlignment(session, { x: 30, y: 10 }, 0.1), 2);
+  assert.equal(stepGridAlignment(session, { x: 34, y: 10 }, 0.1), -2);
+});
 
 test("the 64 pixel grid covers the complete logical screen", () => {
   assert.deepEqual(GRID, {

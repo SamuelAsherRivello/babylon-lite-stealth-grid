@@ -27,11 +27,17 @@ import { selectGoblinAttackAnimation } from "./goblin-state.js";
 
 export const GOBLIN_FRAME = Object.freeze({ width: 192, height: 192 });
 export const GOBLIN_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
-export const GOBLIN_COLLIDER = Object.freeze({
+export const GOBLIN_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 96,
   y: 123,
   radius: 24,
+});
+export const GOBLIN_COMBAT_COLLIDER = Object.freeze({
+  x: 64,
+  y: GOBLIN_FRAME.height * GOBLIN_PIVOT.y - 96,
+  width: 64,
+  height: 96,
 });
 
 const DEFAULT_API = Object.freeze({
@@ -82,7 +88,7 @@ export function createGoblin({
   const character = {
     frame: GOBLIN_FRAME,
     pivot: GOBLIN_PIVOT,
-    collider: GOBLIN_COLLIDER,
+    collider: GOBLIN_MOVEMENT_COLLIDER,
   };
   const stateMachine = createEnemyStateMachine();
   let position = { ...initialPosition };
@@ -262,12 +268,20 @@ export function createGoblin({
         layer.visible = false;
       }
     },
-    getCollider() {
+    getMovementCollider() {
       return getCharacterCollider(
         position,
         character.frame,
         character.pivot,
         character.collider,
+      );
+    },
+    getCombatCollider() {
+      return getCharacterCollider(
+        position,
+        character.frame,
+        character.pivot,
+        GOBLIN_COMBAT_COLLIDER,
       );
     },
     getGridPosition(tileSize) {

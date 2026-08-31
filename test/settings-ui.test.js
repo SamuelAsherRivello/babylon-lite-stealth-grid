@@ -165,6 +165,7 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(source, /gear\.setAttribute\("aria-label", "Open settings"\)/);
   assert.match(source, /icon\.src = `\$\{ASSET_BASE\}ui\/gear\.svg`/);
   assert.match(source, /title:\s*"Settings Menu"/);
+  assert.match(source, /developerTitle\.textContent = "Developer"/);
   assert.match(source, /"Music", AUDIO_SETTING_KEYS\.music/);
   assert.match(source, /"SFX", AUDIO_SETTING_KEYS\.sfx/);
   assert.match(source, /"Collider\?"/);
@@ -187,7 +188,7 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(main, /playerRecord\.actor\.update\(activeDelta, dynamicColliders\)/);
   assert.match(main, /showColliders = settingsStore\.get\(DEBUG_SETTING_KEYS\.showColliders\)/);
   assert.match(main, /marker\.setVisible\(value\)/);
-  assert.match(main, /drawDiagnostics\([\s\S]*diagnosticPlayer\?\.combat\.getCollider\(\)[\s\S]*SpawnerType\.SHEEP[\s\S]*SpawnerType\.ENEMY[\s\S]*projectiles\.getColliders\(\)[\s\S]*showColliders/);
+  assert.match(main, /const diagnosticCharacters = \[[\s\S]*SpawnerType\.SHEEP[\s\S]*SpawnerType\.ENEMY[\s\S]*getCombatCollider\(\)[\s\S]*getMovementCollider\(\)[\s\S]*drawDiagnostics\([\s\S]*diagnosticCharacters[\s\S]*projectiles\.getColliders\(\)[\s\S]*showColliders/);
   assert.match(main, /function drawGridLines\(\)[\s\S]*rgb\(80 86 92 \/ 48%\)[\s\S]*lineWidth = 1/);
   assert.match(main, /if \(!enabled\) \{[\s\S]*return;[\s\S]*\}[\s\S]*drawGridLines\(\)/);
   assert.doesNotMatch(main, /DISPLAY_SETTING_KEYS|applyFullscreenPreference/);

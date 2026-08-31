@@ -8,7 +8,7 @@
 ## 2. Initial Spawner Types and Markers
 
 - [x] 2.1 Add the player, sheep, and enemy spawner catalog configurations using the current actor positions, `(1,1)`, `(2,2)`, and `(1,1)` population ranges, and the default interval; verify a focused catalog test asserts the exact types, positions, ranges, and omitted/default interval behavior
-- [x] 2.2 Add failing marker tests for frame-zero static artwork, existing actor pivots, 50% rendered dimensions, grayscale shader use, no collider/input behavior, and render order beneath actors; verify the tests fail before marker rendering exists
+- [x] 2.2 Add failing marker tests for frame-zero static artwork, grid-cell-centered placement, 50% rendered dimensions, grayscale output at 50% opacity, no collider/input behavior, and render order beneath actors; verify the tests fail before marker rendering exists
 - [x] 2.3 Implement the shared grayscale marker shader and one persistent marker per spawner using existing idle atlases; verify marker tests pass and no additional image asset or dependency is introduced
 - [x] 2.4 Bind all marker-layer visibility to the existing collider diagnostic setting while leaving spawner updates independent; verify settings integration tests cover off, on, and hidden-while-replenishing cases
 
@@ -23,5 +23,5 @@
 
 - [x] 4.1 Run the complete automated test suite and production build as separate commands; verify both exit successfully with no changed legacy expectations left unreviewed
 - [x] 4.2 Run the game in a real browser with collider diagnostics disabled; verify the player appears immediately, sheep and goblin populations build gradually through evaluations, and no spawner marker is visible
-- [x] 4.3 Enable collider diagnostics in the real browser; verify three non-animated grayscale spawner markers appear at half actor size beneath the live actors, then disable diagnostics and verify only the markers disappear
+- [x] 4.3 Enable collider diagnostics in the real browser; verify three non-animated grayscale spawner markers appear centered in their grid cells at half actor size and 50% opacity beneath the live actors, then disable diagnostics and verify only the markers disappear
 - [x] 4.4 Exercise the lifecycle hook in a browser-safe debug or test path; verify a dying actor counts until disposal, a below-minimum evaluation may create zero, a later evaluation can recreate it, and no population exceeds its maximum

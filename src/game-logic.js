@@ -47,6 +47,139 @@ export function selectMovementInput(keyboardMovement, joystickMovement) {
     : keyboardMovement;
 }
 
+export const CARDINAL_INPUT_TOLERANCE = 0.1;
+export const GRID_ALIGNMENT_DURATION_SECONDS = 0.2;
+
+export function classifyCardinalMovement(
+  movement,
+  tolerance = CARDINAL_INPUT_TOLERANCE,
+) {
+  const x = Number.isFinite(movement?.x) ? movement.x : 0;
+  const y = Number.isFinite(movement?.y) ? movement.y : 0;
+  const absoluteX = Math.abs(x);
+  const absoluteY = Math.abs(y);
+
+  if (absoluteX === 0 && absoluteY === 0) {
+    return null;
+  }
+
+  const safeTolerance = Math.max(0, Number.isFinite(tolerance) ? tolerance : 0);
+  if (absoluteX > 0 && absoluteY <= absoluteX * safeTolerance) {
+    return { axis: "x", direction: Math.sign(x) };
+  }
+  if (absoluteY > 0 && absoluteX <= absoluteY * safeTolerance) {
+    return { axis: "y", direction: Math.sign(y) };
+  }
+  return null;
+}
+
+export function createGridAlignmentSession(
+  position,
+  character,
+  tileSize,
+  cardinalMovement,
+  durationSeconds = GRID_ALIGNMENT_DURATION_SECONDS,
+) {
+  if (!cardinalMovement || tileSize <= 0 || durationSeconds <= 0) {
+    return null;
+  }
+
+  const correctionAxis = cardinalMovement.axis === "x" ? "y" : "x";
+  const collider = getCharacterCollider(
+    position,
+    character.frame,
+    character.pivot,
+    character.collider,
+  );
+  const colliderCoordinate = collider.type === "circle"
+    ? collider[correctionAxis]
+    : collider[correctionAxis]
+      + (correctionAxis === "x" ? collider.width : collider.height) / 2;
+  const cellCenter = (Math.floor(colliderCoordinate / tileSize) + 0.5) * tileSize;
+  const target = position[correctionAxis] + cellCenter - colliderCoordinate;
+
+  return {
+    movementAxis: cardinalMovement.axis,
+    correctionAxis,
+    target,
+    speed: Math.abs(target - position[correctionAxis]) / durationSeconds,
+  };
+}
+
+export function stepGridAlignment(session, position, deltaSeconds) {
+  if (!session || deltaSeconds <= 0) {
+    return 0;
+  }
+  const remaining = session.target - position[session.correctionAxis];
+  const maximumStep = session.speed * deltaSeconds;
+  return Math.sign(remaining) * Math.min(Math.abs(remaining), maximumStep);
+}
+
+export function createGridAlignedMovementController(character, tileSize) {
+  let alignmentSession = null;
+
+  return {
+    reset() {
+      alignmentSession = null;
+    },
+    move(position, movement, distance, deltaSeconds, bounds, obstacles) {
+      const cardinalMovement = classifyCardinalMovement(movement);
+      if (!cardinalMovement) {
+        alignmentSession = null;
+        return moveWithCollisions(
+          position,
+          movement,
+          distance,
+          bounds,
+          character,
+          obstacles,
+        );
+      }
+
+      if (alignmentSession?.movementAxis !== cardinalMovement.axis) {
+        alignmentSession = createGridAlignmentSession(
+          position,
+          character,
+          tileSize,
+          cardinalMovement,
+        );
+      }
+
+      const requestedMovement = cardinalMovement.axis === "x"
+        ? { x: movement.x, y: 0 }
+        : { x: 0, y: movement.y };
+      const requestedPosition = moveWithCollisions(
+        position,
+        requestedMovement,
+        distance,
+        bounds,
+        character,
+        obstacles,
+      );
+      const correction = stepGridAlignment(
+        alignmentSession,
+        requestedPosition,
+        deltaSeconds,
+      );
+      if (correction === 0) {
+        return requestedPosition;
+      }
+
+      const correctionMovement = alignmentSession.correctionAxis === "x"
+        ? { x: Math.sign(correction), y: 0 }
+        : { x: 0, y: Math.sign(correction) };
+      return moveWithCollisions(
+        requestedPosition,
+        correctionMovement,
+        Math.abs(correction),
+        bounds,
+        character,
+        obstacles,
+      );
+    },
+  };
+}
+
 export function createJumpState(durationSeconds = 0.6, peakHeight = 64) {
   return {
     durationSeconds,

@@ -86,6 +86,7 @@ import {
 } from "./spawner-catalog.js";
 import { createSpawnerMarker } from "./spawner-marker.js";
 import { createReactiveDecoration } from "./decorations/reactive-decoration.js";
+import { createCharacterColliderDrawCommands } from "./collider-diagnostics.js";
 
 const SCREEN_WIDTH = GRID.widthPx;
 const SCREEN_HEIGHT = GRID.heightPx;
@@ -116,7 +117,7 @@ const coordinatesUi = createCoordinatesUi();
 
 function createCombatActorState({
   label,
-  getCollider,
+  getCombatCollider,
   setVisualTransform,
   onDeathStart,
   onDeathProgress,
@@ -146,9 +147,9 @@ function createCombatActorState({
     hitFlashRemainingSeconds = DAMAGE_FLASH_DURATION_SECONDS;
   }
 
-  function getColliderForCombat() {
+  function getActiveCombatCollider() {
     if (!isDying && !isDead) {
-      return getCollider();
+      return getCombatCollider();
     }
     return null;
   }
@@ -167,7 +168,7 @@ function createCombatActorState({
     get isDead() {
       return isDead;
     },
-    getCollider: getColliderForCombat,
+    getCombatCollider: getActiveCombatCollider,
     setVisualTransform,
     applyDamage(amount, hitDirection = { x: 1, y: 0 }) {
       if (!this.isAlive || amount <= 0) {
@@ -262,9 +263,10 @@ async function start() {
 
   const engine = await createEngine(canvas);
   const animationManager = createSpriteAnimationManager();
+  const level = await loadTiledMap(`${import.meta.env.BASE_URL}levels/tiled/maps/Level01.tmj`);
+  const terrainImages = new Set(collectTiledLayerTiles(level).map(({ image }) => image));
   const [
-    level,
-    terrainAtlas,
+    terrainAtlasEntries,
     archerAtlas,
     arrowAtlas,
     waterFoamAtlas,
@@ -273,11 +275,13 @@ async function start() {
     warriorAtlases,
     releaseMetadata,
   ] = await Promise.all([
-    loadTiledMap(`${import.meta.env.BASE_URL}levels/tiled/maps/Level01.tmj`),
-    loadSpriteAtlas(engine, "./assets/terrain/tilesets/Tilemap_color3.png", {
-      gridSize: [TILE_SIZE, TILE_SIZE],
-      sampling: "nearest",
-    }),
+    Promise.all([...terrainImages].map(async (image) => [
+      image,
+      await loadSpriteAtlas(engine, image, {
+        gridSize: [TILE_SIZE, TILE_SIZE],
+        sampling: "nearest",
+      }),
+    ])),
     loadPlayerAtlases(engine),
     loadArrowAtlas(engine),
     loadSpriteAtlas(engine, "./assets/terrain/Water Foam.png", {
@@ -289,6 +293,7 @@ async function start() {
     loadWarriorAtlases(engine),
     loadReleaseMetadata(import.meta.env.BASE_URL),
   ]);
+  const terrainAtlasByImage = new Map(terrainAtlasEntries);
 
   const terrainTiles = createLevelTerrainTiles(
     collectTiledLayerTiles(level),
@@ -296,9 +301,7 @@ async function start() {
     SCREEN_HEIGHT,
     EMPTY_TERRAIN_FRAMES,
   );
-  const obstacleColliders = terrainTiles
-    .filter(({ collider }) => collider !== null)
-    .map(({ collider }) => collider);
+  const obstacleColliders = terrainTiles.flatMap(({ colliders }) => colliders);
   const decorationDescriptorsByImage = new Map(
     level.reactiveDecorations.map(({ decoration }) => [decoration.image, decoration]),
   );
@@ -320,18 +323,22 @@ async function start() {
     })
   ));
 
-  const terrainLayer = createSprite2DLayer(terrainAtlas, {
-    capacity: terrainTiles.length,
-    order: TILE_MAP_SUB_Z.ground,
-    pivot: [0, 0],
-  });
+  const terrainLayerByImage = new Map([...terrainAtlasByImage].map(([image, atlas]) => [
+    image,
+    createSprite2DLayer(atlas, {
+      capacity: terrainTiles.filter((tile) => tile.image === image).length,
+      order: TILE_MAP_SUB_Z.ground,
+      pivot: [0, 0],
+    }),
+  ]));
+  const terrainLayers = [...terrainLayerByImage.values()];
 
   for (const tile of terrainTiles) {
     if (!tile.valid) {
       continue;
     }
 
-    addSprite2D(terrainLayer, {
+    addSprite2D(terrainLayerByImage.get(tile.image), {
       positionPx: [tile.screenPosition.x, tile.screenPosition.y],
       sizePx: [TILE_SIZE, TILE_SIZE],
       frame: tile.frame,
@@ -375,7 +382,7 @@ async function start() {
     });
     const combat = createCombatActorState({
       label: `player-${nextActorId++}`,
-      getCollider: () => actor.getCollider(),
+      getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [PLAYER_FRAME.width * value, PLAYER_FRAME.height * value],
@@ -401,7 +408,7 @@ async function start() {
     });
     const combat = createCombatActorState({
       label: `sheep-${nextActorId++}`,
-      getCollider: () => actor.getCollider().collider,
+      getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [SHEEP_FRAME_SIZE * value, SHEEP_FRAME_SIZE * value],
@@ -421,7 +428,7 @@ async function start() {
     });
     const combat = createCombatActorState({
       label: `goblin-${nextActorId++}`,
-      getCollider: () => actor.getCollider(),
+      getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [GOBLIN_FRAME.width * value, GOBLIN_FRAME.height * value],
@@ -446,7 +453,7 @@ async function start() {
     });
     const combat = createCombatActorState({
       label: `warrior-${nextActorId++}`,
-      getCollider: () => actor.getCollider(),
+      getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [WARRIOR_FRAME.width * value, WARRIOR_FRAME.height * value],
@@ -555,7 +562,7 @@ async function start() {
 
   renderer = createSpriteRenderer(engine, {
     layers: [
-      terrainLayer,
+      ...terrainLayers,
       ...reactiveDecorations.map((decoration) => decoration.layer),
       ...spawnerMarkers.map((marker) => marker.layer),
       ...spawners.flatMap((spawner) => (
@@ -619,6 +626,7 @@ async function start() {
 
   let previousTime = performance.now();
   let showColliders = settingsStore.get(DEBUG_SETTING_KEYS.showColliders);
+  coordinatesUi.setVisible(showColliders);
   for (const marker of spawnerMarkers) {
     marker.setVisible(showColliders);
   }
@@ -626,6 +634,7 @@ async function start() {
     DEBUG_SETTING_KEYS.showColliders,
     (value) => {
       showColliders = value;
+      coordinatesUi.setVisible(value);
       for (const marker of spawnerMarkers) {
         marker.setVisible(value);
       }
@@ -657,7 +666,9 @@ async function start() {
       SCREEN_WIDTH,
       SCREEN_HEIGHT,
     );
-    terrainLayer.view.zoom = viewportScale;
+    for (const layer of terrainLayers) {
+      layer.view.zoom = viewportScale;
+    }
     for (const decoration of reactiveDecorations) {
       decoration.layer.view.zoom = viewportScale;
     }
@@ -698,22 +709,33 @@ async function start() {
       const playerRecord = spawnerByType.get(SpawnerType.PLAYER).actors[0] ?? null;
       const sheepRecords = getRecordsByType(SpawnerType.SHEEP);
       const enemyRecords = getRecordsByType(SpawnerType.ENEMY);
-      const playerCollider = playerRecord?.combat.getCollider() ?? null;
-      const sheepColliders = sheepRecords.map((record) => ({
+      const playerMovementCollider = playerRecord?.combat.isAlive
+        ? playerRecord.actor.getMovementCollider()
+        : null;
+      const playerCombatCollider = playerRecord?.combat.getCombatCollider() ?? null;
+      const sheepMovementColliders = sheepRecords.map((record) => ({
         record,
-        collider: record.combat.getCollider(),
+        collider: record.combat.isAlive ? record.actor.getMovementCollider() : null,
       }));
-      const enemyColliders = enemyRecords.map((record) => ({
+      const enemyMovementColliders = enemyRecords.map((record) => ({
         record,
-        collider: record.combat.getCollider(),
+        collider: record.combat.isAlive ? record.actor.getMovementCollider() : null,
+      }));
+      const sheepCombatColliders = sheepRecords.map((record) => ({
+        record,
+        collider: record.combat.getCombatCollider(),
+      }));
+      const enemyCombatColliders = enemyRecords.map((record) => ({
+        record,
+        collider: record.combat.getCombatCollider(),
       }));
 
       let playerMovement = { x: 0, y: 0 };
       if (playerRecord?.combat.isAlive) {
         const dynamicColliders = [
-          ...sheepColliders.filter(({ collider }) => collider)
+          ...sheepMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: "npc", collider })),
-          ...enemyColliders.filter(({ collider }) => collider)
+          ...enemyMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: CharacterType.ENEMY, collider })),
         ];
         playerMovement = playerRecord.actor.update(activeDelta, dynamicColliders).movement;
@@ -726,8 +748,8 @@ async function start() {
             cell: playerRecord.actor.getGridPosition(TILE_SIZE),
           }
         : null;
-      const sheepDynamicColliders = playerRecord?.combat.isAlive && playerCollider
-        ? [{ type: CharacterType.PLAYER, collider: playerCollider }]
+      const sheepDynamicColliders = playerMovementCollider
+        ? [{ type: CharacterType.PLAYER, collider: playerMovementCollider }]
         : [];
       const projectileState = projectiles.getColliders();
       for (const record of sheepRecords) {
@@ -746,31 +768,31 @@ async function start() {
         }
         record.controller.update(activeDelta);
         record.actor.update(activeDelta, [
-          ...(playerRecord?.combat.isAlive && playerCollider
-            ? [{ type: CharacterType.PLAYER, collider: playerCollider }]
+          ...(playerMovementCollider
+            ? [{ type: CharacterType.PLAYER, collider: playerMovementCollider }]
             : []),
-          ...sheepColliders.filter(({ collider }) => collider)
+          ...sheepMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: "npc", collider })),
         ]);
       }
 
       const reactiveCharacters = [
-        ...(playerRecord?.combat.isAlive && playerRecord.combat.getCollider()
+        ...(playerMovementCollider
           ? [{
               id: playerRecord.combat.label,
               type: CharacterType.PLAYER,
-              collider: playerRecord.combat.getCollider(),
+              collider: playerRecord.actor.getMovementCollider(),
             }]
           : []),
         ...sheepRecords.filter(({ combat }) => combat.isAlive).map((record) => ({
           id: record.combat.label,
           type: "npc",
-          collider: record.combat.getCollider(),
+          collider: record.actor.getMovementCollider(),
         })).filter(({ collider }) => collider),
         ...enemyRecords.filter(({ combat }) => combat.isAlive).map((record) => ({
           id: record.combat.label,
           type: CharacterType.ENEMY,
-          collider: record.combat.getCollider(),
+          collider: record.actor.getMovementCollider(),
         })).filter(({ collider }) => collider),
       ];
       for (const decoration of reactiveDecorations) {
@@ -781,7 +803,7 @@ async function start() {
       const projectilesToRemove = [];
       for (const { id, collider, direction } of projectiles.getColliders()) {
         let hit = false;
-        for (const target of [...sheepColliders, ...enemyColliders]) {
+        for (const target of [...sheepCombatColliders, ...enemyCombatColliders]) {
           if (!target.record.combat.isAlive || !target.collider) {
             continue;
           }
@@ -804,12 +826,12 @@ async function start() {
         projectiles.removeProjectiles(projectilesToRemove);
       }
 
-      if (playerRecord?.combat.isAlive && playerCollider) {
-        for (const { record, collider } of enemyColliders) {
+      if (playerRecord?.combat.isAlive && playerCombatCollider) {
+        for (const { record, collider } of enemyCombatColliders) {
           if (!record.combat.isAlive || !collider) {
             continue;
           }
-          const touching = collidersOverlap(playerCollider, collider);
+          const touching = collidersOverlap(playerCombatCollider, collider);
           if (
             touching
             && (
@@ -839,11 +861,11 @@ async function start() {
         }
       }
 
-      for (const enemyTarget of enemyColliders) {
+      for (const enemyTarget of enemyCombatColliders) {
         if (!enemyTarget.record.combat.isAlive || !enemyTarget.collider) {
           continue;
         }
-        for (const sheepTarget of sheepColliders) {
+        for (const sheepTarget of sheepCombatColliders) {
           if (
             !sheepTarget.record.combat.isAlive
             || !sheepTarget.collider
@@ -873,14 +895,17 @@ async function start() {
         coordinatesUi.update(playerSnapshot.position, playerSnapshot.cell);
       }
     }
-    const diagnosticPlayer = spawnerByType.get(SpawnerType.PLAYER).actors[0] ?? null;
+    const diagnosticCharacters = [
+      ...spawnerByType.get(SpawnerType.PLAYER).actors,
+      ...getRecordsByType(SpawnerType.SHEEP),
+      ...getRecordsByType(SpawnerType.ENEMY),
+    ].filter(({ combat }) => combat.isAlive).map(({ actor, combat }) => ({
+      combatCollider: combat.getCombatCollider(),
+      movementCollider: actor.getMovementCollider(),
+    }));
     drawDiagnostics(
       terrainTiles,
-      diagnosticPlayer?.combat.getCollider() ?? null,
-      getRecordsByType(SpawnerType.SHEEP)
-        .map((record) => record.combat.getCollider()).filter(Boolean),
-      getRecordsByType(SpawnerType.ENEMY)
-        .map((record) => record.combat.getCollider()).filter(Boolean),
+      diagnosticCharacters,
       projectiles.getColliders(),
       showColliders,
     );
@@ -1015,9 +1040,7 @@ function drawGridLines() {
 
 function drawDiagnostics(
   terrainTiles,
-  characterCollider,
-  sheepColliders,
-  goblinColliders,
+  diagnosticCharacters,
   projectileColliders,
   enabled,
 ) {
@@ -1030,8 +1053,8 @@ function drawDiagnostics(
   debugContext.textBaseline = "top";
 
   for (const tile of terrainTiles) {
-    if (tile.collider) {
-      drawTerrainCollider(tile.collider);
+    for (const collider of tile.colliders) {
+      drawTerrainCollider(collider);
     }
 
     const label = formatLevelCellLabel(tile.gameCell);
@@ -1052,19 +1075,13 @@ function drawDiagnostics(
     );
   }
 
-  drawCharacterCollider(characterCollider);
-  for (const sheepCollider of sheepColliders) {
+  for (const { collider, style } of createCharacterColliderDrawCommands(
+    diagnosticCharacters,
+  )) {
     drawCharacterCollider(
-      sheepCollider,
-      "rgb(255 220 64 / 24%)",
-      "#ffe066",
-    );
-  }
-  for (const goblinCollider of goblinColliders) {
-    drawCharacterCollider(
-      goblinCollider,
-      "rgb(255 86 86 / 24%)",
-      "#ff5656",
+      collider,
+      style.fillStyle,
+      style.strokeStyle,
     );
   }
   for (const { collider } of projectileColliders) {

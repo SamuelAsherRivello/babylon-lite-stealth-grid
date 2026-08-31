@@ -11,6 +11,37 @@ export const SpawnerCharacter = Object.freeze({
   WARRIOR: "warrior",
 });
 
+const SPAWNER_DEFAULTS = Object.freeze({
+  PLAYER: Object.freeze({
+    type: SpawnerType.PLAYER,
+    character: SpawnerCharacter.PLAYER,
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+  }),
+  SHEEP: Object.freeze({
+    type: SpawnerType.SHEEP,
+    character: SpawnerCharacter.SHEEP,
+    minimumCount: 2,
+    maximumCount: 2,
+    guaranteeInitialPopulation: false,
+  }),
+  GOBLIN: Object.freeze({
+    type: SpawnerType.ENEMY,
+    character: SpawnerCharacter.GOBLIN,
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: false,
+  }),
+  WARRIOR: Object.freeze({
+    type: SpawnerType.ENEMY,
+    character: SpawnerCharacter.WARRIOR,
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+  }),
+});
+
 function requirePositive(name, value) {
   if (!Number.isFinite(value) || value <= 0) {
     throw new RangeError(`${name} must be a positive number`);
@@ -27,45 +58,18 @@ export function createInitialSpawnerConfigs({
   requirePositive("screenHeight", screenHeight);
   requirePositive("tileSize", tileSize);
 
-  const defaults = [
-    {
-      type: SpawnerType.PLAYER,
-      character: SpawnerCharacter.PLAYER,
-      position: { x: screenWidth / 2 - tileSize, y: screenHeight / 2 },
-      minimumCount: 1,
-      maximumCount: 1,
-      guaranteeInitialPopulation: true,
-    },
-    {
-      type: SpawnerType.SHEEP,
-      character: SpawnerCharacter.SHEEP,
-      position: { x: screenWidth * 0.72, y: screenHeight * (1 - 0.72) },
-      minimumCount: 2,
-      maximumCount: 2,
-      guaranteeInitialPopulation: false,
-    },
-    {
-      type: SpawnerType.ENEMY,
-      character: SpawnerCharacter.GOBLIN,
-      position: { x: screenWidth * 0.28, y: screenHeight * 0.35 },
-      minimumCount: 1,
-      maximumCount: 1,
-      guaranteeInitialPopulation: false,
-    },
-  ];
-  return [
-    ...defaults,
-    ...authoredSpawners.map((spawner) => ({
-      type: spawner.type,
-      character: spawner.character,
+  return authoredSpawners.map((spawner) => {
+    const defaults = SPAWNER_DEFAULTS[spawner.type];
+    if (!defaults) {
+      throw new Error(`Unsupported spawner type: ${spawner.type}`);
+    }
+    return {
+      ...defaults,
       position: {
         x: (spawner.gameCell.x + 0.5) * tileSize,
         y: (spawner.gameCell.y + 0.5) * tileSize,
       },
       gameCell: { ...spawner.gameCell },
-      minimumCount: spawner.minimumCount,
-      maximumCount: spawner.maximumCount,
-      guaranteeInitialPopulation: spawner.guaranteeInitialPopulation,
-    })),
-  ];
+    };
+  });
 }

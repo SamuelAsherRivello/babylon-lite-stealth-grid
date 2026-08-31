@@ -40,3 +40,20 @@ test("a tile without Tiled collision geometry remains walkable", () => {
   assert.equal(tile.collider, null);
   assert.equal(tile.blocked, false);
 });
+
+test("every collision object authored on one Tiled tile becomes a runtime collider", () => {
+  const [tile] = createLevelTerrainTiles([{
+    frame: 0,
+    gameCell: { x: 0, y: 0 },
+    collisionShapes: [
+      { type: "rectangle", x: 0, y: 0, width: 0.2, height: 1 },
+      { type: "rectangle", x: 0, y: 0.8, width: 1, height: 0.2 },
+    ],
+  }], 64, 1024, new Set());
+
+  assert.deepEqual(tile.colliders, [
+    { x: 0, y: 0, width: 12.8, height: 64 },
+    { x: 0, y: 51.2, width: 64, height: 12.8 },
+  ]);
+  assert.equal(tile.collider, tile.colliders[0]);
+});

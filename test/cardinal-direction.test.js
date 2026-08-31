@@ -64,6 +64,7 @@ test("keyboard and arrow codes map to four cardinal directions", () => {
 });
 
 test("resolver never returns a diagonal or fractional direction", () => {
+  assert.equal(isCardinalDirection({ x: 0.5, y: 0.5 }), false);
   for (const movement of [
     { x: 0.4, y: 0.9 },
     { x: -1, y: -1 },

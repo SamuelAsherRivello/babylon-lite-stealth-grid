@@ -3,18 +3,18 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 import {
-  PLAYER_COLLIDER,
+  PLAYER_MOVEMENT_COLLIDER,
   PLAYER_FRAME,
   getArrowSpawnPosition,
 } from "../src/player.js";
 
-test("player uses a circle collider centered on the previous body box", () => {
+test("player uses a 70%-size circle collider with its body center unchanged", () => {
   assert.deepEqual(PLAYER_FRAME, { width: 192, height: 192 });
-  assert.deepEqual(PLAYER_COLLIDER, {
+  assert.deepEqual(PLAYER_MOVEMENT_COLLIDER, {
     type: "circle",
     x: 93,
     y: 126,
-    radius: 26,
+    radius: 18.2,
   });
 });
 
@@ -66,6 +66,12 @@ test("player module owns archer input and animation", async () => {
   assert.match(playerSource, /name === "idle" \? 5 : name === "run" \? 3 : 7/);
   assert.match(playerSource, /name !== "shoot"/);
   assert.match(playerSource, /createPlayerStateMachine/);
+  assert.match(playerSource, /createGridAlignedMovementController/);
+  assert.match(playerSource, /const ENABLE_QUANTIZE_MOVEMENT = false;/);
+  assert.match(playerSource, /else if \(ENABLE_QUANTIZE_MOVEMENT\)/);
+  assert.match(playerSource, /GRID\.tileSizePx/);
+  assert.match(playerSource, /gridAlignedMovement\.reset\(\)/);
+  assert.match(playerSource, /gridAlignedMovement\.move\(/);
   assert.match(playerSource, /getPosition\(\)/);
   assert.match(playerSource, /PlayerState\.SHOOTING/);
   assert.match(playerSource, /stateMachine\.releaseShot\(activeAnimation\.current\)/);

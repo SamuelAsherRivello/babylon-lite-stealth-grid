@@ -1,25 +1,29 @@
 {
-    "activeFile": "tilesets/TinySwordsTerrain.tsj",
+    "activeFile": "tilesets/Tilemap_color3.tsj",
     "expandedProjectPaths": [
+        "tilesets",
         "maps",
-        ".",
-        "tilesets"
+        "."
     ],
     "fileStates": {
         "maps/Level01.tmj": {
-            "scale": 0.75,
-            "selectedLayer": 2,
+            "expandedObjectLayers": [
+                6,
+                5
+            ],
+            "scale": 0.33,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 229.99999999999997,
-                "y": 364
+                "x": 383.3333333333333,
+                "y": 480.3030303030303
             }
         },
         "maps/Level01.tmj.bak.tmj": {
             "scale": 0.609521484375,
             "selectedLayer": 0,
             "viewCenter": {
-                "x": 275.62605142994477,
-                "y": 512.6972682848675
+                "x": 402.7749739645919,
+                "y": 515.9785308018907
             }
         },
         "maps/Level02.tmj": {
@@ -30,25 +34,36 @@
                 "y": 513.3879925945516
             }
         },
-        "tilesets/Tilemap_color1.tsj": {
-            "scaleInDock": 1
-        },
-        "tilesets/Tilemap_color2.tsj": {
-            "scaleInDock": 1
-        },
-        "tilesets/Tilemap_color3.tsj": {
+        "tilesets/SpawnerTypes.tsj": {
             "dynamicWrapping": false,
             "scaleInDock": 1
         },
+        "tilesets/Tilemap_color1.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/Tilemap_color2.tsj": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "tilesets/Tilemap_color3.tsj": {
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 0.5
+        },
         "tilesets/Tilemap_color4.tsj": {
-            "scaleInDock": 1
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "tilesets/Tilemap_color5.tsj": {
-            "scaleInDock": 1
+            "dynamicWrapping": false,
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "tilesets/TinySwordsBushDecorations.tsj": {
             "dynamicWrapping": true,
-            "scaleInDock": 1
+            "scaleInDock": 1,
+            "scaleInEditor": 1
         },
         "tilesets/TinySwordsTerrain.tsj": {
             "dynamicWrapping": false,
@@ -59,13 +74,19 @@
     "map.lastUsedFormat": "json",
     "openFiles": [
         "maps/Level01.tmj",
-        "tilesets/TinySwordsTerrain.tsj"
+        "tilesets/Tilemap_color3.tsj"
     ],
     "project": "stealth-grid.tiled-project",
     "recentFiles": [
+        "tilesets/Tilemap_color1.tsj",
+        "tilesets/Tilemap_color2.tsj",
+        "tilesets/Tilemap_color4.tsj",
+        "tilesets/Tilemap_color3.tsj",
         "maps/Level01.tmj",
+        "tilesets/Tilemap_color5.tsj",
+        "tilesets/TinySwordsBushDecorations.tsj",
+        "maps/Level01.tmj.bak.tmj",
         "tilesets/TinySwordsTerrain.tsj",
-        "maps/Level02.tmj",
-        "maps/Level01.tmj.bak.tmj"
+        "maps/Level02.tmj"
     ]
 }

@@ -28,11 +28,17 @@ import { GAME_DEPTH } from "../../render-depth.js";
 export const SHEEP_FRAME_SIZE = 128;
 export const SHEEP_PIVOT = { x: 0.5, y: 0.84 };
 const SHEEP_RENDER_OFFSET_Y = 12;
-export const SHEEP_COLLIDER = {
+export const SHEEP_MOVEMENT_COLLIDER = {
   type: "circle",
   x: 64,
   y: 61,
   radius: 26,
+};
+export const SHEEP_COMBAT_COLLIDER = {
+  x: 24,
+  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y - 56,
+  width: 80,
+  height: 56,
 };
 
 const FRAME_DURATION_MS = 100;
@@ -97,7 +103,7 @@ export function createSheep({
   const character = {
     frame: { width: SHEEP_FRAME_SIZE, height: SHEEP_FRAME_SIZE },
     pivot: SHEEP_PIVOT,
-    collider: SHEEP_COLLIDER,
+    collider: SHEEP_MOVEMENT_COLLIDER,
   };
   const isWalkable = createGridWalkability({ bounds, character, grid, obstacles });
   const stateMachine = createSheepStateMachine({ fearProfile });
@@ -330,16 +336,21 @@ export function createSheep({
     getPosition() {
       return { ...position };
     },
-    getCollider() {
-      return {
-        type: "npc",
-        collider: getCharacterCollider(
-          position,
-          character.frame,
-          character.pivot,
-          character.collider,
-        ),
-      };
+    getMovementCollider() {
+      return getCharacterCollider(
+        position,
+        character.frame,
+        character.pivot,
+        character.collider,
+      );
+    },
+    getCombatCollider() {
+      return getCharacterCollider(
+        position,
+        character.frame,
+        character.pivot,
+        SHEEP_COMBAT_COLLIDER,
+      );
     },
     getGridCell,
     playAnimation(manager) {

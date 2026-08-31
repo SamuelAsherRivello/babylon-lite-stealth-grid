@@ -15,4 +15,4 @@
 ## 3. Integration and Browser Verification
 
 - [ ] 3.1 Run the complete automated test suite and production build, resolving only regressions introduced by this change, and record both commands as passing.
-- [ ] 3.2 Run the game in a real browser and verify keyboard direction recency, dominant virtual-controller magnitude, equal-axis tie behavior, four straight shot paths, spawn placement, sprite orientation, collisions, and edge removal with no diagonal or subtle-angle movement.
+- [x] 3.2 Run the game in a real browser and verify keyboard direction recency, dominant virtual-controller magnitude, equal-axis tie behavior, four straight shot paths, spawn placement, sprite orientation, collisions, and edge removal with no diagonal or subtle-angle movement.

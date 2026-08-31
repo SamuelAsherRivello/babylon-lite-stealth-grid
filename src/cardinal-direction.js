@@ -20,7 +20,10 @@ export function isCardinalDirection(direction) {
   return direction != null
     && Number.isFinite(direction.x)
     && Number.isFinite(direction.y)
-    && Math.abs(direction.x) + Math.abs(direction.y) === 1;
+    && (
+      (Math.abs(direction.x) === 1 && direction.y === 0)
+      || (direction.x === 0 && Math.abs(direction.y) === 1)
+    );
 }
 
 export function getCardinalDirectionForCode(code) {

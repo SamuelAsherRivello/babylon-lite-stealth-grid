@@ -38,6 +38,11 @@ branches revealed by the code or answers.
 
 ### Question Budget
 
+- If the invocation argument consists of a single positive integer, interpret
+  that integer as the maximum number of substantive grilling questions. For
+  example, `$open-spec-grill-me 3` means "grill me with 3 questions." Do not
+  treat the number as an option selection unless the surrounding conversation
+  clearly contains a question awaiting that numbered answer.
 - If the user gives an explicit limit such as "grill me with 5 questions," ask
   at most that many substantive grilling questions. Track the count across the
   invocation and label each one, for example `Question 2 of 5`.

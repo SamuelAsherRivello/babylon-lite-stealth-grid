@@ -5,46 +5,66 @@
         {
          "draworder":"topdown",
          "id":5,
+         "locked":true,
          "name":"Spawners",
          "objects":[
                 {
-                 "height":0,
+                 "gid":56,
+                 "height":64,
+                 "id":3,
+                 "name":"Player Spawner",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":64,
+                 "x":224,
+                 "y":576
+                }, 
+                {
+                 "gid":57,
+                 "height":64,
+                 "id":4,
+                 "name":"Sheep Spawner",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":64,
+                 "x":416,
+                 "y":768
+                }, 
+                {
+                 "gid":58,
+                 "height":64,
+                 "id":5,
+                 "name":"Goblin Spawner",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":64,
+                 "x":160,
+                 "y":704
+                }, 
+                {
+                 "gid":58,
+                 "height":64,
                  "id":1,
                  "name":"Warrior Spawner",
                  "opacity":1,
-                 "point":true,
                  "properties":[
-                        {
-                         "name":"character",
-                         "type":"string",
-                         "value":"warrior"
-                        }, 
-                        {
-                         "name":"guaranteeInitialPopulation",
-                         "type":"bool",
-                         "value":true
-                        }, 
-                        {
-                         "name":"maximumCount",
-                         "type":"int",
-                         "value":1
-                        }, 
-                        {
-                         "name":"minimumCount",
-                         "type":"int",
-                         "value":1
-                        }, 
                         {
                          "name":"type",
                          "type":"string",
-                         "value":"enemy"
+                         "value":"WARRIOR"
                         }],
                  "rotation":0,
-                 "type":"spawner",
+                 "type":"",
                  "visible":true,
-                 "width":0,
+                 "width":64,
                  "x":352,
-                 "y":416
+                 "y":448
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -71,31 +91,32 @@
             16, 16, 16, 16, 16, 16, 16, 16, 16],
          "height":16,
          "id":1,
+         "locked":true,
          "name":"Background",
          "opacity":1,
          "type":"tilelayer",
-         "visible":false,
+         "visible":true,
          "width":9,
          "x":0,
          "y":0
         }, 
         {
-         "data":[6, 7, 7, 34, 34, 7, 7, 8, 0,
-            15, 11, 17, 43, 43, 15, 16, 17, 0,
-            24, 16, 26, 0, 0, 15, 16, 17, 0,
-            43, 16, 44, 0, 0, 24, 25, 26, 0,
-            37, 25, 40, 0, 0, 43, 43, 44, 0,
-            46, 43, 49, 0, 0, 0, 0, 0, 0,
+         "data":[64, 65, 65, 92, 92, 65, 65, 66, 0,
+            73, 74, 75, 43, 43, 73, 74, 75, 0,
+            82, 74, 84, 0, 0, 73, 74, 75, 0,
+            43, 76, 44, 0, 0, 82, 83, 84, 0,
+            63, 82, 98, 0, 0, 43, 43, 44, 0,
+            63, 43, 107, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 90, 0,
+            0, 0, 0, 0, 0, 0, 0, 94, 0,
+            0, 0, 0, 0, 0, 0, 0, 103, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0, 0],
+            64, 65, 66, 0, 0, 64, 65, 65, 66,
+            73, 74, 74, 65, 65, 74, 74, 74, 75,
+            73, 74, 74, 74, 74, 74, 74, 74, 75,
+            73, 74, 74, 74, 74, 74, 74, 74, 75],
          "height":16,
          "id":3,
          "name":"Midground",
@@ -125,6 +146,7 @@
             0, 0, 0, 0, 0, 0, 0, 0, 0],
          "height":16,
          "id":4,
+         "locked":true,
          "name":"Foreground",
          "opacity":1,
          "type":"tilelayer",
@@ -152,6 +174,7 @@
             1, 0, 0, 0, 0, 0, 0, 0, 0],
          "height":16,
          "id":2,
+         "locked":true,
          "name":"World Origin",
          "opacity":0.5,
          "properties":[
@@ -169,18 +192,19 @@
         {
          "draworder":"topdown",
          "id":6,
+         "locked":true,
          "name":"Y-Sorted Props",
          "objects":[
                 {
                  "gid":55,
-                 "height":46,
+                 "height":64,
                  "id":2,
                  "name":"Bush 1",
                  "opacity":1,
                  "rotation":0,
                  "type":"ReactiveDecoration",
                  "visible":true,
-                 "width":68,
+                 "width":64,
                  "x":478.666666666667,
                  "y":489.333333333333
                 }],
@@ -191,7 +215,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":3,
+ "nextobjectid":6,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",
@@ -204,6 +228,14 @@
         {
          "firstgid":55,
          "source":"..\/tilesets\/TinySwordsBushDecorations.tsj"
+        }, 
+        {
+         "firstgid":56,
+         "source":"..\/tilesets\/SpawnerTypes.tsj"
+        }, 
+        {
+         "firstgid":59,
+         "source":"..\/tilesets\/Tilemap_color1.tsj"
         }],
  "tilewidth":64,
  "type":"map",

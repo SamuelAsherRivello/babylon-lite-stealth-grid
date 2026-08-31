@@ -1,0 +1,40 @@
+{
+  "columns": 0,
+  "grid": { "height": 1, "orientation": "orthogonal", "width": 1 },
+  "name": "Spawner Types",
+  "objectalignment": "bottom",
+  "tilecount": 3,
+  "tileheight": 64,
+  "tiles": [
+    {
+      "class": "Spawner",
+      "id": 0,
+      "image": "../icons/player-spawner.svg",
+      "imageheight": 64,
+      "imagewidth": 64,
+      "name": "Player Spawner",
+      "properties": [{ "name": "type", "type": "string", "value": "PLAYER" }]
+    },
+    {
+      "class": "Spawner",
+      "id": 1,
+      "image": "../icons/sheep-spawner.svg",
+      "imageheight": 64,
+      "imagewidth": 64,
+      "name": "Sheep Spawner",
+      "properties": [{ "name": "type", "type": "string", "value": "SHEEP" }]
+    },
+    {
+      "class": "Spawner",
+      "id": 2,
+      "image": "../icons/enemy-spawner.svg",
+      "imageheight": 64,
+      "imagewidth": 64,
+      "name": "Enemy Spawner",
+      "properties": [{ "name": "type", "type": "string", "value": "GOBLIN" }]
+    }
+  ],
+  "tilewidth": 64,
+  "type": "tileset",
+  "version": "1.11"
+}

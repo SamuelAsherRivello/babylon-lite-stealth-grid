@@ -5,7 +5,7 @@ import {
   GOBLIN_ANIMATION_NAMES,
 } from "../src/enemies/goblin/goblin-animation-catalog.js";
 import {
-  GOBLIN_COLLIDER,
+  GOBLIN_MOVEMENT_COLLIDER,
   createGoblin,
   loadGoblinAtlases,
 } from "../src/enemies/goblin/goblin.js";
@@ -56,9 +56,9 @@ function createApi() {
 }
 
 test("goblin collider matches the player's art-baseline offset", () => {
-  assert.equal(GOBLIN_COLLIDER.y, 123);
-  assert.equal(GOBLIN_COLLIDER.x, 96);
-  assert.equal(GOBLIN_COLLIDER.radius, 24);
+  assert.equal(GOBLIN_MOVEMENT_COLLIDER.y, 123);
+  assert.equal(GOBLIN_MOVEMENT_COLLIDER.x, 96);
+  assert.equal(GOBLIN_MOVEMENT_COLLIDER.radius, 24);
 });
 
 test("goblin atlases load once as nearest 192 pixel grids", async () => {

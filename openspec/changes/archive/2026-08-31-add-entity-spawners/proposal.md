@@ -7,7 +7,7 @@ The level currently creates one hardcoded player, sheep, and enemy directly, whi
 - Add a generic spawner that owns one actor type, a position, minimum and maximum population values, and a configurable check interval of N seconds that defaults to one second.
 - Add player, sheep, and enemy spawner configurations at the actors' current hardcoded positions.
 - Immediately evaluate every spawner, guaranteeing the initial player while allowing non-player spawners to create zero or a lower-weighted random batch, then reevaluate every N seconds so populations build and recover gradually without exceeding the configured maximum.
-- Represent every spawner with a permanent, non-interactive marker using the corresponding actor's static idle appearance, rendered in black and white at 50% of the live actor's rendered dimensions.
+- Represent every spawner with a permanent, non-interactive marker using the corresponding actor's static idle appearance, rendered in black and white at 50% of the live actor's rendered dimensions and 50% opacity, with the marker centered in its containing grid cell.
 - Show spawner markers only while the existing collider diagnostic setting is enabled without allowing marker visibility to affect spawning.
 - Generalize the main-loop integration from singular actor references to spawner-owned actor collections and count defeated actors until their death animation completes and they are disposed.
 

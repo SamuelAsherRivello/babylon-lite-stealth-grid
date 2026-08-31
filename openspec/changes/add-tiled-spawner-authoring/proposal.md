@@ -1,14 +1,15 @@
 ## Why
 
-Spawner type and position are still partly defined in source code, so changing a level's population layout requires code edits and the saved Tiled map is not the complete level definition. Tiled should expose reusable placeable items for the three existing player, sheep, and goblin spawners, and the runtime should instantiate only the spawners authored in the loaded map.
+Spawner type and position are still partly defined in source code, so changing a level's population layout requires code edits and the saved Tiled map is not the complete level definition. Tiled should expose reusable placeable items for the three existing Player, Sheep, and Enemy spawner roles, and the runtime should instantiate only the spawners authored in the loaded map.
 
 ## What Changes
 
-- Add a Tiled spawner object template or object-tileset palette containing named placeable items for Player Spawner, Sheep Spawner, and Goblin Spawner.
-- Give each item stable authored metadata for its spawner role, character identity, population range, and initial-population behavior while allowing each placed instance to be independently moved or duplicated.
+- Add a Tiled object-tileset palette containing named placeable items for Player Spawner, Sheep Spawner, and Enemy Spawner.
+- Give every placement one custom `type` property (`PLAYER`, `SHEEP`, `GOBLIN`, or `WARRIOR`); Babylon maps that value to role, character, population counts, interval, and initial-spawn behavior.
 - Normalize each placed spawner's map position through the existing Tiled origin/grid contract and build runtime spawner configurations from the normalized authored records.
 - Remove unconditional creation of the three hardcoded default spawners when loading a Tiled level; absence, placement, and multiplicity in the map become authoritative.
-- Update the current level map with placements representing the existing player, sheep, and goblin spawners so its initial gameplay remains intentional after migration.
+- Require exactly one Player Spawner and report `Invalid Level Format: Must contain 1 Player Spawner` when that invariant is not met; Sheep and Enemy spawners remain optional and repeatable.
+- Update Level01 with one Player, Sheep, Goblin enemy, and Warrior enemy spawner at chosen authored locations.
 - Require an immediately recognizable temporary editor representation using text or simple icons; as a stretch task, reuse or derive the small black-and-white in-game marker artwork for the Tiled palette icons.
 - Reject or clearly report malformed and unsupported authored spawner data instead of silently substituting hardcoded positions.
 
@@ -16,7 +17,7 @@ Spawner type and position are still partly defined in source code, so changing a
 
 ### New Capabilities
 
-- `tiled-spawner-authoring`: Defines the reusable Tiled palette items, authored spawner data contract, map-authoritative placement and multiplicity, coordinate normalization, validation, and editor representation for the existing player, sheep, and goblin spawners.
+- `tiled-spawner-authoring`: Defines the reusable Tiled palette items, authored spawner data contract, map-authoritative placement and multiplicity, coordinate normalization, validation, and editor representation for Player, Sheep, and Enemy spawners.
 
 ### Modified Capabilities
 

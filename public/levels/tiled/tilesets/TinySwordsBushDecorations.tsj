@@ -3,15 +3,15 @@
   "grid": { "height": 1, "orientation": "orthogonal", "width": 1 },
   "name": "Tiny Swords Bush Decorations",
   "objectalignment": "bottom",
-  "tileoffset": { "x": 0, "y": -49 },
+  "tileoffset": { "x": 0, "y": -41 },
   "tilecount": 1,
-  "tileheight": 46,
+  "tileheight": 64,
   "tiles": [{
     "class": "ReactiveDecoration",
     "id": 0,
     "image": "../../../assets/terrain/decorations/bushes/Bushe1-frame0.png",
-    "imageheight": 46,
-    "imagewidth": 68,
+    "imageheight": 64,
+    "imagewidth": 64,
     "objectgroup": {
       "draworder": "index",
       "id": 1,
@@ -48,7 +48,7 @@
       { "name": "triggerMode", "type": "string", "value": "character-enter" }
     ]
   }],
-  "tilewidth": 68,
+  "tilewidth": 64,
   "type": "tileset",
   "version": "1.11"
 }
