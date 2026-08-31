@@ -11,6 +11,7 @@ test("Coordinates UI lives in src/ui and contains separate pixel and grid output
   assert.match(html, /id="coordinates-ui-pixel"/);
   assert.match(html, /id="coordinates-ui-grid"/);
   assert.match(html, />C 3 · R 7<\/output>/);
+  assert.match(css, /\.coordinates-ui\s*\{[^}]*right:\s*var\(--screen-margin\)/s);
   assert.match(css, /\.coordinates-ui\s*\{[^}]*top:\s*18cqw;[^}]*text-align:\s*center;/s);
   assert.match(source, /export function createCoordinatesUi/);
   assert.doesNotMatch(html, /id="coordinates"|class="coordinates"/);

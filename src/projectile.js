@@ -1,4 +1,4 @@
-import { aabbOverlapsObstacle } from "./game-logic.js";
+import { collidersOverlap } from "./game-logic.js";
 
 // Tight gameplay bounds for the opaque arrow artwork after proportional scaling.
 export const ARROW_SIZE = { width: 72, height: 20 };
@@ -29,7 +29,7 @@ export function advanceProjectile(projectile, deltaSeconds, bounds, obstacles) {
     projectile.position.x += stepDistance;
     const collider = getProjectileCollider(projectile);
 
-    if (obstacles.some((obstacle) => aabbOverlapsObstacle(collider, obstacle))) {
+    if (obstacles.some((obstacle) => collidersOverlap(collider, obstacle))) {
       return { alive: false, reason: "collision" };
     }
 

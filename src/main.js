@@ -22,6 +22,8 @@ import {
   PARTIAL_TERRAIN_COLLIDERS,
 } from "./terrain-collision-config.js";
 import { createPlayer, loadPlayerAtlases } from "./player.js";
+import { createSheep, loadSheepAtlases } from "./npc/sheep/sheep.js";
+import { CharacterType } from "./npc/sheep/sheep-state.js";
 import {
   createProjectileRenderer,
   loadArrowAtlas,
@@ -33,7 +35,9 @@ import {
 } from "./preview-settings.js";
 import { PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
 import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
+import { loadReleaseMetadata } from "./release-metadata.js";
 import { createCoordinatesUi } from "./ui/coordinates-ui.js";
+import { createReleaseMetadataUi } from "./ui/release-metadata-ui.js";
 import { createSettingsUi } from "./ui/settings-ui.js";
 import {
   DEBUG_SETTING_KEYS,
@@ -66,7 +70,14 @@ async function start() {
 
   const engine = await createEngine(canvas);
   const animationManager = createSpriteAnimationManager();
-  const [terrainAtlas, archerAtlas, arrowAtlas, waterFoamAtlas] = await Promise.all([
+  const [
+    terrainAtlas,
+    archerAtlas,
+    arrowAtlas,
+    waterFoamAtlas,
+    sheepAtlases,
+    releaseMetadata,
+  ] = await Promise.all([
     loadSpriteAtlas(engine, "./assets/terrain/Tilemap_color3.png", {
       gridSize: [TILE_SIZE, TILE_SIZE],
       sampling: "nearest",
@@ -77,6 +88,8 @@ async function start() {
       gridSize: [WATER_FOAM_FRAME_SIZE, WATER_FOAM_FRAME_SIZE],
       sampling: "nearest",
     }),
+    loadSheepAtlases(engine),
+    loadReleaseMetadata(import.meta.env.BASE_URL),
   ]);
 
   const terrainTiles = createTerrainReviewTiles(
@@ -119,8 +132,22 @@ async function start() {
     atlases: archerAtlas,
     bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
     obstacles: obstacleColliders,
-    initialPosition: { x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 },
+    initialPosition: { x: SCREEN_WIDTH / 2 - TILE_SIZE, y: SCREEN_HEIGHT / 2 },
     onShoot: (position, direction) => projectiles.shoot(position, direction),
+  });
+  const sheep = createSheep({
+    atlases: sheepAtlases,
+    initialPosition: {
+      x: SCREEN_WIDTH * 0.72,
+      y: SCREEN_HEIGHT * (1 - 0.72),
+    },
+    bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+    obstacles: obstacleColliders,
+    grid: GRID,
+    scareDistanceCells: 3,
+    frighteningTypes: [CharacterType.PLAYER],
+    minimumFleeDistanceCells: 1,
+    maximumFleeDistanceCells: 3,
   });
 
   // Temporary preview layer: keep animated terrain isolated until the final
@@ -162,6 +189,7 @@ async function start() {
   const renderer = createSpriteRenderer(engine, {
     layers: [
       terrainLayer,
+      ...sheep.layers,
       ...player.layers,
       projectiles.layer,
       animatedTerrainLayer,
@@ -172,6 +200,7 @@ async function start() {
   registerSpriteRenderer(renderer);
 
   player.playAnimation(animationManager);
+  sheep.playAnimation(animationManager);
   const waterFoamAnimation = playSprite2DAnimation(
     animationManager,
     waterFoam,
@@ -234,6 +263,7 @@ async function start() {
     },
   });
   createSettingsUi({ host: gameUi, pauseController });
+  createReleaseMetadataUi({ host: gameUi, metadata: releaseMetadata });
 
   function update(currentTime) {
     const deltaSeconds = Math.min((currentTime - previousTime) / 1000, 0.05);
@@ -250,6 +280,9 @@ async function start() {
     for (const layer of player.layers) {
       layer.view.zoom = viewportScale;
     }
+    for (const layer of sheep.layers) {
+      layer.view.zoom = viewportScale;
+    }
     projectiles.layer.view.zoom = viewportScale;
     animatedTerrainLayer.view.zoom = viewportScale;
     for (const effect of particleEffects) {
@@ -258,12 +291,27 @@ async function start() {
 
     updateSpriteAnimationManager(animationManager, activeDelta * 1000);
     if (activeDelta > 0) {
-      const { position } = player.update(activeDelta);
-      projectiles.update(activeDelta);
-      const gridPosition = player.getGridPosition(TILE_SIZE);
-      coordinatesUi.update(position, gridPosition);
+      const { position } = player.update(activeDelta, [sheep.getCollider()]);
+      const playerSnapshot = {
+        type: CharacterType.PLAYER,
+        position: player.getPosition(),
+        cell: player.getGridPosition(TILE_SIZE),
+      };
+      const dynamicColliders = [
+        { type: CharacterType.PLAYER, collider: player.getCollider() },
+        ...projectiles.getColliders(),
+      ];
+      sheep.update(activeDelta, [playerSnapshot], dynamicColliders);
+      projectiles.update(activeDelta, [sheep.getCollider()]);
+      coordinatesUi.update(position, playerSnapshot.cell);
     }
-    drawDiagnostics(terrainTiles, player.getCollider(), projectiles.getColliders(), showColliders);
+    drawDiagnostics(
+      terrainTiles,
+      player.getCollider(),
+      sheep.getCollider().collider,
+      projectiles.getColliders(),
+      showColliders,
+    );
 
     requestAnimationFrame(update);
   }
@@ -280,6 +328,7 @@ async function start() {
       false,
     );
     player.dispose();
+    sheep.dispose();
     projectiles.dispose();
   }, { once: true });
   await startEngine(engine);
@@ -356,16 +405,26 @@ function drawCircle(circle, fillStyle, strokeStyle) {
   debugContext.stroke();
 }
 
-function drawCharacterCollider(collider) {
+function drawCharacterCollider(
+  collider,
+  fillStyle = "rgb(36 228 255 / 20%)",
+  strokeStyle = "#24e4ff",
+) {
   if (collider.type === "circle") {
-    drawCircle(collider, "rgb(36 228 255 / 20%)", "#24e4ff");
+    drawCircle(collider, fillStyle, strokeStyle);
     return;
   }
 
-  drawAabb(collider, "rgb(36 228 255 / 20%)", "#24e4ff");
+  drawAabb(collider, fillStyle, strokeStyle);
 }
 
-function drawDiagnostics(terrainTiles, characterCollider, projectileColliders, enabled) {
+function drawDiagnostics(
+  terrainTiles,
+  characterCollider,
+  sheepCollider,
+  projectileColliders,
+  enabled,
+) {
   debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   if (!enabled) {
     return;
@@ -396,6 +455,11 @@ function drawDiagnostics(terrainTiles, characterCollider, projectileColliders, e
   }
 
   drawCharacterCollider(characterCollider);
+  drawCharacterCollider(
+    sheepCollider,
+    "rgb(255 220 64 / 24%)",
+    "#ffe066",
+  );
   for (const { collider } of projectileColliders) {
     drawAabb(collider, "rgb(255 220 64 / 38%)", "#ffe066");
   }

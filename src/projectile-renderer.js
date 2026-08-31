@@ -18,7 +18,7 @@ import { worldToScreen } from "./game-logic.js";
 // Keep the frame square so the artwork is not vertically clipped or squashed.
 const ARROW_ATLAS_FRAME = { width: 64, height: 64 };
 // The opaque artwork is then covered by a separate tight gameplay collider.
-const ARROW_RENDER_SIZE = 213;
+const ARROW_RENDER_SIZE = 107;
 const ARROW_CAPACITY = 32;
 
 export function loadArrowAtlas(engine) {
@@ -60,16 +60,22 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
       return true;
     },
     getColliders() {
-      return active.map(({ projectile }) => ({ collider: getProjectileCollider(projectile) }));
+      return active.map(({ projectile }) => ({
+        type: "projectile",
+        collider: getProjectileCollider(projectile),
+      }));
     },
-    update(deltaSeconds) {
+    update(deltaSeconds, dynamicColliders = []) {
       for (let index = active.length - 1; index >= 0; index -= 1) {
         const record = active[index];
         const result = advanceProjectile(
           record.projectile,
           deltaSeconds,
           bounds,
-          obstacles,
+          [
+            ...obstacles,
+            ...dynamicColliders.map(({ collider }) => collider),
+          ],
         );
         if (!result.alive) {
           removeAt(index);

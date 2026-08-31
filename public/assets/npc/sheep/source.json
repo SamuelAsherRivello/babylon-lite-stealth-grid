@@ -1,0 +1,13 @@
+{
+  "name": "Happy Sheep",
+  "author": "Pixel Frog",
+  "assetPack": "Tiny Swords",
+  "source": "https://github.com/Hdisa/Tiny-Swords/tree/master/Assets/Tiny%20Swords/Resources/Sheep",
+  "fetched": "2026-08-31",
+  "runtimeFiles": [
+    "happy-sheep-idle.png",
+    "happy-sheep-bouncing.png"
+  ],
+  "authoringSource": "../../../../assets/source/npc/sheep/happy-sheep.aseprite"
+}
+

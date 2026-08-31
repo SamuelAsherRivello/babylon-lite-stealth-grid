@@ -88,7 +88,7 @@ test("preview debug controls use exact labels and write independent keys", () =>
   const particles = createDebugControl(
     documentRef,
     store,
-    "Particle FX Preview?",
+    "Particle FX (Preview)?",
     DEBUG_SETTING_KEYS.showParticleFxPreview,
   );
   const animatedTile = createDebugControl(
@@ -98,7 +98,7 @@ test("preview debug controls use exact labels and write independent keys", () =>
     DEBUG_SETTING_KEYS.showAnimatedTilePreview,
   );
 
-  assert.equal(particles.row.children[0].textContent, "Particle FX Preview?");
+  assert.equal(particles.row.children[0].textContent, "Particle FX (Preview)?");
   assert.equal(animatedTile.row.children[0].textContent, "Animated Tile (Preview)");
   assert.equal(particles.checkbox.checked, true);
   assert.equal(animatedTile.checkbox.checked, false);
@@ -168,7 +168,7 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(source, /"Music", AUDIO_SETTING_KEYS\.music/);
   assert.match(source, /"SFX", AUDIO_SETTING_KEYS\.sfx/);
   assert.match(source, /"Collider\?"/);
-  assert.match(source, /"Particle FX Preview\?"/);
+  assert.match(source, /"Particle FX \(Preview\)\?"/);
   assert.match(source, /"Animated Tile \(Preview\)"/);
   assert.match(source, /label\.textContent = "FullScreen"/);
   assert.match(source, /checkbox\.checked = Boolean\(documentRef\.fullscreenElement\)/);
@@ -184,9 +184,9 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.doesNotMatch(source, /Skip Start Menu/);
   assert.match(main, /createSettingsUi\(\{ host: gameUi, pauseController \}\)/);
   assert.match(main, /updateSpriteAnimationManager\(animationManager, activeDelta \* 1000\)/);
-  assert.match(main, /player\.update\(activeDelta\)/);
+  assert.match(main, /player\.update\(activeDelta, \[sheep\.getCollider\(\)\]\)/);
   assert.match(main, /showColliders = settingsStore\.get\(DEBUG_SETTING_KEYS\.showColliders\)/);
-  assert.match(main, /drawDiagnostics\(terrainTiles, player\.getCollider\(\), (?:projectiles\.getColliders\(\), )?showColliders\)/);
+  assert.match(main, /drawDiagnostics\([\s\S]*terrainTiles,[\s\S]*player\.getCollider\(\),[\s\S]*sheep\.getCollider\(\)\.collider,[\s\S]*projectiles\.getColliders\(\),[\s\S]*showColliders/);
   assert.doesNotMatch(main, /DISPLAY_SETTING_KEYS|applyFullscreenPreference/);
 });
 
@@ -202,7 +202,8 @@ test("settings chrome follows inspiration frame-relative measurements", async ()
     assert.ok(declarations, `missing ${selector}`);
     assert.doesNotMatch(declarations, /(?:\d|\.)(?:px|vw|vh)\b/);
   }
-  assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*8\.75cqw;[^}]*right:\s*8\.75cqw;[^}]*width:\s*8cqw;[^}]*height:\s*8cqw;/s);
+  assert.match(styles, /--screen-margin:\s*30px/);
+  assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*var\(--screen-margin\);[^}]*right:\s*var\(--screen-margin\);[^}]*width:\s*8cqw;[^}]*height:\s*8cqw;/s);
   assert.match(styles, /\.game-window-backdrop\s*\{[^}]*inset:\s*0;[^}]*place-items:\s*center;[^}]*rgb\(0 0 0 \/ 50%\)/s);
 });
 

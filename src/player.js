@@ -31,7 +31,7 @@ export const PLAYER_COLLIDER = {
 };
 
 const PLAYER_SPEED = 210;
-const ARROW_SPAWN_OFFSET = { x: 114, y: 5 };
+const ARROW_SPAWN_OFFSET = { x: 64, y: 55 };
 const MOVEMENT_KEYS = new Set([
   "KeyW",
   "KeyA",
@@ -42,6 +42,13 @@ const MOVEMENT_KEYS = new Set([
   "ArrowDown",
   "ArrowRight",
 ]);
+
+export function getArrowSpawnPosition(position, facing) {
+  return {
+    x: position.x + facing * ARROW_SPAWN_OFFSET.x,
+    y: position.y + ARROW_SPAWN_OFFSET.y,
+  };
+}
 
 export async function loadPlayerAtlases(engine) {
   const options = {
@@ -226,6 +233,9 @@ export function createPlayer({
         PLAYER_COLLIDER,
       );
     },
+    getPosition() {
+      return { ...position };
+    },
     getGridPosition(tileSize) {
       return worldToGrid(position, tileSize, {
         width: PLAYER_FRAME.width,
@@ -245,7 +255,7 @@ export function createPlayer({
       animationManager = manager;
       playStateAnimation("idle");
     },
-    update(deltaSeconds) {
+    update(deltaSeconds, dynamicColliders = []) {
       const selectedMovement = getSelectedMovement();
       const transition = stateMachine.updateLocomotion(selectedMovement);
       if (transition.changed) {
@@ -258,10 +268,7 @@ export function createPlayer({
         && stateMachine.releaseShot(activeAnimation.current)
       ) {
         onShoot(
-          {
-            x: position.x + stateMachine.facing * ARROW_SPAWN_OFFSET.x,
-            y: position.y + ARROW_SPAWN_OFFSET.y,
-          },
+          getArrowSpawnPosition(position, stateMachine.facing),
           stateMachine.facing,
         );
       }
@@ -279,7 +286,10 @@ export function createPlayer({
           pivot: PLAYER_PIVOT,
           collider: PLAYER_COLLIDER,
         },
-        obstacles,
+        [
+          ...obstacles,
+          ...dynamicColliders.map(({ collider }) => collider),
+        ],
       );
 
       const screenPosition = worldToScreen(position, 1, bounds.height);

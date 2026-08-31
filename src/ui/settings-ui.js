@@ -123,7 +123,7 @@ export function createSettingsUi({
     const particleFxControl = createDebugControl(
       documentRef,
       store,
-      "Particle FX Preview?",
+      "Particle FX (Preview)?",
       DEBUG_SETTING_KEYS.showParticleFxPreview,
     );
     const animatedTileControl = createDebugControl(

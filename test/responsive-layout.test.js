@@ -15,3 +15,9 @@ test("portrait frame always fills the visible viewport height first", async () =
   assert.doesNotMatch(frame, /height:\s*min\(/);
   assert.match(frame, /aspect-ratio:\s*9\s*\/\s*16;/);
 });
+
+test("collider diagnostics stay above the game render canvas", async () => {
+  const styles = await readFile(new URL("../src/ui/style.css", import.meta.url), "utf8");
+
+  assert.match(styles, /#debugCanvas\s*\{[^}]*z-index:\s*2;/s);
+});

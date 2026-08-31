@@ -6,6 +6,7 @@ import {
   aabbsOverlap,
   calculateJoystickInput,
   circleOverlapsPolygon,
+  collidersOverlap,
   createTerrainReviewTiles,
   createJumpState,
   getCharacterCollider,
@@ -288,6 +289,13 @@ test("circle overlap recognizes the blocked and open sides of a diagonal", () =>
 
   assert.equal(circleOverlapsPolygon({ x: 16, y: 16, radius: 5 }, triangle), true);
   assert.equal(circleOverlapsPolygon({ x: 52, y: 52, radius: 5 }, triangle), false);
+});
+
+test("generic collider overlap handles circle pairs and AABB-circle pairs", () => {
+  const sheep = { type: "circle", x: 100, y: 100, radius: 26 };
+  assert.equal(collidersOverlap(sheep, { type: "circle", x: 151, y: 100, radius: 26 }), true);
+  assert.equal(collidersOverlap(sheep, { type: "circle", x: 152, y: 100, radius: 26 }), false);
+  assert.equal(collidersOverlap({ x: 120, y: 90, width: 30, height: 20 }, sheep), true);
 });
 
 test("horizontal circle movement into a diagonal is pushed along the slope", () => {

@@ -245,14 +245,25 @@ export function circleOverlapsAabb(circle, aabb) {
     < circle.radius ** 2;
 }
 
-export function colliderOverlapsObstacle(collider, obstacle) {
-  if (collider.type === "circle") {
-    return obstacle.type === "polygon"
-      ? circleOverlapsPolygon(collider, obstacle.points)
-      : circleOverlapsAabb(collider, obstacle);
+export function collidersOverlap(a, b) {
+  if (a.type === "circle" && b.type === "circle") {
+    return (a.x - b.x) ** 2 + (a.y - b.y) ** 2 < (a.radius + b.radius) ** 2;
   }
+  if (a.type === "circle") {
+    return b.type === "polygon"
+      ? circleOverlapsPolygon(a, b.points)
+      : circleOverlapsAabb(a, b);
+  }
+  if (b.type === "circle") {
+    return a.type === "polygon"
+      ? circleOverlapsPolygon(b, a.points)
+      : circleOverlapsAabb(b, a);
+  }
+  return aabbOverlapsObstacle(a, b);
+}
 
-  return aabbOverlapsObstacle(collider, obstacle);
+export function colliderOverlapsObstacle(collider, obstacle) {
+  return collidersOverlap(collider, obstacle);
 }
 
 export function isAabbWithinBounds(aabb, maxX, maxY) {

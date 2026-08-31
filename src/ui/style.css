@@ -1,4 +1,5 @@
 :root {
+  --screen-margin: 30px;
   background: #090c16;
   color-scheme: dark;
 }
@@ -52,6 +53,7 @@ body {
 #debugCanvas {
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
 }
 
@@ -107,7 +109,7 @@ body {
 
 .coordinates-ui {
   position: absolute;
-  right: 0.75rem;
+  right: var(--screen-margin);
   margin: 0;
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
@@ -133,10 +135,27 @@ body {
   pointer-events: none;
 }
 
+.release-metadata {
+  position: absolute;
+  top: var(--screen-margin);
+  left: var(--screen-margin);
+  z-index: 10;
+  margin: 0;
+  color: #fff7dc;
+  font-family: Arial, sans-serif;
+  font-size: 2.67cqw;
+  font-weight: 700;
+  line-height: 5.33cqw;
+  white-space: nowrap;
+  -webkit-text-stroke: 0.44cqw #261b17;
+  paint-order: stroke fill;
+  pointer-events: none;
+}
+
 .settings-gear {
   position: absolute;
-  top: 8.75cqw;
-  right: 8.75cqw;
+  top: var(--screen-margin);
+  right: var(--screen-margin);
   z-index: 30;
   width: 8cqw;
   height: 8cqw;

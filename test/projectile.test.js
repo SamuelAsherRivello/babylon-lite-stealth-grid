@@ -17,7 +17,7 @@ test("the arrow atlas uses its full square frame so transparent padding is scale
   const source = await import("node:fs/promises").then(({ readFile }) =>
     readFile(new URL("../src/projectile-renderer.js", import.meta.url), "utf8"));
   assert.match(source, /ARROW_ATLAS_FRAME = \{ width: 64, height: 64 \}/);
-  assert.match(source, /const ARROW_RENDER_SIZE = 213/);
+  assert.match(source, /const ARROW_RENDER_SIZE = 107/);
   assert.match(source, /sizePx: \[ARROW_RENDER_SIZE, ARROW_RENDER_SIZE\]/);
   assert.equal(typeof renderer.loadArrowAtlas, "function");
 });
@@ -41,6 +41,15 @@ test("an arrow disappears when its collider reaches a blocked tile", () => {
   assert.deepEqual(
     advanceProjectile(arrow, 0.1, { width: 576, height: 1024 }, [obstacle]),
     { alive: false, reason: "collision" },
+  );
+});
+
+test("an arrow resolves collision with a circular NPC collider", () => {
+  const arrow = createProjectile({ x: 100, y: 200 }, 1);
+  const sheep = { type: "circle", x: 150, y: 200, radius: 26 };
+  assert.equal(
+    advanceProjectile(arrow, 0.1, { width: 576, height: 1024 }, [sheep]).reason,
+    "collision",
   );
 });
 
