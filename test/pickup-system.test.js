@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createPickupSystem } from "../src/pickup-system.js";
+import { createPickupSystem } from "../src/systems/objects/pickup-system.js";
 
 test("pickup system spawns arbitrary pickup definitions and collects them", () => {
   const added = [];

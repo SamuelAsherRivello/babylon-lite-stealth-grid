@@ -48,7 +48,7 @@ test("main supplies every sheep only the other living sheep colliders", async ()
 });
 
 test("sheep movement never exempts a touching partner walk collider", async () => {
-  const source = await readFile(new URL("../src/npc/sheep/sheep.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../src/characters/npc/sheep/sheep.js", import.meta.url), "utf8");
   assert.match(source, /isWalkable: \(cell\) => isWalkable\(cell, dynamicColliders\)/);
   assert.match(source, /\.\.\.dynamicColliders\.map\(\(\{ collider \}\) => collider\)/);
   assert.doesNotMatch(source, /separationPartnerId|movementBlockers/);

@@ -1,30 +1,30 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getCharacterCollider } from "../src/game-logic.js";
+import { getCharacterCollider } from "../src/gameplay/game-logic.js";
 import {
   PLAYER_COMBAT_COLLIDER,
   PLAYER_FRAME,
   PLAYER_MOVEMENT_COLLIDER,
-} from "../src/player.js";
+} from "../src/characters/player/player.js";
 import {
   GOBLIN_COMBAT_COLLIDER,
   GOBLIN_FRAME,
   GOBLIN_MOVEMENT_COLLIDER,
   GOBLIN_PIVOT,
-} from "../src/enemies/goblin/goblin.js";
+} from "../src/characters/enemies/goblin/goblin.js";
 import {
   WARRIOR_COMBAT_COLLIDER,
   WARRIOR_FRAME,
   WARRIOR_MOVEMENT_COLLIDER,
   WARRIOR_PIVOT,
-} from "../src/enemies/warrior/warrior.js";
+} from "../src/characters/enemies/warrior/warrior.js";
 import {
   SHEEP_COMBAT_COLLIDER,
   SHEEP_FRAME_SIZE,
   SHEEP_MOVEMENT_COLLIDER,
   SHEEP_PIVOT,
-} from "../src/npc/sheep/sheep.js";
+} from "../src/characters/npc/sheep/sheep.js";
 
 const position = { x: 200, y: 300 };
 

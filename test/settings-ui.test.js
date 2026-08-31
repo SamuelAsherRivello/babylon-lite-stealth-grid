@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { DEBUG_SETTING_KEYS } from "../src/settings-store.js";
+import { DEBUG_SETTING_KEYS } from "../src/settings/settings-store.js";
 import { GameWindow } from "../src/ui/game-window.js";
 import {
   createDebugControl,

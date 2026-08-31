@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createGridAlignedMovementController } from "../src/game-logic.js";
+import { createGridAlignedMovementController } from "../src/gameplay/game-logic.js";
 
 const CHARACTER = {
   frame: { width: 0, height: 0 },

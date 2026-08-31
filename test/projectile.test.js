@@ -6,16 +6,16 @@ import {
   advanceProjectile,
   createProjectile,
   getProjectileCollider,
-} from "../src/projectile.js";
+} from "../src/systems/objects/projectile.js";
 
 test("the arrow renders and collides at 200 percent of its prior size", () => {
   assert.deepEqual(ARROW_SIZE, { width: 72, height: 20 });
 });
 
 test("the arrow atlas uses its full square frame so transparent padding is scaled too", async () => {
-  const renderer = await import("../src/projectile-renderer.js");
+  const renderer = await import("../src/systems/objects/projectile-renderer.js");
   const source = await import("node:fs/promises").then(({ readFile }) =>
-    readFile(new URL("../src/projectile-renderer.js", import.meta.url), "utf8"));
+    readFile(new URL("../src/systems/objects/projectile-renderer.js", import.meta.url), "utf8"));
   assert.match(source, /ARROW_ATLAS_FRAME = \{ width: 64, height: 64 \}/);
   assert.match(source, /const ARROW_RENDER_SIZE = 64/);
   assert.match(source, /sizePx: \[ARROW_RENDER_SIZE, ARROW_RENDER_SIZE\]/);
@@ -100,7 +100,7 @@ test("vertical arrows collide without tunneling and leave through top and bottom
 });
 
 test("renderer uses exact quarter turns for four cardinal directions", async () => {
-  const { getProjectileRotation } = await import("../src/projectile-renderer.js");
+  const { getProjectileRotation } = await import("../src/systems/objects/projectile-renderer.js");
   assert.equal(getProjectileRotation({ x: 1, y: 0 }), 0);
   assert.equal(getProjectileRotation({ x: -1, y: 0 }), Math.PI);
   assert.equal(getProjectileRotation({ x: 0, y: 1 }), -Math.PI / 2);

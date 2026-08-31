@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-import { collidersOverlap } from "../src/game-logic.js";
+import { collidersOverlap } from "../src/gameplay/game-logic.js";
 
 const mainSource = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
 

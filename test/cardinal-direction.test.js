@@ -7,7 +7,7 @@ import {
   getCardinalDirectionForCode,
   isCardinalDirection,
   resolveCardinalDirection,
-} from "../src/cardinal-direction.js";
+} from "../src/gameplay/cardinal-direction.js";
 
 test("cardinal direction defaults right and remembers every direction", () => {
   assert.deepEqual(resolveCardinalDirection({ x: 0, y: 0 }), { x: 1, y: 0 });

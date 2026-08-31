@@ -5,7 +5,7 @@ import {
   DEFAULT_WARRIOR_DEFENSE_CONFIG,
   createWarriorDefenseConfig,
   selectIncomingProjectile,
-} from "../src/enemies/warrior/warrior-defense.js";
+} from "../src/characters/enemies/warrior/warrior-defense.js";
 
 const warriorCollider = { x: 280, y: 280, width: 64, height: 96 };
 

@@ -6,7 +6,7 @@ import {
   createGridWalkability,
   planSeparationRoute,
   planFleeRoute,
-} from "../src/npc/sheep/sheep-navigation.js";
+} from "../src/characters/npc/sheep/sheep-navigation.js";
 
 const bounds = { width: 448, height: 448 };
 const character = {

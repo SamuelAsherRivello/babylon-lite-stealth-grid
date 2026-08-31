@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import {
   DOM_Z, GAME_DEPTH, TILE_MAP_SUB_Z, getYSortedLayerOrder,
-} from "../src/render-depth.js";
+} from "../src/systems/environment/render-depth.js";
 
 test("TileMap sub-Z values are ordered within its band", () => {
   const values = Object.values(TILE_MAP_SUB_Z);
@@ -34,10 +34,10 @@ test("Y-sorted world layers draw lower ground contacts in front", () => {
 
 test("every moving character recalculates layer order from its movement collider while updating sprites", async () => {
   const characterModules = [
-    "../src/player.js",
-    "../src/enemies/goblin/goblin.js",
-    "../src/enemies/warrior/warrior.js",
-    "../src/npc/sheep/sheep.js",
+    "../src/characters/player/player.js",
+    "../src/characters/enemies/goblin/goblin.js",
+    "../src/characters/enemies/warrior/warrior.js",
+    "../src/characters/npc/sheep/sheep.js",
   ];
 
   for (const modulePath of characterModules) {

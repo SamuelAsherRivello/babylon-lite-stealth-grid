@@ -15,14 +15,14 @@ The game uses one canonical logical grid for gameplay, terrain, animation placem
 
 ## Projectile spawn convention
 
-- Canonical arrow spawn point is defined by `ARROW_SPAWN_OFFSET = { x: 64, y: 55 }` in `src/player.js` and used by `getArrowSpawnPosition(...)`.
+- Canonical arrow spawn point is defined by `ARROW_SPAWN_OFFSET = { x: 64, y: 55 }` in `src/characters/player/player.js` and used by `getArrowSpawnPosition(...)`.
 - Use this same world-space pattern for all future projectile sources unless a specific spec requires a different spawn geometry:
   - keep relative placement anchored to the shooter's world position,
   - preserve positive world Y as up when choosing offsets,
   - mirror only X by `facing` where appropriate.
 - If future projectile types share spawn behavior, define their offsets as named constants next to their shooter and document them with this same 2D/world coordinate contract.
 
-The executable source of truth is `GRID` in `src/grid-contract.js`. UI and rendering code must import this contract instead of declaring their own tile or logical-screen dimensions.
+The executable source of truth is `GRID` in `src/systems/environment/grid-contract.js`. UI and rendering code must import this contract instead of declaring their own tile or logical-screen dimensions.
 
 ## Oversized animated tiles
 

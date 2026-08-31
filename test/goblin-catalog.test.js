@@ -5,7 +5,7 @@ import {
   GOBLIN_ANIMATION_CATALOG,
   GOBLIN_ANIMATION_NAMES,
   validateGoblinAnimationCatalog,
-} from "../src/enemies/goblin/goblin-animation-catalog.js";
+} from "../src/characters/enemies/goblin/goblin-animation-catalog.js";
 
 const EXPECTED = Object.freeze({
   idle: { filename: "goblin-idle.png", frameCount: 7, loop: true },

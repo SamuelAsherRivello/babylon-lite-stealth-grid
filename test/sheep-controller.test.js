@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { SHEEP_MOVEMENT_COLLIDER, createSheep } from "../src/npc/sheep/sheep.js";
-import { CharacterType, SheepState } from "../src/npc/sheep/sheep-state.js";
+import { SHEEP_MOVEMENT_COLLIDER, createSheep } from "../src/characters/npc/sheep/sheep.js";
+import { CharacterType, SheepState } from "../src/characters/npc/sheep/sheep-state.js";
 
 function createApi() {
   const animations = [];

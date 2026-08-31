@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { createPauseController } from "../src/pause-controller.js";
+import { createPauseController } from "../src/ui/pause-controller.js";
 
 test("pause returns zero active delta and resume resets the time origin", () => {
   const events = [];

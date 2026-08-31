@@ -5,7 +5,7 @@ import {
   WarriorState,
   createWarriorStateMachine,
   selectWarriorAction,
-} from "../src/enemies/warrior/warrior-state.js";
+} from "../src/characters/enemies/warrior/warrior-state.js";
 
 test("warrior transitions between locomotion and guard", () => {
   const machine = createWarriorStateMachine();

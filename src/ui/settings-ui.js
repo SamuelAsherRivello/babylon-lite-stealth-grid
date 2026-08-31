@@ -2,8 +2,8 @@ import {
   AUDIO_SETTING_KEYS,
   DEBUG_SETTING_KEYS,
   settingsStore,
-} from "../settings-store.js";
-import { applyFullscreenPreference } from "../fullscreen-settings.js";
+} from "../settings/settings-store.js";
+import { applyFullscreenPreference } from "./fullscreen-settings.js";
 import { GameWindow } from "./game-window.js";
 
 const ASSET_BASE = import.meta.env?.BASE_URL ?? "/";

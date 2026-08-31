@@ -7,8 +7,8 @@ import {
   PLAYER_WEAPON_DAMAGE,
   PLAYER_WEAPONS,
   cycleLoadout,
-} from "../src/player-pawn-catalog.js";
-import { getLoadoutCycleType } from "../src/player.js";
+} from "../src/characters/player/player-pawn-catalog.js";
+import { getLoadoutCycleType } from "../src/characters/player/player.js";
 
 test("Pawn catalog exposes the expected loadout categories and frame sizes", () => {
   assert.deepEqual(PLAYER_WEAPONS, ["axe", "hammer", "knife", "pickaxe"]);

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   createWarrior,
   loadWarriorAtlases,
-} from "../src/enemies/warrior/warrior.js";
+} from "../src/characters/enemies/warrior/warrior.js";
 
 function createFakeApi() {
   const calls = {

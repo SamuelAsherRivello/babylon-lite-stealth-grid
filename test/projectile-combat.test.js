@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { resolveProjectileHit } from "../src/projectile-combat.js";
-import { SpawnerCharacter, SpawnerType } from "../src/spawner-catalog.js";
+import { resolveProjectileHit } from "../src/systems/objects/projectile-combat.js";
+import { SpawnerCharacter, SpawnerType } from "../src/systems/spawners/spawner-catalog.js";
 
 function harness({ character, type = SpawnerType.ENEMY, defending = false }) {
   const events = [];

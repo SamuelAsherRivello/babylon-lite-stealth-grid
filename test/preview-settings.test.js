@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import {
   applyAnimatedTilePreviewSetting,
   applyParticleFxPreviewSetting,
-} from "../src/preview-settings.js";
+} from "../src/settings/preview-settings.js";
 
 test("particle preview visibility and playback are toggled together", () => {
   const calls = [];

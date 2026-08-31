@@ -4,7 +4,7 @@ import {
   formatDownloadSize,
   loadReleaseMetadata,
   resolveReleaseVersion,
-} from "../src/release-metadata.js";
+} from "../src/release/release-metadata.js";
 
 test("release versions require an exact three-component tag", () => {
   assert.equal(resolveReleaseVersion("v0.1.7"), "v0.1.7");

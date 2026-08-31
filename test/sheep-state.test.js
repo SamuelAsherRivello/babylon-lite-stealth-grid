@@ -8,7 +8,7 @@ import {
   createFearProfile,
   createSheepStateMachine,
   findNearestThreat,
-} from "../src/npc/sheep/sheep-state.js";
+} from "../src/characters/npc/sheep/sheep-state.js";
 
 const player = (x, y) => ({ type: CharacterType.PLAYER, cell: { x, y } });
 const enemy = (x, y) => ({ type: CharacterType.ENEMY, cell: { x, y } });

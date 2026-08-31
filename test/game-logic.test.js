@@ -4,13 +4,11 @@ import assert from "node:assert/strict";
 import {
   aabbOverlapsPolygon,
   aabbsOverlap,
-  calculateJoystickInput,
   circleOverlapsPolygon,
   classifyCardinalMovement,
   collidersOverlap,
   createGridAlignmentSession,
   createTerrainReviewTiles,
-  createJumpState,
   getCharacterCollider,
   formatPositionReadout,
   getLogicalViewportScale,
@@ -22,16 +20,15 @@ import {
   moveWithinBounds,
   selectMovementInput,
   stepGridAlignment,
-  startJump,
-  updateJump,
   worldToGrid,
   worldToScreen,
-} from "../src/game-logic.js";
-import { GRID } from "../src/grid-contract.js";
+} from "../src/gameplay/game-logic.js";
+import { calculateJoystickInput } from "../plugins/virtual-controller-babylon-lite/index.js";
+import { GRID } from "../src/systems/environment/grid-contract.js";
 import {
   NON_WALKABLE_TERRAIN_FRAMES,
   PARTIAL_TERRAIN_COLLIDERS,
-} from "../src/terrain-collision-config.js";
+} from "../src/systems/environment/terrain-collision-config.js";
 
 test("cardinal movement classification includes the 10 percent boundary", () => {
   assert.deepEqual(classifyCardinalMovement({ x: 0, y: 1 }), {
@@ -140,46 +137,6 @@ test("joystick movement overrides held keys only while displaced", () => {
     y: 0.5,
   });
   assert.deepEqual(selectMovementInput(keyboard, { x: 0, y: 0 }), keyboard);
-});
-
-test("jump reaches a 64 pixel peak and lands exactly after 0.6 seconds", () => {
-  const jump = createJumpState();
-
-  assert.equal(startJump(jump), true);
-  assert.equal(updateJump(jump, 0.3), 64);
-  assert.equal(updateJump(jump, 0.3), 0);
-  assert.equal(jump.isJumping, false);
-});
-
-test("jump activation does not stack or restart an active arc", () => {
-  const jump = createJumpState();
-  startJump(jump);
-  const firstOffset = updateJump(jump, 0.1);
-
-  assert.equal(startJump(jump), false);
-  const secondOffset = updateJump(jump, 0.1);
-  assert.ok(secondOffset > firstOffset);
-});
-
-test("jump arc is frame-rate independent and leaves ground coordinates alone", () => {
-  const groundPosition = { x: 288, y: 512 };
-  const thirtyFps = createJumpState();
-  const sixtyFps = createJumpState();
-  startJump(thirtyFps);
-  startJump(sixtyFps);
-
-  let thirtyOffset = 0;
-  let sixtyOffset = 0;
-  for (let index = 0; index < 9; index += 1) {
-    thirtyOffset = updateJump(thirtyFps, 1 / 30);
-  }
-  for (let index = 0; index < 18; index += 1) {
-    sixtyOffset = updateJump(sixtyFps, 1 / 60);
-  }
-
-  assert.ok(Math.abs(thirtyOffset - sixtyOffset) < 1e-10);
-  assert.ok(Math.abs(thirtyOffset - 64) < 1e-10);
-  assert.deepEqual(groundPosition, { x: 288, y: 512 });
 });
 
 test("terrain review lays out every atlas frame once in row-major order", () => {

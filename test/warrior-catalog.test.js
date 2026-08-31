@@ -5,7 +5,7 @@ import {
   WARRIOR_ANIMATION_CATALOG,
   WARRIOR_ANIMATION_NAMES,
   validateWarriorAnimationCatalog,
-} from "../src/enemies/warrior/warrior-animation-catalog.js";
+} from "../src/characters/enemies/warrior/warrior-animation-catalog.js";
 
 const EXPECTED = Object.freeze({
   idle: { filename: "warrior-idle.png", frameCount: 8, loop: true },

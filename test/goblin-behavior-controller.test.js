@@ -7,7 +7,7 @@ import {
   createGoblinFireHitCollider,
   findRoute,
   selectNearestReachableBush,
-} from "../src/enemies/goblin/goblin-behavior-controller.js";
+} from "../src/characters/enemies/goblin/goblin-behavior-controller.js";
 
 const grid = { tileSizePx: 64, columns: 9, rows: 16 };
 const open = ({ x, y }) => x >= 0 && x < grid.columns && y >= 0 && y < grid.rows;

@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import {
   createGoblinDemoController,
-} from "../src/enemies/goblin/goblin-demo-controller.js";
+} from "../src/characters/enemies/goblin/goblin-demo-controller.js";
 
 function createGoblinSpy() {
   const events = [];

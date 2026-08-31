@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   DEFLECT_DURATION_SECONDS,
   createProjectileRenderer,
-} from "../src/projectile-renderer.js";
+} from "../src/systems/objects/projectile-renderer.js";
 
 function createFakeApi() {
   const sprites = [];

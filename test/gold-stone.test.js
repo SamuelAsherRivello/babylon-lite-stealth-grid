@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGoldStone } from "../src/objects/gold-stone.js";
-import { chooseNineGridDestinations, createGoldPickup } from "../src/objects/gold-pickup.js";
+import { createGoldStone } from "../src/systems/objects/gold-stone.js";
+import { chooseNineGridDestinations, createGoldPickup } from "../src/systems/objects/gold-pickup.js";
 
 test("gold stone has one health and enters object death after one hit", () => {
   const updates = [];

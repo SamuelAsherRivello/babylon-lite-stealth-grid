@@ -6,7 +6,7 @@ import {
   PLAYER_MOVEMENT_COLLIDER,
   PLAYER_FRAME,
   getArrowSpawnPosition,
-} from "../src/player.js";
+} from "../src/characters/player/player.js";
 
 test("player uses a 70%-size circle collider with its body center unchanged", () => {
   assert.deepEqual(PLAYER_FRAME, { width: 192, height: 192 });
@@ -50,7 +50,7 @@ test("arrow spawn positions cover straight up and down", () => {
 test("player module owns archer input and animation", async () => {
   const [mainSource, playerSource] = await Promise.all([
     readFile(new URL("../src/main.js", import.meta.url), "utf8"),
-    readFile(new URL("../src/player.js", import.meta.url), "utf8"),
+    readFile(new URL("../src/characters/player/player.js", import.meta.url), "utf8"),
   ]);
 
   assert.match(playerSource, /createVirtualController/);

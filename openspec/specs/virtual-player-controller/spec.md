@@ -1,18 +1,18 @@
 # virtual-player-controller Specification
 
 ## Purpose
-Provide responsive pointer and touch controls for X/Y player movement, jumping, and shooting while preserving the game's existing keyboard movement behavior.
+Provide responsive pointer and touch controls for X/Y player movement, item use, and weapon attacks while preserving the game's existing keyboard movement behavior.
 
 ## Requirements
 
 ### Requirement: Virtual controller remains visible and usable
 
-The game SHALL display one movement joystick in the lower-left and two action buttons labeled `Jump` and `Attack` in that left-to-right order in the lower-right. The complete controller SHALL remain inside the visible game frame on desktop and mobile after viewport or orientation changes.
+The game SHALL display one movement joystick in the lower-left and two action buttons labeled `Item` and `Attack` in that left-to-right order in the lower-right. The complete controller SHALL remain inside the visible game frame on desktop and mobile after viewport or orientation changes.
 
 #### Scenario: Controller appears at startup
 
 - **WHEN** gameplay starts in a supported browser
-- **THEN** the movement joystick, Jump button, and Attack button are visible
+- **THEN** the movement joystick, Item button, and Attack button are visible
 - **AND** they do not overlap one another or extend outside the game frame
 
 #### Scenario: Viewport changes
@@ -71,39 +71,38 @@ Existing WASD and arrow-key movement SHALL remain available. A displaced joystic
 - **THEN** joystick direction and intensity control movement
 - **AND** releasing the joystick resumes the still-held keyboard movement
 
-### Requirement: Jump is a non-stacking visual arc
+### Requirement: Jump functionality is absent
 
-Activating Jump while grounded SHALL lift the rendered player through a frame-rate-independent arc and return it exactly to its ground screen position. Jump SHALL NOT change the player's world X/Y position, movement bounds, or reported grid coordinates, and another Jump activation during the arc SHALL NOT restart or stack the jump.
+The player controller SHALL NOT expose, bind, or execute jump behavior. No input, button, or animation state may lift the player or apply a jump arc.
 
-#### Scenario: Player jumps while stationary
+#### Scenario: Jump input is unavailable
 
-- **WHEN** the grounded player activates Jump
-- **THEN** the sprite rises visibly and returns to its original ground screen position
-- **AND** its world and grid coordinates remain unchanged
+- **WHEN** the player uses the former jump control or any formerly bound jump input
+- **THEN** no jump state, vertical offset, or jump animation is created
 
-#### Scenario: Player moves while jumping
+### Requirement: Item activation uses the held item
 
-- **WHEN** the player supplies movement during an active jump
-- **THEN** X/Y walking continues normally while the visual jump offset is applied
+Activating Item by pointer press or keyboard key `C` SHALL attempt to use the currently held item exactly once per activation. With no held item, activation SHALL cause no runtime error, movement, state change, or animation. With a held item, the item slot SHALL be cleared. Gold SHALL spawn a pickup from the player's center toward the player's movement direction; wood and meat SHALL be consumed without spawning a map pickup until their pickup implementations exist.
 
-#### Scenario: Jump is pressed while airborne
+#### Scenario: Item activation with a held item
 
-- **WHEN** Jump is activated during the current jump arc
-- **THEN** the current arc continues without restarting or stacking
+- **WHEN** the player presses Item or `C` while holding an item
+- **THEN** the held item is used once and the item slot becomes empty
+- **AND** gold spawns as a pickup from the player's center toward movement
 
-#### Scenario: Jump runs at different frame rates
+#### Scenario: Item activation without a held item
 
-- **WHEN** the same jump is updated with different frame intervals
-- **THEN** its peak, duration, and final screen offset are equivalent
+- **WHEN** the player presses Item or `C` without holding an item
+- **THEN** no gameplay action or animation occurs
 
 ### Requirement: Action buttons support simultaneous pointers
 
-Jump and Shoot SHALL activate independently on pointer press and SHALL remain usable while another pointer controls movement. Releasing, cancelling, or moving one action pointer SHALL NOT reset the joystick or the other action button.
+Item and Attack SHALL activate independently on pointer press and SHALL remain usable while another pointer controls movement. Releasing, cancelling, or moving one action pointer SHALL NOT reset the joystick or the other action.
 
-#### Scenario: Player jumps while moving
+#### Scenario: Former jump action is pressed while moving
 
-- **WHEN** one pointer is controlling the joystick and a second pointer presses Jump
-- **THEN** the player begins jumping without interrupting joystick movement
+- **WHEN** one pointer controls the joystick and a second pointer presses Item
+- **THEN** the held item's use action begins without interrupting movement
 
 #### Scenario: Separate action pointers are used
 

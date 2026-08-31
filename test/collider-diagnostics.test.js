@@ -5,7 +5,7 @@ import {
   COMBAT_COLLIDER_STYLE,
   MOVEMENT_COLLIDER_STYLE,
   createCharacterColliderDrawCommands,
-} from "../src/collider-diagnostics.js";
+} from "../src/ui/collider-diagnostics.js";
 
 test("diagnostics draw every red combat collider before green movement colliders", () => {
   const characters = [

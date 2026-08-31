@@ -4,10 +4,10 @@ import assert from "node:assert/strict";
 import {
   EnemyState,
   createEnemyStateMachine,
-} from "../src/enemies/enemy-state.js";
+} from "../src/characters/enemies/enemy-state.js";
 import {
   selectGoblinAttackAnimation,
-} from "../src/enemies/goblin/goblin-state.js";
+} from "../src/characters/enemies/goblin/goblin-state.js";
 
 test("enemy transitions between idle and walking from movement intent", () => {
   const machine = createEnemyStateMachine();

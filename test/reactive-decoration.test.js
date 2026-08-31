@@ -4,8 +4,8 @@ import test from "node:test";
 import {
   createReactiveDecoration,
   getCenteredEffectPosition,
-} from "../src/decorations/reactive-decoration.js";
-import { getYSortedLayerOrder } from "../src/render-depth.js";
+} from "../src/systems/environment/decorations/reactive-decoration.js";
+import { getYSortedLayerOrder } from "../src/systems/environment/render-depth.js";
 
 function createHarness(position = { x: 100, y: 200 }, withFire = false) {
   const calls = { animations: [], stopped: [], updates: [], removed: [] };

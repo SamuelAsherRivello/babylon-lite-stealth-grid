@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   PlayerState,
   createPlayerStateMachine,
-} from "../src/player-state.js";
+} from "../src/characters/player/player-state.js";
 
 test("PlayerState machine starts idle and transitions only when state changes", () => {
   const machine = createPlayerStateMachine();

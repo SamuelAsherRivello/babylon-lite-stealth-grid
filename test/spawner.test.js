@@ -6,7 +6,7 @@ import {
   createSpawner,
   selectWeightedSpawnCount,
   SPAWN_MODE_ANYWHERE_WALKABLE,
-} from "../src/spawner.js";
+} from "../src/systems/spawners/spawner.js";
 
 function sequenceRandom(values) {
   let index = 0;

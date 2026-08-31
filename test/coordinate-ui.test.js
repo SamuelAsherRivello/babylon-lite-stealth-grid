@@ -39,22 +39,23 @@ test("Coordinates UI visibility follows the collider diagnostic setting", () => 
   assert.equal(container.hidden, false);
 });
 
-test("virtual controller contains matching Move, Jump (C), and Attack (V) labels", async () => {
+test("virtual controller contains matching Move, Item (C), and Attack (V) labels", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
-  const jumpIndex = html.indexOf('id="jump-action"');
-  const shootIndex = html.indexOf('id="shoot-action"');
+  const itemIndex = html.indexOf('id="item-action"');
+  const attackIndex = html.indexOf('id="attack-action"');
 
   assert.match(html, /id="movement-joystick"/);
-  assert.ok(jumpIndex >= 0);
-  assert.ok(shootIndex > jumpIndex);
-  assert.match(html, /<span class="control-label">Jump \(C\)<\/span>/);
+  assert.ok(itemIndex >= 0);
+  assert.ok(attackIndex > itemIndex);
+  assert.match(html, /<span class="control-label">Item \(C\)<\/span>/);
   assert.match(html, /<span class="control-label">Attack \(V\)<\/span>/);
+  assert.doesNotMatch(html, /Jump|jump-action/);
   assert.match(html, /<div class="movement-control action-control-layout">/);
   assert.doesNotMatch(html, /class="controls"/);
 });
 
 test("archer uses the circular body collider", async () => {
-  const player = await readFile(new URL("../src/player.js", import.meta.url), "utf8");
+  const player = await readFile(new URL("../src/characters/player/player.js", import.meta.url), "utf8");
 
   assert.match(
     player,

@@ -1,5 +1,7 @@
 const FLIP_FLAGS = 0xe0000000;
 
+export { createLevelTerrainTiles } from "./terrain-runtime.js";
+
 export function formatLevelCellLabel(cell) {
   return `${formatCoordinate(cell.x)},${formatCoordinate(cell.y)}`;
 }

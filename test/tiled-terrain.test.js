@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createLevelTerrainTiles } from "../src/tiled-terrain.js";
+import { createLevelTerrainTiles } from "../plugins/tiled-babylon-lite/index.js";
 
 test("Tiled rectangle collision becomes the existing full-cell world collider", () => {
   const [tile] = createLevelTerrainTiles([{

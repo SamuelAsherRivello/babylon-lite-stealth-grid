@@ -6,7 +6,7 @@ import {
   getOrderedPair,
   getPairSeparationDirections,
   movementsConflict,
-} from "../src/npc/sheep/sheep-flock.js";
+} from "../src/characters/npc/sheep/sheep-flock.js";
 
 const circle = (x, y, radius = 26) => ({ type: "circle", x, y, radius });
 const sheep = (id, x, y, extra = {}) => ({

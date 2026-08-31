@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 
 import {
   GOBLIN_ANIMATION_NAMES,
-} from "../src/enemies/goblin/goblin-animation-catalog.js";
+} from "../src/characters/enemies/goblin/goblin-animation-catalog.js";
 import {
   GOBLIN_MOVEMENT_COLLIDER,
   createGoblin,
   loadGoblinAtlases,
-} from "../src/enemies/goblin/goblin.js";
-import { GAME_DEPTH } from "../src/render-depth.js";
+} from "../src/characters/enemies/goblin/goblin.js";
+import { GAME_DEPTH } from "../src/systems/environment/render-depth.js";
 
 function createApi() {
   const calls = {

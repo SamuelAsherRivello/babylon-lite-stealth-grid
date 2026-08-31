@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { applyFullscreenPreference } from "../src/fullscreen-settings.js";
+import { applyFullscreenPreference } from "../src/ui/fullscreen-settings.js";
 
 test("fullscreen preference enters and exits fullscreen when supported", async () => {
   let requested = 0;

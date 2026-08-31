@@ -8,7 +8,7 @@ prototype that runs with WebGPU.
 <figure>
   <img
     alt="Babylon Light Stealth Grid gameplay screenshot"
-    src="./output-arrow-check.png"
+    src="./documentation/images/output-arrow-check.png"
     width="400px"
   >
   <figcaption>

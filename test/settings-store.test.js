@@ -7,8 +7,8 @@ import {
   SETTINGS_STORAGE_KEY,
   SETTINGS_VERSION,
   createSettingsStore,
-} from "../src/settings-store.js";
-import { applyCategoryVolume, normalizeVolume } from "../src/audio-settings.js";
+} from "../src/settings/settings-store.js";
+import { applyCategoryVolume, normalizeVolume } from "../src/settings/audio-settings.js";
 
 function createStorage(initial = {}) {
   const values = new Map(Object.entries(initial));

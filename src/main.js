@@ -17,65 +17,65 @@ import {
   gridCellToScreenForFrame,
   getLogicalViewportScale,
   collidersOverlap,
-} from "./game-logic.js";
+} from "./gameplay/game-logic.js";
 import {
   collectTiledLayerTiles,
   formatLevelCellLabel,
   loadTiledMap,
 } from "../plugins/tiled-babylon-lite/index.js";
-import { GRID } from "./grid-contract.js";
-import { getCharacterGridCell, getCharacterLayerOrder } from "./character-spatial.js";
-import { createLevelTerrainTiles } from "./tiled-terrain.js";
+import { GRID } from "./systems/environment/grid-contract.js";
+import { getCharacterGridCell, getCharacterLayerOrder } from "./characters/character-spatial.js";
+import { createLevelTerrainTiles } from "../plugins/tiled-babylon-lite/index.js";
 import {
   PLAYER_FRAME,
   PLAYER_MOVEMENT_COLLIDER,
   PLAYER_PIVOT,
   createPlayer,
   loadPlayerAtlases,
-} from "./player.js";
+} from "./characters/player/player.js";
 import {
   GOBLIN_FRAME,
   GOBLIN_MOVEMENT_COLLIDER,
   GOBLIN_PIVOT,
   createGoblin,
   loadGoblinAtlases,
-} from "./enemies/goblin/goblin.js";
-import { createGoblinBehaviorController } from "./enemies/goblin/goblin-behavior-controller.js";
-import { ARCHER_FRAME, ARCHER_MOVEMENT_COLLIDER, ARCHER_PIVOT, createArcher, loadArcherAtlases } from "./enemies/archer/archer.js";
-import { createGridWalkability } from "./npc/sheep/sheep-navigation.js";
+} from "./characters/enemies/goblin/goblin.js";
+import { createGoblinBehaviorController } from "./characters/enemies/goblin/goblin-behavior-controller.js";
+import { ARCHER_FRAME, ARCHER_MOVEMENT_COLLIDER, ARCHER_PIVOT, createArcher, loadArcherAtlases } from "./characters/enemies/archer/archer.js";
+import { createGridWalkability } from "./characters/npc/sheep/sheep-navigation.js";
 import {
   WARRIOR_FRAME,
   WARRIOR_MOVEMENT_COLLIDER,
   WARRIOR_PIVOT,
   createWarrior,
   loadWarriorAtlases,
-} from "./enemies/warrior/warrior.js";
+} from "./characters/enemies/warrior/warrior.js";
 import {
   createWarriorDemoController,
-} from "./enemies/warrior/warrior-demo-controller.js";
+} from "./characters/enemies/warrior/warrior-demo-controller.js";
 import {
   SHEEP_FRAME_SIZE,
   SHEEP_MOVEMENT_COLLIDER,
   SHEEP_PIVOT,
   createSheep,
   loadSheepAtlases,
-} from "./npc/sheep/sheep.js";
-import { CharacterType } from "./npc/sheep/sheep-state.js";
-import { createSheepContactCoordinator } from "./npc/sheep/sheep-flock.js";
-import { EnemyState } from "./enemies/enemy-state.js";
+} from "./characters/npc/sheep/sheep.js";
+import { CharacterType } from "./characters/npc/sheep/sheep-state.js";
+import { createSheepContactCoordinator } from "./characters/npc/sheep/sheep-flock.js";
+import { EnemyState } from "./characters/enemies/enemy-state.js";
 import {
   createProjectileRenderer,
   loadArrowAtlas,
-} from "./projectile-renderer.js";
-import { resolveProjectileHit } from "./projectile-combat.js";
-import { createPauseController } from "./pause-controller.js";
+} from "./systems/objects/projectile-renderer.js";
+import { resolveProjectileHit } from "./systems/objects/projectile-combat.js";
+import { createPauseController } from "./ui/pause-controller.js";
 import {
   applyAnimatedTilePreviewSetting,
   applyParticleFxPreviewSetting,
-} from "./preview-settings.js";
+} from "./settings/preview-settings.js";
 import { Fire03ParticleEffect, PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
 import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
-import { loadReleaseMetadata } from "./release-metadata.js";
+import { loadReleaseMetadata } from "./release/release-metadata.js";
 import { createCoordinatesUi } from "./ui/coordinates-ui.js";
 import { createReleaseMetadataUi } from "./ui/release-metadata-ui.js";
 import { createSettingsUi } from "./ui/settings-ui.js";
@@ -83,26 +83,26 @@ import { createViewportSafeArea } from "./ui/viewport-safe-area.js";
 import {
   DEBUG_SETTING_KEYS,
   settingsStore,
-} from "./settings-store.js";
+} from "./settings/settings-store.js";
 import {
   GAME_DEPTH,
   TILE_MAP_SUB_Z,
-} from "./render-depth.js";
-import { createSpawner } from "./spawner.js";
-import { createGoldStone } from "./objects/gold-stone.js";
-import { chooseNineGridDestinations, createGoldPickup } from "./objects/gold-pickup.js";
-import { createPickupSystem } from "./pickup-system.js";
+} from "./systems/environment/render-depth.js";
+import { createSpawner } from "./systems/spawners/spawner.js";
+import { createGoldStone } from "./systems/objects/gold-stone.js";
+import { chooseNineGridDestinations, createGoldPickup } from "./systems/objects/gold-pickup.js";
+import { createPickupSystem } from "./systems/objects/pickup-system.js";
 import {
   SpawnerCharacter,
   SpawnerType,
   createInitialSpawnerConfigs,
-} from "./spawner-catalog.js";
-import { createSpawnerMarker } from "./spawner-marker.js";
+} from "./systems/spawners/spawner-catalog.js";
+import { createSpawnerMarker } from "./systems/spawners/spawner-marker.js";
 import {
   createReactiveDecoration,
   getCenteredEffectPosition,
-} from "./decorations/reactive-decoration.js";
-import { createCharacterColliderDrawCommands } from "./collider-diagnostics.js";
+} from "./systems/environment/decorations/reactive-decoration.js";
+import { createCharacterColliderDrawCommands } from "./ui/collider-diagnostics.js";
 
 const SCREEN_WIDTH = GRID.widthPx;
 const SCREEN_HEIGHT = GRID.heightPx;

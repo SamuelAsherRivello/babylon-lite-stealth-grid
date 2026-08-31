@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 
 import {
   createWarriorDemoController,
-} from "../src/enemies/warrior/warrior-demo-controller.js";
+} from "../src/characters/enemies/warrior/warrior-demo-controller.js";
 
 test("warrior demo exposes idle, run, both attacks, and guard", () => {
   const events = [];

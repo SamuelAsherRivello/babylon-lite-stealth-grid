@@ -4,21 +4,21 @@ import test from "node:test";
 import {
   getCharacterGridCell,
   getCharacterLayerOrder,
-} from "../src/character-spatial.js";
-import { getCharacterCollider } from "../src/game-logic.js";
-import { getYSortedLayerOrder } from "../src/render-depth.js";
+} from "../src/characters/character-spatial.js";
+import { getCharacterCollider } from "../src/gameplay/game-logic.js";
+import { getYSortedLayerOrder } from "../src/systems/environment/render-depth.js";
 import {
   PLAYER_FRAME, PLAYER_MOVEMENT_COLLIDER, PLAYER_PIVOT,
-} from "../src/player.js";
+} from "../src/characters/player/player.js";
 import {
   SHEEP_FRAME_SIZE, SHEEP_MOVEMENT_COLLIDER, SHEEP_PIVOT,
-} from "../src/npc/sheep/sheep.js";
+} from "../src/characters/npc/sheep/sheep.js";
 import {
   GOBLIN_FRAME, GOBLIN_MOVEMENT_COLLIDER, GOBLIN_PIVOT,
-} from "../src/enemies/goblin/goblin.js";
+} from "../src/characters/enemies/goblin/goblin.js";
 import {
   WARRIOR_FRAME, WARRIOR_MOVEMENT_COLLIDER, WARRIOR_PIVOT,
-} from "../src/enemies/warrior/warrior.js";
+} from "../src/characters/enemies/warrior/warrior.js";
 
 const position = { x: 96, y: 96 };
 const tileSize = 64;
