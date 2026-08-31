@@ -11,6 +11,7 @@ const MAP_URL = new URL("../public/levels/tiled/maps/Level01.tmj", import.meta.u
 const TERRAIN_URL = new URL("../public/levels/tiled/tilesets/Tilemap_color3.tsj", import.meta.url);
 const BUSH_URL = new URL("../public/levels/tiled/tilesets/TinySwordsBushDecorations.tsj", import.meta.url);
 const SPAWNER_URL = new URL("../public/levels/tiled/tilesets/SpawnerTypes.tsj", import.meta.url);
+const COLOR_ONE_URL = new URL("../public/levels/tiled/tilesets/Tilemap_color1.tsj", import.meta.url);
 
 async function json(url) {
   return JSON.parse(await readFile(url, "utf8"));
@@ -41,16 +42,18 @@ test("bush tileset exposes exactly one placeable reactive decoration item", asyn
   assert.equal(tileset.tiles[0].imageheight, 64);
   assert.deepEqual(tileset.tileoffset, { x: 0, y: -41 });
   assert.equal(tileset.tiles[0].objectgroup.objects[0].class, "Sensor");
+  assert.equal(tileset.tiles[0].objectgroup.objects[1].class, "CombatCollider");
 });
 
 test("Level01 normalizes the bush as a bottom-centered independent object", async () => {
-  const [map, terrain, bush, spawners] = await Promise.all([
-    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL),
+  const [map, terrain, bush, spawners, colorOne] = await Promise.all([
+    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL), json(COLOR_ONE_URL),
   ]);
   const external = new Map([
     ["../tilesets/Tilemap_color3.tsj", terrain],
     ["../tilesets/TinySwordsBushDecorations.tsj", bush],
     ["../tilesets/SpawnerTypes.tsj", spawners],
+    ["../tilesets/Tilemap_color1.tsj", colorOne],
   ]);
   assert.deepEqual(validateTiledMap(map, external), []);
   const level = normalizeTiledMap(map, external);
@@ -77,12 +80,21 @@ test("Level01 normalizes the bush as a bottom-centered independent object", asyn
     width: 48,
     height: 32,
   });
+  assert.deepEqual(object.decoration.combatCollider, {
+    x: object.position.x - 36,
+    y: object.position.y + 8,
+    width: 72,
+    height: 72,
+  });
 });
 
 test("reactive decoration property precedence is class then tile then object", () => {
   const tile = {
     id: 0, class: "ReactiveDecoration", imagewidth: 128, imageheight: 128,
-    objectgroup: { objects: [{ class: "Sensor", x: 40, y: 88, width: 48, height: 32 }] },
+    objectgroup: { objects: [
+      { class: "Sensor", x: 40, y: 88, width: 48, height: 32 },
+      { class: "CombatCollider", x: 28, y: 48, width: 72, height: 72 },
+    ] },
     properties: [
       { name: "runtimeImage", value: "bush.png" },
       { name: "frameWidth", value: 128 }, { name: "frameHeight", value: 128 },
@@ -143,6 +155,7 @@ test("invalid reactive decoration reports layer, sensor, and behavior errors", (
   assert.match(errors, /missing runtimeImage/);
   assert.match(errors, /invalid frame dimensions or count/);
   assert.match(errors, /missing valid Sensor geometry/);
+  assert.match(errors, /missing valid CombatCollider geometry/);
   assert.match(errors, /must be non-blocking/);
   assert.match(errors, /unsupported triggerMode/);
   assert.match(errors, /unsupported playbackMode/);

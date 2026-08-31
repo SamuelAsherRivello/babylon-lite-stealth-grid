@@ -60,6 +60,14 @@ directional input received during the animation SHALL not redirect that shot.
 - **WHEN** the player changes directional input after a shooting sequence begins but before its arrow is released
 - **THEN** the active shot retains its captured cardinal direction
 
+#### Scenario: Arrow is released facing right
+- **WHEN** the archer releases an arrow while facing right
+- **THEN** the arrow appears close to the bow on the archer's right side
+
+#### Scenario: Arrow is released facing left
+- **WHEN** the archer releases an arrow while facing left
+- **THEN** the arrow appears close to the bow on the archer's left side with the same horizontal separation as a right-facing release
+
 ### Requirement: Arrow travels along a cardinal path
 An active arrow SHALL advance at the configured projectile speed along its
 resolved cardinal direction. Its sprite orientation and gameplay collider

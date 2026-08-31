@@ -41,7 +41,6 @@ export function createGridWalkability({ bounds, character, grid, obstacles }) {
       character.collider,
     );
     const dynamicObstacles = dynamicColliders
-      .filter(({ type }) => type !== "npc")
       .map(({ collider: dynamicCollider }) => dynamicCollider);
     return isColliderWithinBounds(collider, bounds.width, bounds.height)
       && ![...obstacles, ...dynamicObstacles].some(
@@ -119,4 +118,29 @@ export function planFleeRoute({
     return reconstructRoute(nodes, farthest[0]);
   }
   return [];
+}
+
+export function planSeparationRoute({
+  start,
+  partner,
+  preferredDirection,
+  isWalkable,
+}) {
+  const startingDistance = (start.x - partner.x) ** 2 + (start.y - partner.y) ** 2;
+  const preferred = {
+    x: start.x + preferredDirection.x,
+    y: start.y + preferredDirection.y,
+  };
+  const candidates = [
+    preferred,
+    ...CARDINAL_NEIGHBORS.map((offset) => ({
+      x: start.x + offset.x,
+      y: start.y + offset.y,
+    })).filter((cell) => cell.x !== preferred.x || cell.y !== preferred.y),
+  ];
+  const safe = candidates.filter((cell) => (
+    isWalkable(cell)
+    && (cell.x - partner.x) ** 2 + (cell.y - partner.y) ** 2 > startingDistance
+  ));
+  return safe.length > 0 ? [safe[0]] : [];
 }

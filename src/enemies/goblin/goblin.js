@@ -14,7 +14,7 @@ import {
   worldToGrid,
   worldToScreen,
 } from "../../game-logic.js";
-import { GAME_DEPTH } from "../../render-depth.js";
+import { getYSortedLayerOrder } from "../../render-depth.js";
 import {
   EnemyState,
   createEnemyStateMachine,
@@ -105,11 +105,12 @@ export function createGoblin({
   const layers = {};
   const sprites = {};
   const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const initialOrder = getYSortedLayerOrder(position.y, bounds.height);
   for (const name of GOBLIN_ANIMATION_NAMES) {
     const descriptor = GOBLIN_ANIMATION_CATALOG[name];
     const layer = api.createSprite2DLayer(atlases[name], {
       capacity: 1,
-      order: GAME_DEPTH.npcs,
+      order: initialOrder,
       pivot: [...descriptor.pivot],
       visible: name === "idle",
     });
@@ -123,7 +124,7 @@ export function createGoblin({
 
   function updateSprites() {
     const screenPosition = worldToScreen(position, 1, bounds.height);
-    const order = GAME_DEPTH.npcs + screenPosition.y / (bounds.height * 4);
+    const order = getYSortedLayerOrder(position.y, bounds.height);
     for (const layer of Object.values(layers)) {
       layer.order = order;
     }

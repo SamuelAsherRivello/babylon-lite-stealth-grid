@@ -85,3 +85,30 @@ test("no-route bounce returns idle and can immediately evaluate fear again", () 
     SheepState.BOUNCING,
   );
 });
+
+test("contact bounce cancels threat context and retains separation intent", () => {
+  const machine = createSheepStateMachine();
+  machine.updateFear({ x: 0, y: 0 }, [player(1, 0)]);
+
+  assert.deepEqual(machine.beginContact({ partnerId: "sheep-2", direction: { x: -1, y: 0 } }), {
+    changed: true,
+    state: SheepState.BOUNCING,
+  });
+  assert.equal(machine.threat, null);
+  assert.deepEqual(machine.separationIntent, {
+    partnerId: "sheep-2",
+    direction: { x: -1, y: 0 },
+  });
+  assert.equal(machine.bounceReason, "contact");
+});
+
+test("contact bounce completes into running only when a separation route exists", () => {
+  const machine = createSheepStateMachine();
+  machine.beginContact({ partnerId: "sheep-2", direction: { x: 1, y: 0 } });
+  assert.deepEqual(machine.completeBouncing(true), {
+    changed: true,
+    state: SheepState.RUNNING,
+  });
+  machine.completeRunning();
+  assert.equal(machine.separationIntent, null);
+});

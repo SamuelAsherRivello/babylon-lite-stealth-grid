@@ -22,7 +22,7 @@ import {
 import { GRID } from "./grid-contract.js";
 import { PlayerState, createPlayerStateMachine } from "./player-state.js";
 import { createVirtualController } from "./ui/virtual-controller.js";
-import { GAME_DEPTH } from "./render-depth.js";
+import { getYSortedLayerOrder } from "./render-depth.js";
 import {
   CardinalDirection,
   createCardinalDirectionMemory,
@@ -100,12 +100,13 @@ export function createPlayer({
 }) {
   let position = { ...initialPosition };
   const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const initialOrder = getYSortedLayerOrder(position.y, bounds.height);
   const layers = {};
   const sprites = {};
   for (const animation of ["idle", "run", "shoot"]) {
     const layer = createSprite2DLayer(atlases[animation], {
       capacity: 1,
-      order: GAME_DEPTH.player,
+      order: initialOrder,
       pivot: [PLAYER_PIVOT.x, PLAYER_PIVOT.y],
       visible: animation === "idle",
     });
@@ -432,7 +433,11 @@ export function createPlayer({
       }
 
       const screenPosition = worldToScreen(position, 1, bounds.height);
+      const order = getYSortedLayerOrder(position.y, bounds.height);
       const jumpOffset = updateJump(jumpState, deltaSeconds);
+      for (const layer of Object.values(layers)) {
+        layer.order = order;
+      }
       for (const sprite of Object.values(sprites)) {
         updateSprite2D(sprite, {
           positionPx: [screenPosition.x, screenPosition.y - jumpOffset],

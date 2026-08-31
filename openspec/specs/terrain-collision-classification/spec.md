@@ -40,14 +40,14 @@ Each fully non-walkable terrain instance SHALL use its complete 64 px by 64 px t
 - **THEN** movement SHALL not place the character collider inside that blocked geometry
 
 ### Requirement: Character collider
-The character SHALL have a circular body collider with radius 18.2 px centered at local sprite-frame coordinates 93 px by 126 px, aligned with the rendered sprite frame as its animation changes or faces either direction.
+The character SHALL have a circular movement collider with radius 18.2 px centered at local sprite-frame coordinates 93 px by 126 px, aligned with the rendered sprite frame as its animation changes or faces either direction. This movement collider SHALL govern terrain collision independently of the character's rectangular combat collider.
 
 #### Scenario: Character collider is displayed
 - **WHEN** the 192 px by 144 px character frame is rendered
-- **THEN** its collider has a 36.4 px diameter and remains centered on the character body
+- **THEN** its movement collider has a 36.4 px diameter and remains centered on the character body
 
 #### Scenario: Moving horizontally into a diagonal collider
-- **WHEN** the circular character collider moves horizontally into a diagonal polygon edge
+- **WHEN** the circular movement collider moves horizontally into a diagonal polygon edge
 - **THEN** collision resolution SHALL push the character along the polygon's outward diagonal normal
 
 ### Requirement: Collision-aware directional movement
@@ -58,11 +58,11 @@ The character SHALL remain within the playfield and SHALL resolve horizontal and
 - **THEN** the blocked component is rejected and the unobstructed component is applied
 
 ### Requirement: Always-visible collision diagnostics
-The terrain collider bounds and the current character collider bounds SHALL remain visibly distinguishable while the terrain classification is being reviewed.
+The terrain collider bounds and both current character collider roles SHALL remain visibly distinguishable while the terrain classification is being reviewed. Character combat colliders SHALL be red, and character movement colliders SHALL be green and rendered after combat colliders so movement geometry appears on top where they overlap.
 
 #### Scenario: Reviewing collision bounds during movement
 - **WHEN** the character moves through the terrain review
-- **THEN** the character collider follows the character and every blocked-tile collider remains visibly overlaid on its tile
+- **THEN** both character colliders follow the character, its red combat collider is drawn before its green movement collider, and every blocked-tile collider remains visibly overlaid on its tile
 
 ### Requirement: Canonical authored terrain collider geometry
 `Tilemap_color3.tsj` SHALL retain collision only on tile frames that already contain collider objects. Each retained collider SHALL be represented as an exact 64 by 64 full-tile rectangle, an exact three-corner triangle covering half the tile, or one or more exact 4-pixel full-length rectangles on the left, right, top, or bottom tile edges. Multiple edge rectangles SHALL remain separate and MAY overlap at tile corners.

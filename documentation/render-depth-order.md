@@ -7,8 +7,8 @@ compile to those flat orders. CSS `z-index` is a separate DOM stack.
 | Category | Base Z / CSS z-index | Reserved range |
 | --- | ---: | ---: |
 | TileMap | `0` | `0-99` |
-| NPCs and creatures | `100` | `100-199` |
-| Player | `200` | `200-299` |
+| Moving characters (player, enemies, and NPCs) | `100` | `100-199` |
+| Reserved character-adjacent depth | `200` | `200-299` |
 | Projectiles | `300` | `300-399` |
 | Gameplay effects | `400` | `400-499` |
 | Foreground/cover | `500` | `500-599` |
@@ -19,6 +19,11 @@ compile to those flat orders. CSS `z-index` is a separate DOM stack.
 TileMap base Z is `0`; its planned sub-Z values are background water `0`, foam
 `10`, ground `20`, elevation shadows `30`, elevated terrain `40`, decorations
 `50`, Y-sorted props `60`, and foreground artwork `70`.
+
+Every moving character recalculates its layer order from its world Y position
+after movement on each update. Characters with lower ground-contact positions on
+screen draw in front, regardless of whether they are the player, an enemy, or an
+NPC.
 
 Projectile-versus-gameplay-effect ordering is deliberately TBD. Both categories
 retain space in `300-499` until a visual requirement decides their relationship.

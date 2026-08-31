@@ -107,6 +107,9 @@ export function normalizeTiledMap(map, externalTilesets) {
           acceptedCharacterTypes: String(properties.acceptedCharacterTypes ?? "")
             .split(",").map((value) => value.trim()).filter(Boolean),
           sensor: normalizeTileSensor(tile, position, frameWidth, frameHeight),
+          combatCollider: normalizeTileObject(
+            tile, "CombatCollider", position, frameWidth, frameHeight,
+          ),
         } : null,
       }];
     }));
@@ -194,13 +197,26 @@ function normalizeTileSensor(tile, position, frameWidth, frameHeight) {
   };
 }
 
+function normalizeTileObject(tile, className, position, frameWidth, frameHeight) {
+  const object = tile.objectgroup?.objects?.find(
+    (entry) => (entry.class || entry.type) === className,
+  );
+  if (!object || object.width <= 0 || object.height <= 0 || object.ellipse) return null;
+  return {
+    x: position.x - frameWidth / 2 + object.x,
+    y: position.y + frameHeight - object.y - object.height,
+    width: object.width,
+    height: object.height,
+  };
+}
+
 function normalizeTileCollisionShapes(tile, tileWidth, tileHeight) {
   if (!Number.isFinite(tileWidth) || tileWidth <= 0
     || !Number.isFinite(tileHeight) || tileHeight <= 0) {
     return [];
   }
   return (tile?.objectgroup?.objects ?? [])
-    .filter((object) => (object.class || object.type) !== "Sensor")
+    .filter((object) => !["Sensor", "CombatCollider"].includes(object.class || object.type))
     .flatMap((object) => {
       if (object.polygon) {
         return [{
@@ -254,6 +270,10 @@ function validateReactiveDecorations(map, externalTilesets) {
       }
       const sensor = tile?.objectgroup?.objects?.find((entry) => (entry.class || entry.type) === "Sensor");
       if (!sensor || sensor.width <= 0 || sensor.height <= 0) errors.push(`${label} is missing valid Sensor geometry.`);
+      const combat = tile?.objectgroup?.objects?.find((entry) => (entry.class || entry.type) === "CombatCollider");
+      if (!combat || combat.ellipse || combat.width <= 0 || combat.height <= 0) {
+        errors.push(`${label} is missing valid CombatCollider geometry.`);
+      }
       if (properties.blocking !== false) errors.push(`${label} sensor must be non-blocking.`);
       if (properties.triggerMode !== "character-enter") errors.push(`${label} has unsupported triggerMode.`);
       if (properties.playbackMode !== "once") errors.push(`${label} has unsupported playbackMode.`);

@@ -115,7 +115,7 @@ test("sheep stops safely if a planned segment becomes blocked", () => {
   assert.deepEqual(sheep.getPosition(), { x: 224, y: 224 });
 });
 
-test("non-NPC dynamic colliders block fleeing while NPC colliders are ignored", () => {
+test("player and NPC dynamic colliders both block fleeing", () => {
   const playerBlocker = {
     type: "player",
     collider: { type: "circle", x: 288, y: 224, radius: 26 },
@@ -127,14 +127,69 @@ test("non-NPC dynamic colliders block fleeing while NPC colliders are ignored", 
   blocked.api.animations.at(-1).options.onEnd();
   assert.equal(blocked.sheep.state, SheepState.IDLE);
 
-  const allowed = createTestSheep({ minimumFleeDistanceCells: 1, maximumFleeDistanceCells: 1 });
-  allowed.sheep.update(0.016, [nearbyPlayer], [npcBlocker]);
-  allowed.api.animations.at(-1).options.onEnd();
-  assert.equal(allowed.sheep.state, SheepState.RUNNING);
+  const npcBlocked = createTestSheep({ minimumFleeDistanceCells: 1, maximumFleeDistanceCells: 1 });
+  npcBlocked.sheep.update(0.016, [nearbyPlayer], [npcBlocker]);
+  npcBlocked.api.animations.at(-1).options.onEnd();
+  assert.equal(npcBlocked.sheep.state, SheepState.IDLE);
 });
 
 test("disposing stops the active sheep animation", () => {
   const { api, sheep } = createTestSheep();
   sheep.dispose();
   assert.equal(api.stopped.length, 1);
+});
+
+test("contact command cancels running, bounces stationary, then separates", () => {
+  const { api, sheep } = createTestSheep({
+    minimumFleeDistanceCells: 1,
+    maximumFleeDistanceCells: 1,
+  });
+  sheep.update(0.016, [nearbyPlayer]);
+  api.animations.at(-1).options.onEnd();
+  assert.equal(sheep.state, SheepState.RUNNING);
+
+  const contactPosition = sheep.getPosition();
+  sheep.beginContact({
+    partnerId: "sheep-2",
+    partnerCell: { x: 4, y: 3 },
+    direction: { x: -1, y: 0 },
+  });
+  assert.equal(sheep.state, SheepState.BOUNCING);
+  sheep.update(0.25, [nearbyPlayer]);
+  assert.deepEqual(sheep.getPosition(), contactPosition);
+  api.animations.at(-1).options.onEnd();
+  assert.equal(sheep.state, SheepState.RUNNING);
+  sheep.update(1, [], []);
+  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
+});
+
+test("coincident contact partners can move apart without ignoring other sheep", () => {
+  const { api, sheep } = createTestSheep();
+  const coincidentPartner = {
+    type: "npc",
+    id: "sheep-2",
+    collider: sheep.getMovementCollider(),
+  };
+  sheep.beginContact({
+    partnerId: "sheep-2",
+    partnerCell: sheep.getGridCell(),
+    direction: { x: -1, y: 0 },
+  });
+  sheep.update(0, [], [coincidentPartner]);
+  api.animations.at(-1).options.onEnd();
+  assert.equal(sheep.state, SheepState.RUNNING);
+  sheep.update(1, [], [coincidentPartner]);
+  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
+});
+
+test("knockback cannot move through another living sheep", () => {
+  const { sheep } = createTestSheep();
+  const blocker = {
+    type: "npc",
+    id: "sheep-2",
+    collider: { type: "circle", x: 276, y: 270.52, radius: 26 },
+  };
+  sheep.applyKnockback({ x: 1, y: 0 }, { duration: 1, speed: 100 });
+  sheep.update(1, [], [blocker]);
+  assert.deepEqual(sheep.getPosition(), { x: 224, y: 224 });
 });

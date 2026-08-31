@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createReactiveDecoration } from "../src/decorations/reactive-decoration.js";
+import {
+  createReactiveDecoration,
+  getCenteredEffectPosition,
+} from "../src/decorations/reactive-decoration.js";
 import { getYSortedLayerOrder } from "../src/render-depth.js";
 
-function createHarness(position = { x: 100, y: 200 }) {
+function createHarness(position = { x: 100, y: 200 }, withFire = false) {
   const calls = { animations: [], stopped: [], updates: [], removed: [] };
   const api = {
     createSprite2DLayer(atlas, options) { return { atlas, ...options, view: {} }; },
@@ -23,24 +26,62 @@ function createHarness(position = { x: 100, y: 200 }) {
     },
   };
   const object = {
+    id: Math.round(position.x),
     position,
     decoration: {
       frameSize: { width: 128, height: 128 }, frameCount: 8,
       frameDurationMs: 100, idleFrame: 0, resetAfterPlay: true,
       rearmOnExit: true, acceptedCharacterTypes: ["player", "npc", "enemy"],
       sensor: { x: position.x - 24, y: position.y + 8, width: 48, height: 32 },
+      combatCollider: { x: position.x - 36, y: position.y + 8, width: 72, height: 72 },
     },
   };
+  const fire = withFire ? {
+    layer: { visible: false, view: {} },
+    playOnce(onEnd) { calls.fireEnd = onEnd; calls.firePlays = (calls.firePlays ?? 0) + 1; },
+    dispose() { calls.fireDisposed = true; },
+  } : null;
   return {
     calls,
     decoration: createReactiveDecoration({
-      object, atlas: { name: "bush" }, animationManager: {}, screenHeight: 1024, api,
+      object, atlas: { name: "bush" }, animationManager: {}, screenHeight: 1024,
+      fireEffect: fire, api,
     }),
   };
 }
 
 const character = (id, type = "player", x = 90) => ({
   id, type, collider: { x, y: 215, width: 20, height: 20 },
+});
+
+test("fire effect is centered over the bush artwork", () => {
+  assert.deepEqual(getCenteredEffectPosition({
+    position: { x: 96, y: 160 },
+    frameSize: { width: 128, height: 128 },
+    effectSize: { width: 64, height: 64 },
+    screenHeight: 1024,
+  }), [64, 768]);
+});
+
+test("bush owns 100 health, a living-only combat collider, and two fire hits", () => {
+  const { decoration, calls } = createHarness({ x: 96, y: 160 }, true);
+  assert.equal(decoration.health, 100);
+  assert.deepEqual(decoration.cell, { x: 1, y: 2 });
+  assert.ok(decoration.getCombatCollider());
+  assert.equal(decoration.applyFireDamage(50), true);
+  assert.equal(decoration.health, 50);
+  assert.equal(decoration.applyFireDamage(50), false);
+  calls.fireEnd();
+  assert.equal(decoration.applyFireDamage(50), true);
+  assert.equal(decoration.health, 0);
+  assert.equal(decoration.isAlive, false);
+  assert.equal(decoration.getCombatCollider(), null);
+  calls.fireEnd();
+  assert.equal(decoration.isDying, true);
+  decoration.update([], 0.25);
+  assert.equal(decoration.isDead, true);
+  assert.equal(calls.firePlays, 2);
+  assert.equal(calls.fireDisposed, true);
 });
 
 test("reactive decoration starts on authored transform and idle frame", () => {

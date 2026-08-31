@@ -48,6 +48,8 @@ export function findNearestThreat(sheepCell, characters, fearProfile) {
 export function createSheepStateMachine({ fearProfile = createFearProfile() } = {}) {
   let state = SheepState.IDLE;
   let threat = null;
+  let bounceReason = null;
+  let separationIntent = null;
 
   return {
     get state() {
@@ -55,6 +57,12 @@ export function createSheepStateMachine({ fearProfile = createFearProfile() } = 
     },
     get threat() {
       return threat;
+    },
+    get bounceReason() {
+      return bounceReason;
+    },
+    get separationIntent() {
+      return separationIntent;
     },
     updateFear(sheepCell, characters) {
       if (state !== SheepState.IDLE) {
@@ -65,8 +73,17 @@ export function createSheepStateMachine({ fearProfile = createFearProfile() } = 
         return { changed: false, state };
       }
       threat = detectedThreat;
+      bounceReason = "threat";
+      separationIntent = null;
       state = SheepState.BOUNCING;
       return { changed: true, state, threat };
+    },
+    beginContact(intent) {
+      threat = null;
+      bounceReason = "contact";
+      separationIntent = { ...intent, direction: { ...intent.direction } };
+      state = SheepState.BOUNCING;
+      return { changed: true, state };
     },
     completeBouncing(hasRoute) {
       if (state !== SheepState.BOUNCING) {
@@ -75,6 +92,8 @@ export function createSheepStateMachine({ fearProfile = createFearProfile() } = 
       state = hasRoute ? SheepState.RUNNING : SheepState.IDLE;
       if (!hasRoute) {
         threat = null;
+        bounceReason = null;
+        separationIntent = null;
       }
       return { changed: true, state };
     },
@@ -84,8 +103,9 @@ export function createSheepStateMachine({ fearProfile = createFearProfile() } = 
       }
       state = SheepState.IDLE;
       threat = null;
+      bounceReason = null;
+      separationIntent = null;
       return { changed: true, state };
     },
   };
 }
-

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   DOM_Z, GAME_DEPTH, TILE_MAP_SUB_Z, getYSortedLayerOrder,
 } from "../src/render-depth.js";
@@ -29,4 +30,19 @@ test("Y-sorted world layers draw lower ground contacts in front", () => {
   assert.ok(behind < inFront);
   assert.ok(behind >= GAME_DEPTH.npcs);
   assert.ok(inFront < GAME_DEPTH.player);
+});
+
+test("every moving character recalculates layer order from Y while updating sprites", async () => {
+  const characterModules = [
+    "../src/player.js",
+    "../src/enemies/goblin/goblin.js",
+    "../src/enemies/warrior/warrior.js",
+    "../src/npc/sheep/sheep.js",
+  ];
+
+  for (const modulePath of characterModules) {
+    const source = await readFile(new URL(modulePath, import.meta.url), "utf8");
+    assert.match(source, /getYSortedLayerOrder\(position\.y, bounds\.height\)/, modulePath);
+    assert.match(source, /layer\.order = order/, modulePath);
+  }
 });

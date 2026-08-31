@@ -103,3 +103,67 @@ test("warrior renders every action and disposes completely", () => {
   warrior.update(1);
   assert.equal(api.calls.updated.length, updateCount);
 });
+
+test("warrior automatically guards an eligible arrow for 0.25 seconds", () => {
+  const api = createFakeApi();
+  const atlases = Object.fromEntries(
+    ["idle", "walking", "attack-1", "attack-2", "guard"]
+      .map((name) => [name, { name }]),
+  );
+  const warrior = createWarrior({
+    atlases,
+    initialPosition: { x: 320, y: 320 },
+    bounds: { width: 576, height: 1024 },
+    obstacles: [],
+    api,
+  });
+  warrior.playAnimation("manager");
+  warrior.setMovementIntent({ x: 1, y: 0 });
+  assert.equal(warrior.attack("attack-1", { x: 1, y: 0 }), true);
+
+  const incoming = [{
+    id: 42,
+    direction: { x: -1, y: 0 },
+    collider: { x: 500, y: 350, width: 72, height: 20 },
+  }];
+  warrior.update(0, [], incoming);
+  assert.equal(warrior.isDefending, true);
+  assert.equal(warrior.state, "guard");
+  assert.equal(api.calls.played.at(-1).sprite.layer.atlas.name, "guard");
+  assert.deepEqual(warrior.update(0.24).position, { x: 320, y: 320 });
+  assert.equal(warrior.isDefending, true);
+  warrior.update(0.01);
+  assert.equal(warrior.isDefending, false);
+  assert.equal(warrior.state, "walking");
+});
+
+test("warrior ignores harmless and rear-facing arrows", () => {
+  const api = createFakeApi();
+  const atlases = Object.fromEntries(
+    ["idle", "walking", "attack-1", "attack-2", "guard"]
+      .map((name) => [name, { name }]),
+  );
+  const warrior = createWarrior({
+    atlases,
+    initialPosition: { x: 320, y: 320 },
+    bounds: { width: 576, height: 1024 },
+    obstacles: [],
+    api,
+  });
+  const movingAway = [{
+    id: 8,
+    direction: { x: -1, y: 0 },
+    collider: { x: 200, y: 350, width: 72, height: 20 },
+  }];
+  warrior.update(0, [], movingAway);
+  assert.equal(warrior.isDefending, false);
+
+  const approachingFromBehind = [{
+    id: 9,
+    direction: { x: 1, y: 0 },
+    collider: { x: 70, y: 350, width: 72, height: 20 },
+  }];
+  warrior.update(0, [], approachingFromBehind);
+  warrior.update(0, [], approachingFromBehind);
+  assert.equal(warrior.isDefending, false);
+});

@@ -26,7 +26,7 @@ const COLOR_THREE_COLLIDABLE_IDS = [
   27, 28, 29, 30, 32, 33, 34, 36, 39, 41, 42, 43, 44, 45, 48, 50, 51, 52, 53,
 ];
 const LEVEL01_AUTHORED_CONTENT_SHA256 =
-  "aecddd9663b61bb6dd9e5124c3aae88f8db7352ff165b2f1f81f752447048f38";
+  "1354f6070f776bcc131576552177fa9323025435d824c0d6644402f353289693";
 
 async function readJson(url) {
   return JSON.parse(await readFile(url, "utf8"));

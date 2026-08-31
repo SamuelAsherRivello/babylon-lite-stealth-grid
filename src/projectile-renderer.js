@@ -21,6 +21,16 @@ const ARROW_ATLAS_FRAME = { width: 64, height: 64 };
 // The opaque artwork is then covered by a separate tight gameplay collider.
 const ARROW_RENDER_SIZE = 64;
 const ARROW_CAPACITY = 32;
+export const DEFLECT_DURATION_SECONDS = 0.25;
+const DEFLECT_SPEED = 240;
+const DEFLECT_ROTATION = Math.PI / 2;
+
+const DEFAULT_API = Object.freeze({
+  addSprite2D,
+  createSprite2DLayer,
+  removeSprite2D,
+  updateSprite2D,
+});
 
 export function getProjectileRotation(direction) {
   if (direction.y > 0) {
@@ -39,8 +49,8 @@ export function loadArrowAtlas(engine) {
   });
 }
 
-export function createProjectileRenderer({ atlas, bounds, obstacles }) {
-  const layer = createSprite2DLayer(atlas, {
+export function createProjectileRenderer({ atlas, bounds, obstacles, api = DEFAULT_API }) {
+  const layer = api.createSprite2DLayer(atlas, {
     capacity: ARROW_CAPACITY,
     order: GAME_DEPTH.projectiles,
     pivot: [0.5, 0.5],
@@ -49,7 +59,7 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
   let nextProjectileId = 0;
 
   function removeAt(index) {
-    removeSprite2D(active[index].sprite);
+    api.removeSprite2D(active[index].sprite);
     active.splice(index, 1);
   }
 
@@ -62,13 +72,19 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
 
       const projectile = createProjectile(position, direction);
       const screen = worldToScreen(projectile.position, 1, bounds.height);
-      const sprite = addSprite2D(layer, {
+      const sprite = api.addSprite2D(layer, {
         positionPx: [screen.x, screen.y],
         sizePx: [ARROW_RENDER_SIZE, ARROW_RENDER_SIZE],
         frame: 0,
         rotation: getProjectileRotation(projectile.direction),
       });
-      active.push({ id: nextProjectileId, projectile, sprite, hit: false });
+      active.push({
+        id: nextProjectileId,
+        projectile,
+        sprite,
+        hit: false,
+        deflection: null,
+      });
       nextProjectileId += 1;
       return true;
     },
@@ -87,9 +103,18 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
         record.hit = true;
       }
     },
+    deflect(id) {
+      const record = active.find((entry) => entry.id === Number(id));
+      if (!record || record.hit || record.deflection) return false;
+      record.deflection = {
+        elapsedSeconds: 0,
+        startRotation: getProjectileRotation(record.projectile.direction),
+      };
+      return true;
+    },
     getColliders() {
       return active
-        .filter(({ hit }) => !hit)
+        .filter(({ hit, deflection }) => !hit && !deflection)
         .map(({ id, projectile }) => ({
           id,
           type: "projectile",
@@ -97,9 +122,39 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
           collider: getProjectileCollider(projectile),
         }));
     },
+    getProjectiles() {
+      return active.map(({ id, projectile, deflection }) => ({
+        id,
+        direction: { ...projectile.direction },
+        position: { ...projectile.position },
+        state: deflection ? "deflected" : "flying",
+      }));
+    },
     update(deltaSeconds, dynamicColliders = []) {
       for (let index = active.length - 1; index >= 0; index -= 1) {
         const record = active[index];
+        if (record.deflection) {
+          const activeDelta = Math.max(0, deltaSeconds);
+          record.deflection.elapsedSeconds = Math.min(
+            DEFLECT_DURATION_SECONDS,
+            record.deflection.elapsedSeconds + activeDelta,
+          );
+          record.projectile.position.x -= (
+            record.projectile.direction.x * DEFLECT_SPEED * activeDelta
+          );
+          record.projectile.position.y -= (
+            record.projectile.direction.y * DEFLECT_SPEED * activeDelta
+          );
+          const progress = record.deflection.elapsedSeconds / DEFLECT_DURATION_SECONDS;
+          const screen = worldToScreen(record.projectile.position, 1, bounds.height);
+          api.updateSprite2D(record.sprite, {
+            positionPx: [screen.x, screen.y],
+            rotation: record.deflection.startRotation + DEFLECT_ROTATION * progress,
+            alpha: 1 - progress,
+          });
+          if (progress >= 1) removeAt(index);
+          continue;
+        }
         const result = advanceProjectile(
           record.projectile,
           deltaSeconds,
@@ -115,7 +170,7 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
         }
 
         const screen = worldToScreen(record.projectile.position, 1, bounds.height);
-        updateSprite2D(record.sprite, { positionPx: [screen.x, screen.y] });
+        api.updateSprite2D(record.sprite, { positionPx: [screen.x, screen.y] });
       }
     },
     dispose() {

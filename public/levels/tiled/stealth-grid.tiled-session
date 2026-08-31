@@ -1,21 +1,21 @@
 {
-    "activeFile": "tilesets/Tilemap_color3.tsj",
+    "activeFile": "maps/Level01.tmj",
     "expandedProjectPaths": [
-        "tilesets",
         "maps",
-        "."
+        ".",
+        "tilesets"
     ],
     "fileStates": {
         "maps/Level01.tmj": {
             "expandedObjectLayers": [
-                6,
-                5
+                5,
+                6
             ],
-            "scale": 0.33,
-            "selectedLayer": 0,
+            "scale": 0.5,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 383.3333333333333,
-                "y": 480.3030303030303
+                "x": -138,
+                "y": 427
             }
         },
         "maps/Level01.tmj.bak.tmj": {
@@ -73,16 +73,15 @@
     },
     "map.lastUsedFormat": "json",
     "openFiles": [
-        "maps/Level01.tmj",
-        "tilesets/Tilemap_color3.tsj"
+        "maps/Level01.tmj"
     ],
     "project": "stealth-grid.tiled-project",
     "recentFiles": [
+        "maps/Level01.tmj",
         "tilesets/Tilemap_color1.tsj",
         "tilesets/Tilemap_color2.tsj",
         "tilesets/Tilemap_color4.tsj",
         "tilesets/Tilemap_color3.tsj",
-        "maps/Level01.tmj",
         "tilesets/Tilemap_color5.tsj",
         "tilesets/TinySwordsBushDecorations.tsj",
         "maps/Level01.tmj.bak.tmj",

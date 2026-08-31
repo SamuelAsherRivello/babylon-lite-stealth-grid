@@ -69,11 +69,31 @@ export class AnimatedParticleEffect {
     return this;
   }
 
+  playOnce(onComplete) {
+    const { frameCount, frameDurationMs } = this.descriptor;
+    const options = { onEnd: () => {
+      this.isPlaying = false;
+      if (onComplete) onComplete();
+    } };
+    if (this.animation !== null && this.isPlaying) this.api.stopSpriteAnimation(this.animation);
+    this.animation = this.api.playSprite2DAnimation(
+      this.animationManager, this.sprite, 0, frameCount - 1, false, frameDurationMs, options,
+    );
+    this.isPlaying = true;
+    return this;
+  }
+
   stop() {
     if (this.animation !== null && this.isPlaying) {
       this.api.stopSpriteAnimation(this.animation);
     }
     this.isPlaying = false;
     return this;
+  }
+
+  dispose() {
+    this.stop();
+    this.layer.visible = false;
+    if (this.api.removeSprite2D) this.api.removeSprite2D(this.sprite);
   }
 }

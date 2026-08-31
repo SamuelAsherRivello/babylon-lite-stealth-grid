@@ -14,7 +14,7 @@ import {
   worldToGrid,
   worldToScreen,
 } from "../../game-logic.js";
-import { GAME_DEPTH } from "../../render-depth.js";
+import { getYSortedLayerOrder } from "../../render-depth.js";
 import {
   WARRIOR_ANIMATION_CATALOG,
   WARRIOR_ANIMATION_NAMES,
@@ -24,6 +24,10 @@ import {
   createWarriorStateMachine,
   selectWarriorAction,
 } from "./warrior-state.js";
+import {
+  createWarriorDefenseConfig,
+  selectIncomingProjectile,
+} from "./warrior-defense.js";
 
 export const WARRIOR_FRAME = Object.freeze({ width: 192, height: 192 });
 export const WARRIOR_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
@@ -79,6 +83,7 @@ export function createWarrior({
   bounds,
   obstacles,
   movementSpeed = 120,
+  defenseConfig = {},
   api = DEFAULT_API,
 }) {
   const character = {
@@ -87,6 +92,8 @@ export function createWarrior({
     collider: WARRIOR_MOVEMENT_COLLIDER,
   };
   const stateMachine = createWarriorStateMachine();
+  const defense = createWarriorDefenseConfig(defenseConfig);
+  const attemptedProjectileIds = new Set();
   let position = { ...initialPosition };
   let movementIntent = { x: 0, y: 0 };
   let facing = 1;
@@ -97,15 +104,17 @@ export function createWarrior({
   let knockback = { x: 0, y: 0 };
   let knockbackTimer = 0;
   let knockbackDuration = 0;
+  let defenseRemainingSeconds = 0;
 
   const layers = {};
   const sprites = {};
   const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const initialOrder = getYSortedLayerOrder(position.y, bounds.height);
   for (const name of WARRIOR_ANIMATION_NAMES) {
     const descriptor = WARRIOR_ANIMATION_CATALOG[name];
     const layer = api.createSprite2DLayer(atlases[name], {
       capacity: 1,
-      order: GAME_DEPTH.npcs,
+      order: initialOrder,
       pivot: [...descriptor.pivot],
       visible: name === WarriorState.IDLE,
     });
@@ -119,7 +128,7 @@ export function createWarrior({
 
   function updateSprites() {
     const screenPosition = worldToScreen(position, 1, bounds.height);
-    const order = GAME_DEPTH.npcs + screenPosition.y / (bounds.height * 4);
+    const order = getYSortedLayerOrder(position.y, bounds.height);
     for (const layer of Object.values(layers)) {
       layer.order = order;
     }
@@ -216,6 +225,9 @@ export function createWarrior({
       return stateMachine.state === WarriorState.ATTACK_1
         || stateMachine.state === WarriorState.ATTACK_2;
     },
+    get isDefending() {
+      return defenseRemainingSeconds > 0;
+    },
     attack(name = WarriorState.ATTACK_1, direction = { x: 0, y: 0 }) {
       if (disposed) return false;
       const transition = stateMachine.startAttack(name);
@@ -228,6 +240,7 @@ export function createWarrior({
     },
     setGuarding(enabled, direction = { x: 0, y: 0 }) {
       if (disposed) return false;
+      if (defenseRemainingSeconds > 0) return false;
       const selection = selectWarriorAction("guard", direction, facing);
       facing = selection.facing;
       currentFlipX = selection.flipX;
@@ -280,8 +293,36 @@ export function createWarrior({
     setMovementIntent(movement) {
       movementIntent = normalizeMovement(movement);
     },
-    update(deltaSeconds, dynamicColliders = []) {
+    update(deltaSeconds, dynamicColliders = [], projectiles = []) {
       if (disposed) {
+        return { position: { ...position }, state: stateMachine.state };
+      }
+      if (defenseRemainingSeconds <= 0) {
+        const incoming = selectIncomingProjectile(
+          projectiles,
+          this.getCombatCollider(),
+          facing,
+          defense,
+          attemptedProjectileIds,
+        );
+        if (incoming) {
+          currentFlipX = facing < 0;
+          defenseRemainingSeconds = defense.defenseDurationSeconds;
+          stateMachine.startDefense();
+          playStateAnimation(WarriorState.GUARD);
+        }
+      }
+      if (defenseRemainingSeconds > 0) {
+        defenseRemainingSeconds = Math.max(
+          0,
+          defenseRemainingSeconds - Math.max(0, deltaSeconds),
+        );
+        if (defenseRemainingSeconds < 1e-9) defenseRemainingSeconds = 0;
+        if (defenseRemainingSeconds === 0) {
+          const transition = stateMachine.completeDefense(movementIntent);
+          if (transition.changed) playStateAnimation(transition.state);
+        }
+        updateSprites();
         return { position: { ...position }, state: stateMachine.state };
       }
       const knockbackMovement = getKnockbackMovement(deltaSeconds);

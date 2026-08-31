@@ -105,12 +105,12 @@
             73, 74, 75, 43, 43, 73, 74, 75, 0,
             82, 74, 84, 0, 0, 73, 74, 75, 0,
             43, 76, 44, 0, 0, 82, 83, 84, 0,
-            63, 82, 98, 0, 0, 43, 43, 44, 0,
+            63, 82, 98, 0, 0, 100, 101, 102, 0,
             63, 43, 107, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 90, 0,
-            0, 0, 0, 0, 0, 0, 0, 94, 0,
-            0, 0, 0, 0, 0, 0, 0, 103, 0,
+            0, 0, 0, 0, 0, 95, 92, 93, 0,
+            0, 0, 0, 0, 0, 104, 101, 103, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             64, 65, 66, 0, 0, 64, 65, 65, 66,
@@ -192,7 +192,6 @@
         {
          "draworder":"topdown",
          "id":6,
-         "locked":true,
          "name":"Y-Sorted Props",
          "objects":[
                 {
@@ -207,6 +206,32 @@
                  "width":64,
                  "x":478.666666666667,
                  "y":489.333333333333
+                }, 
+                {
+                 "gid":55,
+                 "height":64,
+                 "id":6,
+                 "name":"Bush 1",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"ReactiveDecoration",
+                 "visible":true,
+                 "width":64,
+                 "x":290,
+                 "y":492
+                }, 
+                {
+                 "gid":55,
+                 "height":64,
+                 "id":7,
+                 "name":"Bush 1",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"ReactiveDecoration",
+                 "visible":true,
+                 "width":64,
+                 "x":34,
+                 "y":554
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -215,7 +240,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":6,
+ "nextobjectid":8,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

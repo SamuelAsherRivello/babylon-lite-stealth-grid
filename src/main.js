@@ -27,19 +27,24 @@ import { GRID } from "./grid-contract.js";
 import { createLevelTerrainTiles } from "./tiled-terrain.js";
 import {
   PLAYER_FRAME,
+  PLAYER_MOVEMENT_COLLIDER,
+  PLAYER_PIVOT,
   createPlayer,
   loadPlayerAtlases,
 } from "./player.js";
 import {
   GOBLIN_FRAME,
+  GOBLIN_MOVEMENT_COLLIDER,
+  GOBLIN_PIVOT,
   createGoblin,
   loadGoblinAtlases,
 } from "./enemies/goblin/goblin.js";
-import {
-  createGoblinDemoController,
-} from "./enemies/goblin/goblin-demo-controller.js";
+import { createGoblinBehaviorController } from "./enemies/goblin/goblin-behavior-controller.js";
+import { createGridWalkability } from "./npc/sheep/sheep-navigation.js";
 import {
   WARRIOR_FRAME,
+  WARRIOR_MOVEMENT_COLLIDER,
+  WARRIOR_PIVOT,
   createWarrior,
   loadWarriorAtlases,
 } from "./enemies/warrior/warrior.js";
@@ -48,21 +53,25 @@ import {
 } from "./enemies/warrior/warrior-demo-controller.js";
 import {
   SHEEP_FRAME_SIZE,
+  SHEEP_MOVEMENT_COLLIDER,
+  SHEEP_PIVOT,
   createSheep,
   loadSheepAtlases,
 } from "./npc/sheep/sheep.js";
 import { CharacterType } from "./npc/sheep/sheep-state.js";
+import { createSheepContactCoordinator } from "./npc/sheep/sheep-flock.js";
 import { EnemyState } from "./enemies/enemy-state.js";
 import {
   createProjectileRenderer,
   loadArrowAtlas,
 } from "./projectile-renderer.js";
+import { resolveProjectileHit } from "./projectile-combat.js";
 import { createPauseController } from "./pause-controller.js";
 import {
   applyAnimatedTilePreviewSetting,
   applyParticleFxPreviewSetting,
 } from "./preview-settings.js";
-import { PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
+import { Fire03ParticleEffect, PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
 import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
 import { loadReleaseMetadata } from "./release-metadata.js";
 import { createCoordinatesUi } from "./ui/coordinates-ui.js";
@@ -85,7 +94,10 @@ import {
   createInitialSpawnerConfigs,
 } from "./spawner-catalog.js";
 import { createSpawnerMarker } from "./spawner-marker.js";
-import { createReactiveDecoration } from "./decorations/reactive-decoration.js";
+import {
+  createReactiveDecoration,
+  getCenteredEffectPosition,
+} from "./decorations/reactive-decoration.js";
 import { createCharacterColliderDrawCommands } from "./collider-diagnostics.js";
 
 const SCREEN_WIDTH = GRID.widthPx;
@@ -95,11 +107,11 @@ const WATER_FOAM_FRAME_SIZE = 192;
 const WATER_FOAM_FRAME_COUNT = 16;
 const WATER_FOAM_FRAME_DURATION_MS = 100;
 const DEATH_ANIMATION_DURATION_SECONDS = 0.25;
-const DAMAGE_FLASH_DURATION_SECONDS = 0.4;
+const DAMAGE_FLASH_DURATION_SECONDS = 0.6;
 const DEATH_ROTATION_DEGREES = 20;
 const MAX_HEALTH = 100;
 const KNOCKBACK_DURATION_SECONDS = 0.2;
-const KNOCKBACK_SPEED_PIXELS_PER_SECOND = 14.4;
+const KNOCKBACK_SPEED_PIXELS_PER_SECOND = 17.28;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const EMPTY_TERRAIN_FRAMES = new Set([
   4, 13, 22, 31, 37, 38, 40, 46, 47, 49,
@@ -262,6 +274,10 @@ async function start() {
   }
 
   const engine = await createEngine(canvas);
+  // Temporary deterministic setup for hands-on bush-burning QA.
+  const temporaryBushQaMode = true;
+  const verifyBushBurning = temporaryBushQaMode
+    || new URLSearchParams(globalThis.location.search).has("verifyBushBurning");
   const animationManager = createSpriteAnimationManager();
   const level = await loadTiledMap(`${import.meta.env.BASE_URL}levels/tiled/maps/Level01.tmj`);
   const terrainImages = new Set(collectTiledLayerTiles(level).map(({ image }) => image));
@@ -314,12 +330,31 @@ async function start() {
       }),
     ]),
   ));
-  const reactiveDecorations = level.reactiveDecorations.map((object) => (
+  const bushFireEffects = await Promise.all(level.reactiveDecorations.map((object) => (
+    Fire03ParticleEffect.create({
+      engine,
+      animationManager,
+      position: getCenteredEffectPosition({
+        position: object.position,
+        frameSize: object.decoration.frameSize,
+        effectSize: {
+          width: Fire03ParticleEffect.descriptor.displaySize[0],
+          height: Fire03ParticleEffect.descriptor.displaySize[1],
+        },
+        screenHeight: SCREEN_HEIGHT,
+      }),
+      order: GAME_DEPTH.effects,
+      visible: false,
+    })
+  )));
+  const reactiveDecorations = level.reactiveDecorations.map((object, index) => (
     createReactiveDecoration({
       object,
       atlas: decorationAtlasByImage.get(object.decoration.image),
       animationManager,
       screenHeight: SCREEN_HEIGHT,
+      tileSize: TILE_SIZE,
+      fireEffect: bushFireEffects[index],
     })
   ));
 
@@ -352,6 +387,7 @@ async function start() {
   });
   let renderer = null;
   let nextActorId = 1;
+  const sheepContactCoordinator = createSheepContactCoordinator();
 
   function attachActor(record) {
     if (renderer) {
@@ -436,12 +472,49 @@ async function start() {
       onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }),
       onKnockback: (direction, options) => actor.applyKnockback(direction, options),
     });
-    return attachActor({
+    const record = {
       type: SpawnerType.ENEMY,
+      character: SpawnerCharacter.GOBLIN,
       actor,
       combat,
-      controller: createGoblinDemoController(actor),
+      controller: null,
+    };
+    const isWalkable = createGridWalkability({
+      bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+      character: { frame: GOBLIN_FRAME, pivot: GOBLIN_PIVOT, collider: GOBLIN_MOVEMENT_COLLIDER },
+      grid: GRID,
+      obstacles: obstacleColliders,
     });
+    record.controller = createGoblinBehaviorController(actor, {
+      grid: GRID,
+      spawnCell: {
+        x: Math.floor(actor.getMovementCollider().x / TILE_SIZE),
+        y: Math.floor(actor.getMovementCollider().y / TILE_SIZE),
+      },
+      isWalkable,
+      bushChance: verifyBushBurning ? 1 : 0.25,
+      idleRange: verifyBushBurning ? [0, 0] : [3, 5],
+      prioritizeBushes: verifyBushBurning,
+      getWorld: () => ({
+        characters: verifyBushBurning ? [] : [
+          ...getRecordsByType(SpawnerType.PLAYER),
+          ...getRecordsByType(SpawnerType.SHEEP),
+        ].filter(({ combat: targetCombat }) => targetCombat.isAlive).map((target) => ({
+          id: target.combat.label,
+          isAlive: target.combat.isAlive,
+          position: target.actor.getPosition(),
+          cell: typeof target.actor.getGridPosition === "function"
+            ? target.actor.getGridPosition(TILE_SIZE)
+            : {
+                x: Math.floor(target.actor.getPosition().x / TILE_SIZE),
+                y: Math.floor(target.actor.getPosition().y / TILE_SIZE),
+              },
+        })),
+        bushes: reactiveDecorations.filter((decoration) => !decoration.isDead)
+          .map((decoration) => decoration.getSnapshot()),
+      }),
+    });
+    return attachActor(record);
   }
 
   function createWarriorRecord(position) {
@@ -504,6 +577,35 @@ async function start() {
     [SpawnerCharacter.GOBLIN]: createGoblinRecord,
     [SpawnerCharacter.WARRIOR]: createWarriorRecord,
   };
+  const spawnCharacterShapes = {
+    [SpawnerCharacter.PLAYER]: {
+      frame: PLAYER_FRAME,
+      pivot: PLAYER_PIVOT,
+      collider: PLAYER_MOVEMENT_COLLIDER,
+    },
+    [SpawnerCharacter.SHEEP]: {
+      frame: { width: SHEEP_FRAME_SIZE, height: SHEEP_FRAME_SIZE },
+      pivot: SHEEP_PIVOT,
+      collider: SHEEP_MOVEMENT_COLLIDER,
+    },
+    [SpawnerCharacter.GOBLIN]: {
+      frame: GOBLIN_FRAME,
+      pivot: GOBLIN_PIVOT,
+      collider: GOBLIN_MOVEMENT_COLLIDER,
+    },
+    [SpawnerCharacter.WARRIOR]: {
+      frame: WARRIOR_FRAME,
+      pivot: WARRIOR_PIVOT,
+      collider: WARRIOR_MOVEMENT_COLLIDER,
+    },
+  };
+  const spawnWalkability = Object.fromEntries(Object.entries(spawnCharacterShapes)
+    .map(([character, shape]) => [character, createGridWalkability({
+      bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+      character: shape,
+      grid: GRID,
+      obstacles: obstacleColliders,
+    })]));
   const spawnerMarkers = spawnerConfigs.map((config) => createSpawnerMarker({
     ...markerDefinitions[config.character],
     worldPosition: config.position,
@@ -512,6 +614,9 @@ async function start() {
   }));
   const spawners = spawnerConfigs.map((config) => createSpawner({
     ...config,
+    tileSize: TILE_SIZE,
+    isWalkable: (_position, cell) => spawnWalkability[config.character](cell),
+    getActorPosition: (record) => record.actor.getPosition(),
     createActor: actorFactories[config.character],
     disposeActor: disposeActorRecord,
   }));
@@ -522,6 +627,20 @@ async function start() {
   const getRecordsByType = (type) => spawners
     .filter((spawner) => spawner.config.type === type)
     .flatMap((spawner) => spawner.actors);
+  const getBushBurningSnapshot = () => ({
+      bushes: reactiveDecorations.map((decoration) => ({
+        id: decoration.id,
+        health: decoration.health,
+        isAlive: decoration.isAlive,
+        isDying: decoration.isDying,
+        isDead: decoration.isDead,
+        firePlaying: decoration.firePlaying,
+      })),
+      goblins: getRecordsByType(SpawnerType.ENEMY)
+        .filter(({ character }) => character === SpawnerCharacter.GOBLIN)
+        .map(({ combat, controller }) => ({ id: combat.label, mode: controller.mode })),
+    });
+  globalThis.bushBurningDebug = Object.freeze({ snapshot: getBushBurningSnapshot });
   let activeTouchPairs = new Set();
 
   // Temporary preview layer: keep animated terrain isolated until the final
@@ -564,6 +683,7 @@ async function start() {
     layers: [
       ...terrainLayers,
       ...reactiveDecorations.map((decoration) => decoration.layer),
+      ...bushFireEffects.map((effect) => effect.layer),
       ...spawnerMarkers.map((marker) => marker.layer),
       ...spawners.flatMap((spawner) => (
         spawner.actors.flatMap((record) => record.actor.layers)
@@ -670,7 +790,7 @@ async function start() {
       layer.view.zoom = viewportScale;
     }
     for (const decoration of reactiveDecorations) {
-      decoration.layer.view.zoom = viewportScale;
+      decoration.setViewportScale(viewportScale);
     }
     for (const spawner of spawners) {
       for (const record of spawner.actors) {
@@ -752,12 +872,45 @@ async function start() {
         ? [{ type: CharacterType.PLAYER, collider: playerMovementCollider }]
         : [];
       const projectileState = projectiles.getColliders();
-      for (const record of sheepRecords) {
-        if (record.combat.isAlive) {
-          record.actor.update(
+      const sheepSnapshots = sheepRecords.map((record) => ({
+        id: record.combat.label,
+        isAlive: record.combat.isAlive,
+        position: record.actor.getPosition(),
+        requestedPosition: record.actor.getRequestedPosition(activeDelta),
+        collider: record.combat.isAlive ? record.actor.getMovementCollider() : null,
+        contactPartnerId: record.actor.getContactPartnerId(),
+      }));
+      const sheepContactResult = sheepContactCoordinator.update(sheepSnapshots);
+      const sheepRecordById = new Map(
+        sheepRecords.map((record) => [record.combat.label, record]),
+      );
+      for (const [id, intent] of sheepContactResult.intents) {
+        const record = sheepRecordById.get(id);
+        const partner = sheepRecordById.get(intent.partnerId);
+        if (record?.combat.isAlive && partner?.combat.isAlive) {
+          record.actor.beginContact({
+            ...intent,
+            partnerCell: partner.actor.getGridCell(),
+          });
+        }
+      }
+
+      for (const currentRecord of sheepRecords) {
+        const otherSheepColliders = sheepRecords
+          .filter((record) => (
+            record.combat.isAlive
+            && record.combat.label !== currentRecord.combat.label
+          ))
+          .map((record) => ({
+            type: "npc",
+            id: record.combat.label,
+            collider: record.actor.getMovementCollider(),
+          }));
+        if (currentRecord.combat.isAlive) {
+          currentRecord.actor.update(
             activeDelta,
             playerRecord?.combat.isAlive && playerSnapshot ? [playerSnapshot] : [],
-            [...sheepDynamicColliders, ...projectileState],
+            [...sheepDynamicColliders, ...otherSheepColliders, ...projectileState],
           );
         }
       }
@@ -773,7 +926,7 @@ async function start() {
             : []),
           ...sheepMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: "npc", collider })),
-        ]);
+        ], record.character === SpawnerCharacter.WARRIOR ? projectileState : []);
       }
 
       const reactiveCharacters = [
@@ -796,7 +949,7 @@ async function start() {
         })).filter(({ collider }) => collider),
       ];
       for (const decoration of reactiveDecorations) {
-        decoration.update(reactiveCharacters);
+        decoration.update(reactiveCharacters, activeDelta);
       }
 
       projectiles.update(activeDelta);
@@ -808,12 +961,12 @@ async function start() {
             continue;
           }
           if (collidersOverlap(collider, target.collider)) {
-            target.record.combat.applyDamage(
-              target.record.type === SpawnerType.SHEEP ? 100 : 50,
-              direction,
+            const result = resolveProjectileHit(
+              projectiles,
+              { id, direction },
+              target.record,
             );
-            projectiles.markHit(id);
-            projectilesToRemove.push(id);
+            if (result === "damaged") projectilesToRemove.push(id);
             hit = true;
             break;
           }
@@ -903,12 +1056,19 @@ async function start() {
       combatCollider: combat.getCombatCollider(),
       movementCollider: actor.getMovementCollider(),
     }));
+    diagnosticCharacters.push(...reactiveDecorations
+      .filter((decoration) => !decoration.isDead)
+      .map((decoration) => ({
+        combatCollider: decoration.getCombatCollider(),
+        movementCollider: decoration.sensor,
+      })));
     drawDiagnostics(
       terrainTiles,
       diagnosticCharacters,
       projectiles.getColliders(),
       showColliders,
     );
+    canvas.dataset.bushDebug = JSON.stringify(getBushBurningSnapshot());
 
     requestAnimationFrame(update);
   }

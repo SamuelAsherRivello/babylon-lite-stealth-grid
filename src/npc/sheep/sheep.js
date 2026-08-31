@@ -22,8 +22,9 @@ import {
   createGridWalkability,
   gridCellCenter,
   planFleeRoute,
+  planSeparationRoute,
 } from "./sheep-navigation.js";
-import { GAME_DEPTH } from "../../render-depth.js";
+import { getYSortedLayerOrder } from "../../render-depth.js";
 
 export const SHEEP_FRAME_SIZE = 128;
 export const SHEEP_PIVOT = { x: 0.5, y: 0.84 };
@@ -120,10 +121,11 @@ export function createSheep({
   const layers = {};
   const sprites = {};
   const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const initialOrder = getYSortedLayerOrder(position.y, bounds.height);
   for (const animationName of Object.keys(ANIMATIONS)) {
     const layer = api.createSprite2DLayer(atlases[animationName], {
       capacity: 1,
-      order: GAME_DEPTH.npcs,
+      order: initialOrder,
       pivot: [SHEEP_PIVOT.x, SHEEP_PIVOT.y],
       visible: animationName === SheepState.IDLE,
     });
@@ -144,6 +146,10 @@ export function createSheep({
 
   function updateSprites() {
     const screenPosition = worldToScreen(position, 1, bounds.height);
+    const order = getYSortedLayerOrder(position.y, bounds.height);
+    for (const layer of Object.values(layers)) {
+      layer.order = order;
+    }
     for (const sprite of Object.values(sprites)) {
       api.updateSprite2D(sprite, {
         positionPx: [screenPosition.x, screenPosition.y - SHEEP_RENDER_OFFSET_Y],
@@ -153,6 +159,18 @@ export function createSheep({
   }
 
   function planRoute() {
+    const separationIntent = stateMachine.separationIntent;
+    if (separationIntent) {
+      const separationBlockers = dynamicColliders.filter(
+        ({ id }) => id !== separationIntent.partnerId,
+      );
+      return planSeparationRoute({
+        start: getGridCell(),
+        partner: separationIntent.partnerCell,
+        preferredDirection: separationIntent.direction,
+        isWalkable: (cell) => isWalkable(cell, separationBlockers),
+      }).map((cell) => gridCellCenter(cell, grid.tileSizePx));
+    }
     const threat = stateMachine.threat;
     if (!threat) {
       return [];
@@ -230,6 +248,10 @@ export function createSheep({
       facing = movement.x < 0 ? -1 : 1;
     }
     const step = Math.min(movementSpeed * deltaSeconds, distance);
+    const separationPartnerId = stateMachine.separationIntent?.partnerId;
+    const movementBlockers = dynamicColliders.filter(
+      ({ id }) => id !== separationPartnerId,
+    );
     const nextPosition = moveWithCollisions(
       position,
       movement,
@@ -238,9 +260,7 @@ export function createSheep({
       character,
       [
         ...obstacles,
-        ...dynamicColliders
-          .filter(({ type }) => type !== "npc")
-          .map(({ collider }) => collider),
+        ...movementBlockers.map(({ collider }) => collider),
       ],
     );
     if (nextPosition.x === position.x && nextPosition.y === position.y) {
@@ -353,6 +373,31 @@ export function createSheep({
       );
     },
     getGridCell,
+    getRequestedPosition(deltaSeconds) {
+      if (knockbackTimer > 0) {
+        const intensity = Math.max(0, knockbackTimer / knockbackDuration);
+        return {
+          x: position.x + knockback.x * intensity * deltaSeconds,
+          y: position.y + knockback.y * intensity * deltaSeconds,
+        };
+      }
+      if (stateMachine.state !== SheepState.RUNNING || !route[0]) {
+        return { ...position };
+      }
+      const offset = { x: route[0].x - position.x, y: route[0].y - position.y };
+      const distance = Math.hypot(offset.x, offset.y);
+      if (distance <= 0) {
+        return { ...position };
+      }
+      const step = Math.min(movementSpeed * Math.max(0, deltaSeconds), distance);
+      return {
+        x: position.x + offset.x / distance * step,
+        y: position.y + offset.y / distance * step,
+      };
+    },
+    getContactPartnerId() {
+      return stateMachine.separationIntent?.partnerId ?? null;
+    },
     playAnimation(manager) {
       animationManager = manager;
       playStateAnimation(SheepState.IDLE);
@@ -370,9 +415,7 @@ export function createSheep({
           character,
           [
             ...obstacles,
-            ...dynamicColliders
-              .filter(({ type }) => type !== "npc")
-              .map(({ collider }) => collider),
+            ...dynamicColliders.map(({ collider }) => collider),
           ],
         );
         updateSprites();
@@ -389,6 +432,14 @@ export function createSheep({
       return { position: { ...position }, state: stateMachine.state };
     },
     applyKnockback,
+    beginContact(intent) {
+      route = [];
+      const transition = stateMachine.beginContact(intent);
+      if (transition.changed) {
+        playStateAnimation(transition.state);
+      }
+      return transition;
+    },
     dispose() {
       if (activeAnimation) {
         api.stopSpriteAnimation(activeAnimation);

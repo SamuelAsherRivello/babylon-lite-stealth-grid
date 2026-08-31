@@ -26,6 +26,9 @@ export function createSpawner({
   checkIntervalSeconds = DEFAULT_SPAWN_CHECK_INTERVAL_SECONDS,
   guaranteeInitialPopulation = false,
   random = Math.random,
+  tileSize = null,
+  isWalkable = () => true,
+  getActorPosition = (actor) => actor?.position ?? actor?.actor?.getPosition?.(),
   createActor,
   disposeActor = (actor) => actor?.dispose?.(),
 }) {
@@ -50,6 +53,15 @@ export function createSpawner({
   if (typeof random !== "function") {
     throw new TypeError("random must be a function");
   }
+  if (tileSize !== null && (!Number.isFinite(tileSize) || tileSize <= 0)) {
+    throw new RangeError("tileSize must be a positive number or null");
+  }
+  if (typeof isWalkable !== "function") {
+    throw new TypeError("isWalkable must be a function");
+  }
+  if (typeof getActorPosition !== "function") {
+    throw new TypeError("getActorPosition must be a function");
+  }
   if (typeof createActor !== "function") {
     throw new TypeError("createActor must be a function");
   }
@@ -72,10 +84,53 @@ export function createSpawner({
     guaranteeInitialPopulation: Boolean(guaranteeInitialPopulation),
   });
 
+  function getNearbySpawnPositions() {
+    if (tileSize === null) {
+      return [{ ...config.position }];
+    }
+    const occupiedCells = new Set(actors.map(getActorPosition)
+      .filter((actorPosition) => (
+        actorPosition
+        && Number.isFinite(actorPosition.x)
+        && Number.isFinite(actorPosition.y)
+      ))
+      .map((actorPosition) => (
+        `${Math.floor(actorPosition.x / tileSize)},${Math.floor(actorPosition.y / tileSize)}`
+      )));
+    const centerCell = {
+      x: Math.floor(config.position.x / tileSize),
+      y: Math.floor(config.position.y / tileSize),
+    };
+    const candidates = [];
+    for (let yOffset = -1; yOffset <= 1; yOffset += 1) {
+      for (let xOffset = -1; xOffset <= 1; xOffset += 1) {
+        const cell = { x: centerCell.x + xOffset, y: centerCell.y + yOffset };
+        const candidate = {
+          x: (cell.x + 0.5) * tileSize,
+          y: (cell.y + 0.5) * tileSize,
+        };
+        if (!occupiedCells.has(`${cell.x},${cell.y}`) && isWalkable(candidate, cell)) {
+          candidates.push(candidate);
+        }
+      }
+    }
+    return candidates;
+  }
+
   function spawn(count) {
     let created = 0;
     for (let index = 0; index < count; index += 1) {
-      const actor = createActor({ ...config.position });
+      const candidates = getNearbySpawnPositions();
+      if (candidates.length === 0) {
+        break;
+      }
+      const centerIndex = actors.length === 0
+        ? candidates.findIndex(({ x, y }) => x === config.position.x && y === config.position.y)
+        : -1;
+      const selectedIndex = tileSize === null || centerIndex >= 0
+        ? Math.max(0, centerIndex)
+        : Math.min(Math.floor(random() * candidates.length), candidates.length - 1);
+      const actor = createActor(candidates[selectedIndex]);
       if (!actor) {
         throw new Error(`Spawner '${type}' createActor returned no actor`);
       }

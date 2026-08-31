@@ -56,6 +56,15 @@ export function createWarriorStateMachine() {
       }
       return transition(name);
     },
+    startDefense() {
+      return transition(WarriorState.GUARD);
+    },
+    completeDefense(movement) {
+      if (state !== WarriorState.GUARD) {
+        return { changed: false, state };
+      }
+      return transition(locomotionState(movement));
+    },
     completeAttack(movement) {
       if (
         state !== WarriorState.ATTACK_1

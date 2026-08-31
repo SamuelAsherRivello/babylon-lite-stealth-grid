@@ -78,6 +78,38 @@ test("player can guarantee one actor during its immediate startup evaluation", (
   assert.deepEqual(spawner.actors[0].position, { x: 10, y: 20 });
 });
 
+test("a batch uses distinct walkable cells from the spawner-centered 3x3 grid", () => {
+  const { spawner } = createHarness({
+    position: { x: 25, y: 25 },
+    minimumCount: 3,
+    maximumCount: 3,
+    guaranteeInitialPopulation: true,
+    tileSize: 10,
+    random: sequenceRandom([0.5, 0, 0.999999]),
+    isWalkable: ({ x, y }) => !(x === 15 && y === 15),
+  });
+
+  assert.equal(spawner.initialize(), 3);
+  const positions = spawner.actors.map(({ position }) => position);
+  assert.equal(new Set(positions.map(({ x, y }) => `${x},${y}`)).size, 3);
+  assert.ok(positions.every(({ x, y }) => Math.abs(x - 25) <= 10 && Math.abs(y - 25) <= 10));
+  assert.ok(positions.every(({ x, y }) => !(x === 15 && y === 15)));
+});
+
+test("a spawner skips excess creations when no unoccupied walkable nearby cell remains", () => {
+  const { spawner } = createHarness({
+    minimumCount: 2,
+    maximumCount: 2,
+    guaranteeInitialPopulation: true,
+    tileSize: 10,
+    isWalkable: ({ x, y }) => x === 15 && y === 25,
+  });
+
+  assert.equal(spawner.initialize(), 1);
+  assert.equal(spawner.actors.length, 1);
+  assert.deepEqual(spawner.actors[0].position, { x: 15, y: 25 });
+});
+
 test("non-player startup and later evaluations can choose zero", () => {
   const { spawner } = createHarness({ random: () => 0 });
 

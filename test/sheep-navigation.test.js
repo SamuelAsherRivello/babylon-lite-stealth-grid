@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   chooseInclusiveInteger,
   createGridWalkability,
+  planSeparationRoute,
   planFleeRoute,
 } from "../src/npc/sheep/sheep-navigation.js";
 
@@ -65,11 +66,11 @@ test("walkability rejects bounds, full colliders, and partial polygons", () => {
   assert.equal(canWalk({ x: 3, y: 2 }), true);
 });
 
-test("walkability rejects dynamic non-NPC colliders and ignores NPC colliders", () => {
+test("walkability rejects dynamic player and NPC colliders", () => {
   const canWalk = walkability();
   const collider = { type: "circle", x: 224, y: 224, radius: 26 };
   assert.equal(canWalk({ x: 3, y: 3 }, [{ type: "player", collider }]), false);
-  assert.equal(canWalk({ x: 3, y: 3 }, [{ type: "npc", collider }]), true);
+  assert.equal(canWalk({ x: 3, y: 3 }, [{ type: "npc", collider }]), false);
 });
 
 test("planner still returns a valid one-step escape route", () => {
@@ -113,5 +114,33 @@ test("planner returns no route when enclosed", () => {
     minimumSteps: 1, maximumSteps: 3,
     isWalkable: (cell) => cell.x === 3 && cell.y === 3,
     random: () => 0,
+}), []);
+});
+
+test("separation route uses the preferred safe cardinal direction", () => {
+  assert.deepEqual(planSeparationRoute({
+    start: { x: 3, y: 3 },
+    partner: { x: 4, y: 3 },
+    preferredDirection: { x: -1, y: 0 },
+    isWalkable: walkability(),
+  }), [{ x: 2, y: 3 }]);
+});
+
+test("separation route falls back to another safe step that increases distance", () => {
+  const canWalk = (cell) => cell.x === 3 && (cell.y === 3 || cell.y === 4);
+  assert.deepEqual(planSeparationRoute({
+    start: { x: 3, y: 3 },
+    partner: { x: 4, y: 3 },
+    preferredDirection: { x: -1, y: 0 },
+    isWalkable: canWalk,
+  }), [{ x: 3, y: 4 }]);
+});
+
+test("separation route remains stationary when no safe increasing step exists", () => {
+  assert.deepEqual(planSeparationRoute({
+    start: { x: 0, y: 0 },
+    partner: { x: 0, y: 0 },
+    preferredDirection: { x: -1, y: 0 },
+    isWalkable: (cell) => cell.x === 0 && cell.y === 0,
   }), []);
 });

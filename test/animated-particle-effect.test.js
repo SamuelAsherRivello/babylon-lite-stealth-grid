@@ -19,8 +19,8 @@ function createMockApi() {
       calls.push(["addSprite2D", layer, options]);
       return { id: "sprite" };
     },
-    playSprite2DAnimation(manager, sprite, from, to, loop, delayMs) {
-      calls.push(["playSprite2DAnimation", manager, sprite, from, to, loop, delayMs]);
+    playSprite2DAnimation(manager, sprite, from, to, loop, delayMs, options) {
+      calls.push(["playSprite2DAnimation", manager, sprite, from, to, loop, delayMs, options]);
       return { id: "animation", current: from };
     },
     playSpriteFrameAnimation(animation, from, to, loop, delayMs) {
@@ -91,11 +91,29 @@ test("play and stop are idempotent and reuse one animation handle", async () => 
   assert.equal(calls.filter(([name]) => name === "stopSpriteAnimation").length, 1);
   const initialPlay = calls.find(([name]) => name === "playSprite2DAnimation");
   const replays = calls.filter(([name]) => name === "playSpriteFrameAnimation");
-  assert.deepEqual(initialPlay.slice(3), [0, 7, true, 100]);
+  assert.deepEqual(initialPlay.slice(3, 7), [0, 7, true, 100]);
   assert.deepEqual(replays.map((call) => call.slice(2)), [
     [0, 7, true, 100],
     [0, 7, true, 100],
   ]);
   assert.equal(effect.sprite, originalSprite);
   assert.equal(effect.isPlaying, true);
+});
+
+test("one-cycle playback is non-looping, completes once, and can safely restart", async () => {
+  const { api, calls } = createMockApi();
+  const effect = await TestParticleEffect.create({
+    engine: {}, animationManager: {}, position: [0, 0], api,
+  });
+  let completions = 0;
+  effect.playOnce(() => { completions += 1; });
+  let play = calls.filter(([name]) => name === "playSprite2DAnimation").at(-1);
+  assert.deepEqual(play.slice(3, 7), [0, 7, false, 100]);
+  play[7].onEnd();
+  assert.equal(completions, 1);
+  assert.equal(effect.isPlaying, false);
+  effect.playOnce(() => { completions += 1; });
+  play = calls.filter(([name]) => name === "playSprite2DAnimation").at(-1);
+  play[7].onEnd();
+  assert.equal(completions, 2);
 });
