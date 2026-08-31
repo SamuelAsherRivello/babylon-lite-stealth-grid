@@ -33,19 +33,28 @@ function createVolumeControl(documentRef, store, labelText, key) {
   return { row, slider };
 }
 
-function createColliderControl(documentRef, store) {
+export function createDebugControl(documentRef, store, labelText, key) {
   const row = documentRef.createElement("label");
   row.className = "collider-control";
   const label = documentRef.createElement("span");
-  label.textContent = "Collider?";
+  label.textContent = labelText;
   const checkbox = documentRef.createElement("input");
   checkbox.type = "checkbox";
-  checkbox.checked = store.get(DEBUG_SETTING_KEYS.showColliders);
+  checkbox.checked = store.get(key);
   checkbox.addEventListener("change", () => {
-    store.set(DEBUG_SETTING_KEYS.showColliders, checkbox.checked);
+    store.set(key, checkbox.checked);
   });
   row.append(label, checkbox);
   return { row, checkbox };
+}
+
+export function syncDebugPreviewControls(
+  store,
+  particleFxCheckbox,
+  animatedTileCheckbox,
+) {
+  particleFxCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showParticleFxPreview);
+  animatedTileCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview);
 }
 
 function createFullscreenControl(documentRef, applyFullscreen) {
@@ -105,11 +114,30 @@ export function createSettingsUi({
     const sfxControl = createVolumeControl(
       documentRef, store, "SFX", AUDIO_SETTING_KEYS.sfx,
     );
-    const colliderControl = createColliderControl(documentRef, store);
+    const colliderControl = createDebugControl(
+      documentRef,
+      store,
+      "Collider?",
+      DEBUG_SETTING_KEYS.showColliders,
+    );
+    const particleFxControl = createDebugControl(
+      documentRef,
+      store,
+      "Particle FX Preview?",
+      DEBUG_SETTING_KEYS.showParticleFxPreview,
+    );
+    const animatedTileControl = createDebugControl(
+      documentRef,
+      store,
+      "Animated Tile (Preview)",
+      DEBUG_SETTING_KEYS.showAnimatedTilePreview,
+    );
     const fullscreenControl = createFullscreenControl(documentRef, applyFullscreen);
     const musicSlider = musicControl.slider;
     const sfxSlider = sfxControl.slider;
     const colliderCheckbox = colliderControl.checkbox;
+    const particleFxCheckbox = particleFxControl.checkbox;
+    const animatedTileCheckbox = animatedTileControl.checkbox;
     const resetButton = documentRef.createElement("button");
     resetButton.className = "settings-reset";
     resetButton.type = "button";
@@ -119,11 +147,14 @@ export function createSettingsUi({
       musicSlider.value = String(store.get(AUDIO_SETTING_KEYS.music));
       sfxSlider.value = String(store.get(AUDIO_SETTING_KEYS.sfx));
       colliderCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showColliders);
+      syncDebugPreviewControls(store, particleFxCheckbox, animatedTileCheckbox);
     });
     content.append(
       musicControl.row,
       sfxControl.row,
       colliderControl.row,
+      particleFxControl.row,
+      animatedTileControl.row,
       fullscreenControl.row,
       resetButton,
     );
@@ -144,6 +175,11 @@ export function createSettingsUi({
       },
     });
   };
+  gear.addEventListener("keydown", (event) => {
+    if (event.code === "Space" || event.key === " ") {
+      event.preventDefault();
+    }
+  });
   gear.addEventListener("click", open);
 
   return {

@@ -21,11 +21,42 @@ function createStorage(initial = {}) {
   };
 }
 
-test("settings default to music 100, SFX 100, and colliders off", () => {
+test("settings default to music 100, SFX 100, and debug previews off", () => {
   const store = createSettingsStore(createStorage());
   assert.equal(store.get(AUDIO_SETTING_KEYS.music), 100);
   assert.equal(store.get(AUDIO_SETTING_KEYS.sfx), 100);
   assert.equal(store.get(DEBUG_SETTING_KEYS.showColliders), false);
+  assert.equal(store.get(DEBUG_SETTING_KEYS.showParticleFxPreview), false);
+  assert.equal(store.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview), false);
+});
+
+test("preview debug settings persist independently and notify subscribers", () => {
+  const storage = createStorage();
+  const store = createSettingsStore(storage);
+  const observed = [];
+  store.subscribe(
+    DEBUG_SETTING_KEYS.showParticleFxPreview,
+    (value) => observed.push(["particles", value]),
+  );
+  store.subscribe(
+    DEBUG_SETTING_KEYS.showAnimatedTilePreview,
+    (value) => observed.push(["animated-tile", value]),
+  );
+
+  assert.equal(store.set(DEBUG_SETTING_KEYS.showParticleFxPreview, true), true);
+  assert.equal(store.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview), false);
+  assert.equal(store.set(DEBUG_SETTING_KEYS.showAnimatedTilePreview, true), true);
+  assert.deepEqual(observed, [
+    ["particles", true],
+    ["animated-tile", true],
+  ]);
+  assert.deepEqual(JSON.parse(storage.read(SETTINGS_STORAGE_KEY)), {
+    version: SETTINGS_VERSION,
+    values: {
+      [DEBUG_SETTING_KEYS.showParticleFxPreview]: true,
+      [DEBUG_SETTING_KEYS.showAnimatedTilePreview]: true,
+    },
+  });
 });
 
 test("valid settings persist in one versioned document and notify subscribers", () => {
@@ -67,11 +98,15 @@ test("invalid, malformed, and wrong-version settings recover per key", () => {
       [AUDIO_SETTING_KEYS.music]: -1,
       [AUDIO_SETTING_KEYS.sfx]: 75,
       [DEBUG_SETTING_KEYS.showColliders]: "yes",
+      [DEBUG_SETTING_KEYS.showParticleFxPreview]: "yes",
+      [DEBUG_SETTING_KEYS.showAnimatedTilePreview]: 1,
     } }),
   }));
   assert.equal(invalidValues.get(AUDIO_SETTING_KEYS.music), 100);
   assert.equal(invalidValues.get(AUDIO_SETTING_KEYS.sfx), 75);
   assert.equal(invalidValues.get(DEBUG_SETTING_KEYS.showColliders), false);
+  assert.equal(invalidValues.get(DEBUG_SETTING_KEYS.showParticleFxPreview), false);
+  assert.equal(invalidValues.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview), false);
 });
 
 test("unavailable storage falls back to an authoritative in-memory session", () => {
@@ -93,10 +128,14 @@ test("reset removes only game settings, restores defaults, and notifies", () => 
   store.set(AUDIO_SETTING_KEYS.music, 10);
   store.set(AUDIO_SETTING_KEYS.sfx, 20);
   store.set(DEBUG_SETTING_KEYS.showColliders, true);
+  store.set(DEBUG_SETTING_KEYS.showParticleFxPreview, true);
+  store.set(DEBUG_SETTING_KEYS.showAnimatedTilePreview, true);
   const observed = [];
   store.subscribe(AUDIO_SETTING_KEYS.music, (value) => observed.push(["music", value]));
   store.subscribe(AUDIO_SETTING_KEYS.sfx, (value) => observed.push(["sfx", value]));
   store.subscribe(DEBUG_SETTING_KEYS.showColliders, (value) => observed.push(["debug", value]));
+  store.subscribe(DEBUG_SETTING_KEYS.showParticleFxPreview, (value) => observed.push(["particles", value]));
+  store.subscribe(DEBUG_SETTING_KEYS.showAnimatedTilePreview, (value) => observed.push(["animated-tile", value]));
 
   store.reset();
 
@@ -105,7 +144,15 @@ test("reset removes only game settings, restores defaults, and notifies", () => 
   assert.equal(store.get(AUDIO_SETTING_KEYS.music), 100);
   assert.equal(store.get(AUDIO_SETTING_KEYS.sfx), 100);
   assert.equal(store.get(DEBUG_SETTING_KEYS.showColliders), false);
-  assert.deepEqual(observed, [["music", 100], ["sfx", 100], ["debug", false]]);
+  assert.equal(store.get(DEBUG_SETTING_KEYS.showParticleFxPreview), false);
+  assert.equal(store.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview), false);
+  assert.deepEqual(observed, [
+    ["music", 100],
+    ["sfx", 100],
+    ["debug", false],
+    ["particles", false],
+    ["animated-tile", false],
+  ]);
 });
 
 test("category volume normalizes, clamps, mutes, and tolerates no playback", () => {

@@ -27,6 +27,10 @@ import {
   loadArrowAtlas,
 } from "./projectile-renderer.js";
 import { createPauseController } from "./pause-controller.js";
+import {
+  applyAnimatedTilePreviewSetting,
+  applyParticleFxPreviewSetting,
+} from "./preview-settings.js";
 import { PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
 import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
 import { createCoordinatesUi } from "./ui/coordinates-ui.js";
@@ -125,6 +129,7 @@ async function start() {
     capacity: 1,
     order: 2,
     pivot: [0, 0],
+    visible: false,
   });
   const waterFoamPosition = gridCellToScreenForFrame(
     { x: 0, y: 0 },
@@ -149,6 +154,7 @@ async function start() {
         animationManager,
         position,
         order,
+        visible: false,
       })
     )),
   );
@@ -166,7 +172,7 @@ async function start() {
   registerSpriteRenderer(renderer);
 
   player.playAnimation(animationManager);
-  playSprite2DAnimation(
+  const waterFoamAnimation = playSprite2DAnimation(
     animationManager,
     waterFoam,
     0,
@@ -174,9 +180,37 @@ async function start() {
     true,
     WATER_FOAM_FRAME_DURATION_MS,
   );
-  for (const effect of particleEffects) {
-    effect.play();
-  }
+  const setParticleFxPreview = (enabled) => {
+    applyParticleFxPreviewSetting(particleEffects, enabled);
+  };
+  const setAnimatedTilePreview = (enabled) => {
+    applyAnimatedTilePreviewSetting(
+      animatedTerrainLayer,
+      waterFoamAnimation,
+      enabled,
+      undefined,
+      {
+        from: 0,
+        to: WATER_FOAM_FRAME_COUNT - 1,
+        loop: true,
+        frameDurationMs: WATER_FOAM_FRAME_DURATION_MS,
+      },
+    );
+  };
+  setParticleFxPreview(
+    settingsStore.get(DEBUG_SETTING_KEYS.showParticleFxPreview),
+  );
+  setAnimatedTilePreview(
+    settingsStore.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview),
+  );
+  const unsubscribeParticleFxPreview = settingsStore.subscribe(
+    DEBUG_SETTING_KEYS.showParticleFxPreview,
+    setParticleFxPreview,
+  );
+  const unsubscribeAnimatedTilePreview = settingsStore.subscribe(
+    DEBUG_SETTING_KEYS.showAnimatedTilePreview,
+    setAnimatedTilePreview,
+  );
   globalThis.particleFxPreview = Object.freeze({
     effects: Object.freeze([...particleEffects]),
   });
@@ -237,9 +271,14 @@ async function start() {
   requestAnimationFrame(update);
   window.addEventListener("pagehide", () => {
     unsubscribeColliders();
-    for (const effect of particleEffects) {
-      effect.stop();
-    }
+    unsubscribeParticleFxPreview();
+    unsubscribeAnimatedTilePreview();
+    applyParticleFxPreviewSetting(particleEffects, false);
+    applyAnimatedTilePreviewSetting(
+      animatedTerrainLayer,
+      waterFoamAnimation,
+      false,
+    );
     player.dispose();
     projectiles.dispose();
   }, { once: true });

@@ -21,6 +21,7 @@ body {
 
 .stage {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   min-height: 100vh;
   min-height: 100dvh;
   place-items: center;
@@ -29,9 +30,10 @@ body {
 .game-frame {
   position: relative;
   container-type: inline-size;
-  width: min(100vw, 56.25vh);
-  width: min(100dvw, 56.25dvh);
-  height: min(177.7778dvw, 100dvh);
+  width: 56.25vh;
+  width: 56.25dvh;
+  height: 100vh;
+  height: 100dvh;
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #72a94f;

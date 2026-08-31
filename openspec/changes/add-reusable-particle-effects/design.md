@@ -12,6 +12,7 @@ No `/plugins/` convention currently exists in the repository. The available pack
 - Give every concrete effect a small object-oriented lifecycle with safe play and stop controls.
 - Keep pack-specific metadata separate from generic Babylon Lite integration behavior.
 - Make all eight animations simultaneously inspectable without changing the 576x1024 logical viewport.
+- Integrate particle and animated-tile previews with the existing persisted debug-settings model while keeping their visibility and playback independent.
 
 **Non-Goals:**
 
@@ -64,6 +65,14 @@ Native-sized previews were rejected because their combined width is 896 pixels a
 
 Copy `Particle FX.aseprite` to `assets/source/particles/` and copy the eight PNGs to `public/assets/particles/`. The source location is versioned authoring material but is outside Vite's public asset root. Runtime URLs reference only the PNG folder.
 
+### Gate both previews through persisted debug settings
+
+Add `showParticleFxPreview` and `showAnimatedTilePreview` to `DEBUG_SETTING_KEYS`, the known-key list, boolean validation, and false defaults. Add matching Settings checkboxes labelled exactly `Particle FX Preview?` and `Animated Tile (Preview)`, and synchronize both controls during Reset alongside Collider.
+
+Create particle and Water Foam resources once during scene setup, but initialize their layers with `visible: false` and do not start their animations while their settings are off. Subscribe independently to both settings. Enabling a setting sets its layer or layers visible and calls the corresponding play operation; disabling sets them invisible and stops the associated animation handles. Apply the stored value immediately during initialization so a persisted true value is visible on the first rendered frame.
+
+Recreating layers and atlases on every toggle was rejected because visibility is a public mutable Babylon Lite layer property and persistent resources make toggles immediate. Advancing hidden animations was rejected because an off debug preview should consume neither draw work nor animation updates. Using one combined setting was rejected because the user requires independent preview controls.
+
 ## Risks / Trade-offs
 
 - **Large effects lose detail at 64x64 in the overview** -> Preserve native atlas geometry and keep display size configurable so consumers can instantiate those effects at 192x192 elsewhere.
@@ -71,13 +80,14 @@ Copy `Particle FX.aseprite` to `assets/source/particles/` and copy the eight PNG
 - **Stopping may leave a visually unexpected current frame** -> Define stop as halting advancement without hiding or resetting; `play()` always restarts from frame zero.
 - **Descriptor data could drift from edited Aseprite source** -> Unit-test every supplied descriptor against the known exported sheet geometry and document the inspection/export checklist in the plugin README.
 - **DOM debug canvas can still draw over WebGPU sprites** -> Interpret render order as ordering among Babylon sprite layers; keep preview positions away from persistent controls where practical and verify the composed page in-browser.
+- **Persisted preview state could disagree with open Settings controls after Reset** -> Update both checkbox elements from the authoritative store immediately after reset and cover the behavior with UI tests.
 
 ## Migration Plan
 
 1. Copy the untouched Aseprite source and eight exported PNGs to their authoring and runtime destinations.
 2. Add descriptor validation and adapter lifecycle tests before integration code.
 3. Add the shared base and eight concrete particle-effect classes with class-level tests.
-4. Integrate the eight preview layers and centered layout without removing existing animation behavior.
-5. Update documentation, run tests and build, validate the OpenSpec change, and inspect the animations in a real WebGPU browser.
+4. Integrate the eight preview layers and centered layout, then gate both that row and the Water Foam preview through independent persisted debug settings.
+5. Update documentation, run tests and build, validate the OpenSpec change, and inspect default, enabled, reset, reload, and independent-toggle behavior in a real WebGPU browser.
 
 Rollback is additive: remove the new source, runtime assets, adapter, particle classes, tests, and preview wiring. No saved data, dependencies, or existing public APIs require migration.

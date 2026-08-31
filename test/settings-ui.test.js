@@ -2,7 +2,13 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+import { DEBUG_SETTING_KEYS } from "../src/settings-store.js";
 import { GameWindow } from "../src/ui/game-window.js";
+import {
+  createDebugControl,
+  createSettingsUi,
+  syncDebugPreviewControls,
+} from "../src/ui/settings-ui.js";
 
 class FakeClassList {
   values = new Set();
@@ -43,6 +49,74 @@ function click(target, eventTarget = target) {
   Object.defineProperty(event, "target", { value: eventTarget });
   target.dispatchEvent(event);
 }
+
+test("Space does not activate the settings gear", () => {
+  const documentRef = createDocument();
+  const host = new FakeElement();
+  host.isConnected = true;
+  const store = { get: () => 100 };
+  const pauseController = { pause() {}, resume() {} };
+  const settingsUi = createSettingsUi({
+    host,
+    pauseController,
+    store,
+    documentRef,
+  });
+  const event = new Event("keydown", { cancelable: true });
+  Object.defineProperty(event, "code", { value: "Space" });
+
+  settingsUi.gear.dispatchEvent(event);
+
+  assert.equal(event.defaultPrevented, true);
+  assert.equal(settingsUi.activeWindow, null);
+});
+
+test("preview debug controls use exact labels and write independent keys", () => {
+  const documentRef = createDocument();
+  const values = new Map([
+    [DEBUG_SETTING_KEYS.showParticleFxPreview, true],
+    [DEBUG_SETTING_KEYS.showAnimatedTilePreview, false],
+  ]);
+  const writes = [];
+  const store = {
+    get: (key) => values.get(key),
+    set(key, value) {
+      writes.push([key, value]);
+      values.set(key, value);
+    },
+  };
+  const particles = createDebugControl(
+    documentRef,
+    store,
+    "Particle FX Preview?",
+    DEBUG_SETTING_KEYS.showParticleFxPreview,
+  );
+  const animatedTile = createDebugControl(
+    documentRef,
+    store,
+    "Animated Tile (Preview)",
+    DEBUG_SETTING_KEYS.showAnimatedTilePreview,
+  );
+
+  assert.equal(particles.row.children[0].textContent, "Particle FX Preview?");
+  assert.equal(animatedTile.row.children[0].textContent, "Animated Tile (Preview)");
+  assert.equal(particles.checkbox.checked, true);
+  assert.equal(animatedTile.checkbox.checked, false);
+  particles.checkbox.checked = false;
+  particles.checkbox.dispatchEvent(new Event("change"));
+  animatedTile.checkbox.checked = true;
+  animatedTile.checkbox.dispatchEvent(new Event("change"));
+  assert.deepEqual(writes, [
+    [DEBUG_SETTING_KEYS.showParticleFxPreview, false],
+    [DEBUG_SETTING_KEYS.showAnimatedTilePreview, true],
+  ]);
+
+  values.set(DEBUG_SETTING_KEYS.showParticleFxPreview, false);
+  values.set(DEBUG_SETTING_KEYS.showAnimatedTilePreview, false);
+  syncDebugPreviewControls(store, particles.checkbox, animatedTile.checkbox);
+  assert.equal(particles.checkbox.checked, false);
+  assert.equal(animatedTile.checkbox.checked, false);
+});
 
 test("game window provides dialog labelling, focus, and exact dismissal paths", () => {
   const documentRef = createDocument();
@@ -93,7 +167,9 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(source, /title:\s*"Settings Menu"/);
   assert.match(source, /"Music", AUDIO_SETTING_KEYS\.music/);
   assert.match(source, /"SFX", AUDIO_SETTING_KEYS\.sfx/);
-  assert.match(source, /label\.textContent = "Collider\?"/);
+  assert.match(source, /"Collider\?"/);
+  assert.match(source, /"Particle FX Preview\?"/);
+  assert.match(source, /"Animated Tile \(Preview\)"/);
   assert.match(source, /label\.textContent = "FullScreen"/);
   assert.match(source, /checkbox\.checked = Boolean\(documentRef\.fullscreenElement\)/);
   assert.match(source, /applyFullscreen\(checkbox\.checked, documentRef\)/);

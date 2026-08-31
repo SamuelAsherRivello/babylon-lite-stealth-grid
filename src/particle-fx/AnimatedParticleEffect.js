@@ -22,6 +22,7 @@ export class AnimatedParticleEffect {
     animationManager,
     position,
     order = 0,
+    visible,
     api = BABYLON_LITE_SPRITE_API,
   }) {
     this.descriptor = validateAsepriteSpriteDescriptor(
@@ -37,6 +38,7 @@ export class AnimatedParticleEffect {
       descriptor: this.descriptor,
       position,
       order,
+      visible,
       api,
     });
     this.layer = instance.layer;

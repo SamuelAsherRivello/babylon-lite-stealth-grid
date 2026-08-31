@@ -51,14 +51,19 @@ export function createAsepriteSpriteInstance({
   descriptor,
   position,
   order = 0,
+  visible,
   api = BABYLON_LITE_SPRITE_API,
 }) {
   validateAsepriteSpriteDescriptor(descriptor);
-  const layer = api.createSprite2DLayer(atlas, {
+  const layerOptions = {
     capacity: 1,
     order,
     pivot: [...(descriptor.pivot ?? [0, 0])],
-  });
+  };
+  if (visible !== undefined) {
+    layerOptions.visible = visible;
+  }
+  const layer = api.createSprite2DLayer(atlas, layerOptions);
   const sprite = api.addSprite2D(layer, {
     positionPx: [...position],
     sizePx: [...descriptor.displaySize],

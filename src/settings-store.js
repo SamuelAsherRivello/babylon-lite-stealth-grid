@@ -8,16 +8,20 @@ export const AUDIO_SETTING_KEYS = Object.freeze({
 
 export const DEBUG_SETTING_KEYS = Object.freeze({
   showColliders: "debug.showColliders",
+  showParticleFxPreview: "debug.showParticleFxPreview",
+  showAnimatedTilePreview: "debug.showAnimatedTilePreview",
 });
+
+const DEBUG_BOOLEAN_KEYS = Object.freeze(Object.values(DEBUG_SETTING_KEYS));
 
 const KNOWN_KEYS = Object.freeze([
   AUDIO_SETTING_KEYS.music,
   AUDIO_SETTING_KEYS.sfx,
-  DEBUG_SETTING_KEYS.showColliders,
+  ...DEBUG_BOOLEAN_KEYS,
 ]);
 
 function defaultFor(key) {
-  if (key === DEBUG_SETTING_KEYS.showColliders) {
+  if (DEBUG_BOOLEAN_KEYS.includes(key)) {
     return false;
   }
   if (key === AUDIO_SETTING_KEYS.music || key === AUDIO_SETTING_KEYS.sfx) {
@@ -27,7 +31,7 @@ function defaultFor(key) {
 }
 
 function isValid(key, value) {
-  if (key === DEBUG_SETTING_KEYS.showColliders) {
+  if (DEBUG_BOOLEAN_KEYS.includes(key)) {
     return typeof value === "boolean";
   }
   if (key === AUDIO_SETTING_KEYS.music || key === AUDIO_SETTING_KEYS.sfx) {

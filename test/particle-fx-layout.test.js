@@ -35,7 +35,7 @@ test("eight particle previews form a centered horizontal row", () => {
   );
 });
 
-test("main composes, scales, and starts every particle preview layer", async () => {
+test("main composes, scales, and settings-gates every particle preview layer", async () => {
   const source = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
 
   assert.match(source, /createParticleFxPreviewLayout/);
@@ -44,5 +44,5 @@ test("main composes, scales, and starts every particle preview layer", async () 
   assert.match(source, /particleEffects\.map\(\(effect\) => effect\.layer\)/);
   assert.match(source, /for \(const effect of particleEffects\)/);
   assert.match(source, /effect\.layer\.view\.zoom = viewportScale/);
-  assert.match(source, /effect\.play\(\)/);
+  assert.match(source, /applyParticleFxPreviewSetting/);
 });

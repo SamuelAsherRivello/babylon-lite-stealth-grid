@@ -31,7 +31,7 @@ export const PLAYER_COLLIDER = {
 };
 
 const PLAYER_SPEED = 210;
-const ARROW_SPAWN_OFFSET = { x: 72, y: 18 };
+const ARROW_SPAWN_OFFSET = { x: 114, y: 5 };
 const MOVEMENT_KEYS = new Set([
   "KeyW",
   "KeyA",

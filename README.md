@@ -2,45 +2,9 @@
 
 Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game prototype.
 
+## Live Demo
+
 [Play the live demo](https://samuelasherrivello.github.io/babylon-light-stealth-grid/)
-
-The current demo displays all 54 Tiny Swords terrain atlas frames in a numbered review grid and places an animated archer below it. The archer loops its idle animation while stationary, runs while moving, and plays one complete shooting animation before releasing an arrow. Move with WASD, the arrow keys, or the on-screen controller; jump with C and shoot with V or the matching action buttons. The game uses quadrant-I world coordinates: positive X points right and positive Y points up.
-
-## Terrain Collision Review
-
-Collider visualization is available in Settings while terrain walkability is being classified:
-
-- White numbers identify valid terrain frames; grey numbers identify empty atlas positions that create no sprite or collider.
-- Empty atlas positions are `4`, `13`, `22`, `31`, `37`, `38`, `40`, `46`, `47`, and `49`.
-- Red shapes are provisionally non-walkable terrain regions.
-- The cyan circle is the archer collider: a 26 px radius body circle centered at local frame coordinates (93, 126).
-- Fully blocked frames are `41`–`44` and `50`–`53`; frame `39` is fully walkable.
-- Frame `36` has no collision. Frame `45` blocks the upper-right triangle, mirroring frame `48`.
-- Frame `48` blocks only the lower-left triangle formed by its upper-left, lower-right, and lower-left corners, leaving the upper-right triangle walkable.
-- When the hero moves horizontally into a diagonal polygon, the circle is pushed along the slope's outward normal.
-- Movement resolves one axis at a time, so the archer slides along blocked edges.
-
-The blocked-frame list and custom collision polygons are deliberately easy to revise after visual review.
-
-## Particle FX Preview
-
-The center of the game displays one looping instance of each Tiny Swords
-Particle FX animation: Dust 1, Dust 2, Explosion 1, Explosion 2, Fire 1,
-Fire 2, Fire 3, and Water Splash. The eight effects use 64 px preview cells in
-a centered horizontal row while retaining their native 64 px or 192 px atlas
-frame boundaries.
-
-Each effect has its own reusable class under `src/particle-fx/`. Instances
-provide `play()` and `stop()` methods; `play()` restarts at frame zero without
-adding another animation handle, and `stop()` freezes the visible current
-frame. The running preview instances are available as
-`globalThis.particleFxPreview.effects` for console inspection.
-
-The editable `Particle FX.aseprite` source is preserved under
-`assets/source/particles/`, while the browser loads only the exported PNG
-sheets under `public/assets/particles/`. See
-[`plugins/aseprite-babylon-lite/README.md`](plugins/aseprite-babylon-lite/README.md)
-for the reusable descriptor and integration workflow.
 
 ## Getting Started
 

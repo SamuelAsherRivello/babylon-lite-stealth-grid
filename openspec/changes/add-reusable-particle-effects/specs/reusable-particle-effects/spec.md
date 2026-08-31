@@ -25,8 +25,8 @@ The system SHALL provide one concrete particle-effect class for each supported a
 ### Requirement: Particle playback is controllable
 Every particle-effect instance SHALL expose `play()` and `stop()` operations. Calling `play()` SHALL start or restart its animation, and calling `stop()` SHALL halt frame advancement while leaving the sprite available to play again.
 
-#### Scenario: Default preview playback loops
-- **WHEN** the preview initializes its particle instances and invokes `play()`
+#### Scenario: Enabled particle preview playback loops
+- **WHEN** the Particle FX Preview setting is enabled
 - **THEN** every effect repeatedly plays its complete animation range
 
 #### Scenario: Animation can stop and resume
@@ -37,8 +37,8 @@ Every particle-effect instance SHALL expose `play()` and `stop()` operations. Ca
 - **WHEN** `play()` or `stop()` is called more than once without the opposite operation between calls
 - **THEN** the effect remains in the requested state without accumulating concurrent animations or throwing an error
 
-### Requirement: All effects are visibly previewed
-The game SHALL display exactly one instance of each of the eight supplied particle animations in a single centered horizontal row at the center of the 576 by 1024 logical viewport, rendered above the existing terrain, player, and animated-terrain sprites.
+### Requirement: All effects can be visibly previewed
+When Particle FX Preview is enabled, the game SHALL display exactly one instance of each of the eight supplied particle animations in a single centered horizontal row at the center of the 576 by 1024 logical viewport, rendered above the existing terrain, player, and animated-terrain sprites. When disabled, the row SHALL be hidden and its animations SHALL be stopped.
 
 #### Scenario: Preview row fits the logical viewport
 - **WHEN** the preview is rendered
@@ -48,10 +48,39 @@ The game SHALL display exactly one instance of each of the eight supplied partic
 - **WHEN** a 192 by 192 Explosion or Water Splash frame is displayed in the preview
 - **THEN** the atlas uses its native 192 by 192 frame boundaries while the preview sprite is displayed within its assigned 64 by 64 cell
 
+#### Scenario: Disabled particle preview is inactive
+- **WHEN** Particle FX Preview is disabled
+- **THEN** no particle preview sprite is visible and none of its eight animations advances
+
+### Requirement: Preview debug settings are persisted and default off
+The Settings menu SHALL provide independent `Particle FX Preview?` and `Animated Tile (Preview)` boolean controls. Both controls SHALL default to off, SHALL persist valid selections using the existing settings persistence mechanism, and SHALL return to off when settings are reset.
+
+#### Scenario: New session uses hidden previews
+- **WHEN** no saved preview settings exist
+- **THEN** both preview checkboxes are unchecked, the particle row is hidden, and the animated Water Foam tile is hidden
+
+#### Scenario: Preview choices persist
+- **WHEN** a user enables either preview and reloads the application
+- **THEN** the corresponding checkbox and preview restore to enabled while the other preview retains its independently persisted value
+
+#### Scenario: Reset disables previews
+- **WHEN** the user resets Settings after enabling either preview
+- **THEN** both preview checkboxes become unchecked and both previews become hidden and stopped
+
+### Requirement: Animated tile preview is independently controllable
+When Animated Tile (Preview) is enabled, the game SHALL show and loop the existing Water Foam animation at its current bottom-left location. When disabled, the Water Foam tile SHALL be hidden and its animation SHALL be stopped without changing Particle FX Preview.
+
+#### Scenario: Animated tile can be enabled alone
+- **WHEN** Animated Tile (Preview) is enabled while Particle FX Preview remains disabled
+- **THEN** the Water Foam animation is visible and looping at the bottom-left while the centered particle row remains hidden
+
+#### Scenario: Particle row can be enabled alone
+- **WHEN** Particle FX Preview is enabled while Animated Tile (Preview) remains disabled
+- **THEN** the centered particle row is visible and looping while the Water Foam tile remains hidden
+
 ### Requirement: Authoring and runtime assets are preserved separately
 The project SHALL preserve the original `.aseprite` source in a non-public authoring-assets location and SHALL copy all eight exported PNG sprite sheets into a browser-served particle-assets location without modifying the supplied originals.
 
 #### Scenario: Production build contains only runtime requests
 - **WHEN** the production application is built and loaded
 - **THEN** all eight PNG sprite sheets resolve successfully and the authoring source is not part of the browser's asset-loading path
-

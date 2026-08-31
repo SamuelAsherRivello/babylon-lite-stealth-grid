@@ -7,8 +7,8 @@ The project needs a repeatable way to translate Aseprite-authored sprite packs i
 - Add a reusable local Babylon Lite/Aseprite integration under `plugins/aseprite-babylon-lite/` that consumes explicit JavaScript sprite descriptors and Babylon Lite's supported grid-atlas API.
 - Preserve the supplied `.aseprite` authoring source separately from the eight PNG sheets used by the browser.
 - Add a shared animated-particle base class and one concrete class per Dust, Explosion, Fire, and Water Splash animation under appropriately named `src/particle-fx/` subfolders.
-- Give every particle instance conventional `play()` and `stop()` controls, with looping playback used by the initial preview.
-- Display one instance of every supplied effect above existing game sprites in a centered horizontal row.
+- Give every particle instance conventional `play()` and `stop()` controls.
+- Add persisted, off-by-default `Particle FX Preview?` and `Animated Tile (Preview)` debug settings. The first independently shows and loops the centered eight-effect row; the second independently shows and loops the existing Water Foam tile at the bottom-left.
 - Add unit, build, and real-browser verification for descriptors, class controls, asset loading, animation, layering, and layout.
 
 ## Capabilities
@@ -25,5 +25,5 @@ None.
 
 - Adds local integration code under `plugins/aseprite-babylon-lite/` and particle classes under `src/particle-fx/`.
 - Adds the original Aseprite source under a non-public authoring-assets path and eight runtime PNG sheets under `public/assets/particles/`.
-- Updates `src/main.js` to load and render the preview and updates tests and project documentation.
+- Updates the persisted settings store, Settings menu, `src/main.js` preview visibility/playback wiring, tests, and project documentation.
 - Uses the existing `@babylonjs/lite` dependency; no runtime Aseprite parser or new external package is required.
