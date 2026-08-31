@@ -17,7 +17,8 @@ import { worldToScreen } from "./game-logic.js";
 // Arrow.png is a 64x64 frame with transparent padding around the artwork.
 // Keep the frame square so the artwork is not vertically clipped or squashed.
 const ARROW_ATLAS_FRAME = { width: 64, height: 64 };
-// The sprite and gameplay collider intentionally share the same 96x24 size.
+// The opaque artwork is then covered by a separate tight gameplay collider.
+const ARROW_RENDER_SIZE = 213;
 const ARROW_CAPACITY = 32;
 
 export function loadArrowAtlas(engine) {
@@ -51,7 +52,7 @@ export function createProjectileRenderer({ atlas, bounds, obstacles }) {
       const screen = worldToScreen(projectile.position, 1, bounds.height);
       const sprite = addSprite2D(layer, {
         positionPx: [screen.x, screen.y],
-        sizePx: [ARROW_SIZE.width, ARROW_SIZE.height],
+        sizePx: [ARROW_RENDER_SIZE, ARROW_RENDER_SIZE],
         frame: 0,
         flipX: projectile.direction < 0,
       });

@@ -18,8 +18,8 @@
 ## 4. Centered Preview Integration
 
 - [x] 4.1 Add failing tests for a pure eight-cell row-layout helper, verifying X positions 32 through 480, Y 480, 64x64 display cells, 512x64 centered bounds, stable catalog order, and render order 3 in the 576x1024 logical viewport.
-- [ ] 4.2 Implement the layout helper and update `src/main.js` to load all eight effects, append their layers above the existing layers, apply viewport zoom to every particle layer, and start each preview instance looping; run tests and a production build to verify integration and asset resolution.
-- [ ] 4.3 Update `README.md` to describe the particle source/runtime asset split, plugin, concrete class locations, preview behavior, and play/stop usage; verify documented paths and commands against the checkout.
+- [x] 4.2 Implement the layout helper and update `src/main.js` to load all eight effects, append their layers above the existing layers, apply viewport zoom to every particle layer, and start each preview instance looping; run tests and a production build to verify integration and asset resolution.
+- [x] 4.3 Update `README.md` to describe the particle source/runtime asset split, plugin, concrete class locations, preview behavior, and play/stop usage; verify documented paths and commands against the checkout.
 
 ## 5. Final Verification
 

@@ -2,6 +2,8 @@
 
 Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game prototype.
 
+[Play the live demo](https://samuelasherivello.github.io/babylon-light-stealth-grid/)
+
 The current demo displays all 54 Tiny Swords terrain atlas frames in a numbered review grid and places an animated archer below it. The archer loops its idle animation while stationary, runs while moving, and plays one complete shooting animation before releasing an arrow. Move with WASD, the arrow keys, or the on-screen controller; jump with C and shoot with V or the matching action buttons. The game uses quadrant-I world coordinates: positive X points right and positive Y points up.
 
 ## Terrain Collision Review
@@ -19,6 +21,26 @@ Collider visualization is available in Settings while terrain walkability is bei
 - Movement resolves one axis at a time, so the archer slides along blocked edges.
 
 The blocked-frame list and custom collision polygons are deliberately easy to revise after visual review.
+
+## Particle FX Preview
+
+The center of the game displays one looping instance of each Tiny Swords
+Particle FX animation: Dust 1, Dust 2, Explosion 1, Explosion 2, Fire 1,
+Fire 2, Fire 3, and Water Splash. The eight effects use 64 px preview cells in
+a centered horizontal row while retaining their native 64 px or 192 px atlas
+frame boundaries.
+
+Each effect has its own reusable class under `src/particle-fx/`. Instances
+provide `play()` and `stop()` methods; `play()` restarts at frame zero without
+adding another animation handle, and `stop()` freezes the visible current
+frame. The running preview instances are available as
+`globalThis.particleFxPreview.effects` for console inspection.
+
+The editable `Particle FX.aseprite` source is preserved under
+`assets/source/particles/`, while the browser loads only the exported PNG
+sheets under `public/assets/particles/`. See
+[`plugins/aseprite-babylon-lite/README.md`](plugins/aseprite-babylon-lite/README.md)
+for the reusable descriptor and integration workflow.
 
 ## Getting Started
 
@@ -50,8 +72,11 @@ See [Tile Map Editing](documentation/tile-map.md) for the open, edit, save, clos
 - `src/player.js`: Archer idle/run/shoot animation states, input, movement, jumping, collision configuration, and cleanup.
 - `src/player-state.js`: Explicit `PlayerState` state machine and guarded idle, running, and shooting transitions.
 - `src/game-logic.js`: Quadrant-I movement, coordinate conversion, terrain layout, and collision helpers.
+- `src/particle-fx`: Shared particle lifecycle, pack catalog, preview layout, and one concrete class per animation.
+- `plugins/aseprite-babylon-lite`: Reusable descriptor validation and Babylon Lite grid-atlas adapter.
+- `assets/source/particles`: Editable Aseprite authoring source; never loaded by the browser.
 - `src/style.css`: Centering and responsive 9:16 frame sizing.
-- `public/assets`: Local Tiny Swords terrain plus archer idle, run, shoot, and arrow sprite sheets.
+- `public/assets`: Local Tiny Swords terrain, archer, arrow, and exported particle sprite sheets.
 - `test/game-logic.test.js`: Movement, coordinate, terrain-layout, and collision-contract tests.
 - `vite.config.js`: Vite configuration for local development and production builds.
 
