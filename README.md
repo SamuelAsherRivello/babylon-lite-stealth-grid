@@ -2,7 +2,23 @@
 
 Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game prototype.
 
-The current demo repeats a Tiny Swords terrain tile across the playfield and places an animated archer in its center. Move the archer with WASD or the arrow keys. The game uses quadrant-I world coordinates: positive X points right and positive Y points up.
+The current demo displays all 54 Tiny Swords terrain atlas frames in a numbered review grid and places an animated archer below it. The archer loops its idle animation while stationary, runs while moving, and plays one complete shooting animation before releasing an arrow. Move with WASD, the arrow keys, or the on-screen controller; jump with C and shoot with V or the matching action buttons. The game uses quadrant-I world coordinates: positive X points right and positive Y points up.
+
+## Terrain Collision Review
+
+Collider visualization is available in Settings while terrain walkability is being classified:
+
+- White numbers identify valid terrain frames; grey numbers identify empty atlas positions that create no sprite or collider.
+- Empty atlas positions are `4`, `13`, `22`, `31`, `37`, `38`, `40`, `46`, `47`, and `49`.
+- Red shapes are provisionally non-walkable terrain regions.
+- The cyan circle is the archer collider: a 26 px radius body circle centered at local frame coordinates (93, 126).
+- Fully blocked frames are `41`–`44` and `50`–`53`; frame `39` is fully walkable.
+- Frame `36` has no collision. Frame `45` blocks the upper-right triangle, mirroring frame `48`.
+- Frame `48` blocks only the lower-left triangle formed by its upper-left, lower-right, and lower-left corners, leaving the upper-right triangle walkable.
+- When the hero moves horizontally into a diagonal polygon, the circle is pushed along the slope's outward normal.
+- Movement resolves one axis at a time, so the archer slides along blocked edges.
+
+The blocked-frame list and custom collision polygons are deliberately easy to revise after visual review.
 
 ## Getting Started
 
@@ -11,6 +27,12 @@ The current demo repeats a Tiny Swords terrain tile across the playfield and pla
 3. Run `npm install`.
 4. Run `npm run dev`.
 5. Open the URL printed by Vite.
+
+## Tile Map
+
+Levels are authored with Tiled. The AI prepares the Tiled project, map, tilesets, grid, origin marker, layers, properties, and runtime integration; the human edits content only on the existing layers.
+
+See [Tile Map Editing](documentation/tile-map.md) for the open, edit, save, close, and play workflow.
 
 ## Commands
 
@@ -24,11 +46,13 @@ The current demo repeats a Tiny Swords terrain tile across the playfield and pla
 ## Project Structure
 
 - `index.html`: Browser page, portrait canvas, and compact control/coordinate overlays.
-- `src/main.js`: Babylon Lite sprite renderer, terrain, animation, and keyboard input.
-- `src/game-logic.js`: Quadrant-I movement and coordinate conversion.
+- `src/main.js`: Babylon Lite scene composition, numbered terrain review, and collider diagnostics.
+- `src/player.js`: Archer idle/run/shoot animation states, input, movement, jumping, collision configuration, and cleanup.
+- `src/player-state.js`: Explicit `PlayerState` state machine and guarded idle, running, and shooting transitions.
+- `src/game-logic.js`: Quadrant-I movement, coordinate conversion, terrain layout, and collision helpers.
 - `src/style.css`: Centering and responsive 9:16 frame sizing.
-- `public/assets`: Local Tiny Swords terrain and archer sprite sheets.
-- `test/game-logic.test.js`: Movement and coordinate-contract tests.
+- `public/assets`: Local Tiny Swords terrain plus archer idle, run, shoot, and arrow sprite sheets.
+- `test/game-logic.test.js`: Movement, coordinate, terrain-layout, and collision-contract tests.
 - `vite.config.js`: Vite configuration for local development and production builds.
 
 ## Portrait Frame Contract
@@ -36,6 +60,8 @@ The current demo repeats a Tiny Swords terrain tile across the playfield and pla
 The game frame uses a 9:16 aspect ratio. Its width is the smaller of the full viewport width and 56.25% of the viewport height, so it remains fully visible and centered in both desktop and portrait browser windows.
 
 Future visuals, controls, text, spacing, borders, and effects should size and position themselves relative to the game frame so the composition scales consistently as the frame resizes.
+
+The canonical logical grid and oversized animated-tile placement rules are documented in [`docs/grid-and-ui-contract.md`](docs/grid-and-ui-contract.md).
 
 ## Resources
 

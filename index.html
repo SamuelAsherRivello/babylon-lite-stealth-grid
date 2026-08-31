@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="icon" href="data:," />
-    <title>Babylon Light Stealth Grid</title>
-    <link rel="stylesheet" href="./src/style.css" />
+    <title>Babylon Lite Stealth Grid</title>
+    <link rel="stylesheet" href="./src/ui/style.css" />
   </head>
   <body>
     <main class="stage" aria-label="Babylon Light Stealth Grid game">
@@ -16,12 +16,45 @@
           height="1024"
           aria-label="Tiny Swords movement demo"
         ></canvas>
+        <canvas
+          id="debugCanvas"
+          width="576"
+          height="1024"
+          data-terrain-frame-count="54"
+          aria-hidden="true"
+        ></canvas>
+        <section id="gameUi" class="game-ui" aria-live="polite"></section>
         <div class="coordinate-guide" aria-hidden="true">
           <span class="axis-y">+Y</span>
           <span class="axis-x">+X</span>
         </div>
-        <output id="coordinates" class="coordinates">X 288 · Y 512</output>
-        <p class="controls">Move with WASD or arrow keys</p>
+        <div id="coordinates-ui" class="coordinates-ui" aria-label="Archer coordinates">
+          <output id="coordinates-ui-pixel">X 288 · Y 512</output>
+          <output id="coordinates-ui-grid">C 3 · R 7</output>
+        </div>
+        <div class="virtual-controller" aria-label="Virtual controller">
+          <div class="movement-control action-control-layout">
+            <button
+              id="movement-joystick"
+              class="joystick"
+              type="button"
+              aria-label="Move joystick"
+            >
+              <span id="movement-puck" class="control-puck" aria-hidden="true"></span>
+            </button>
+            <span class="control-label">Move</span>
+          </div>
+          <div class="action-controls" aria-label="Player actions">
+            <button id="jump-action" class="action-control" type="button">
+              <span class="action-symbol" aria-hidden="true">&#8593;</span>
+              <span class="control-label">Jump (C)</span>
+            </button>
+            <button id="shoot-action" class="action-control" type="button">
+              <span class="action-symbol" aria-hidden="true">&#10148;</span>
+              <span class="control-label">Shoot (V)</span>
+            </button>
+          </div>
+        </div>
         <p id="error" class="error" role="alert"></p>
       </div>
     </main>

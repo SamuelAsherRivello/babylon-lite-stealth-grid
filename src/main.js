@@ -1,6 +1,5 @@
 import {
   addSprite2D,
-  attachSpriteAnimationsToRenderer,
   createEngine,
   createSprite2DLayer,
   createSpriteAnimationManager,
@@ -9,26 +8,52 @@ import {
   playSprite2DAnimation,
   registerSpriteRenderer,
   startEngine,
-  updateSprite2D,
+  updateSpriteAnimationManager,
 } from "@babylonjs/lite";
 
 import {
-  getMovementVector,
-  moveWithinBounds,
-  worldToScreen,
+  createTerrainReviewTiles,
+  gridCellToScreenForFrame,
+  getLogicalViewportScale,
 } from "./game-logic.js";
+import { GRID } from "./grid-contract.js";
+import {
+  NON_WALKABLE_TERRAIN_FRAMES,
+  PARTIAL_TERRAIN_COLLIDERS,
+} from "./terrain-collision-config.js";
+import { createPlayer, loadPlayerAtlases } from "./player.js";
+import {
+  createProjectileRenderer,
+  loadArrowAtlas,
+} from "./projectile-renderer.js";
+import { createPauseController } from "./pause-controller.js";
+import { PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
+import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
+import { createCoordinatesUi } from "./ui/coordinates-ui.js";
+import { createSettingsUi } from "./ui/settings-ui.js";
+import {
+  DEBUG_SETTING_KEYS,
+  settingsStore,
+} from "./settings-store.js";
 
-const SCREEN_WIDTH = 576;
-const SCREEN_HEIGHT = 1024;
-const TILE_SIZE = 64;
-const ARCHER_FRAME_WIDTH = 192;
-const ARCHER_FRAME_HEIGHT = 144;
-const ARCHER_SPEED = 210;
+const SCREEN_WIDTH = GRID.widthPx;
+const SCREEN_HEIGHT = GRID.heightPx;
+const TILE_SIZE = GRID.tileSizePx;
+const TERRAIN_FRAME_COUNT = 54;
+const TERRAIN_COLUMNS = 9;
+const WATER_FOAM_FRAME_SIZE = 192;
+const WATER_FOAM_FRAME_COUNT = 16;
+const WATER_FOAM_FRAME_DURATION_MS = 100;
+const EMPTY_TERRAIN_FRAMES = new Set([
+  4, 13, 22, 31, 37, 38, 40, 46, 47, 49,
+]);
 
 const canvas = document.querySelector("#renderCanvas");
-const coordinates = document.querySelector("#coordinates");
+const debugCanvas = document.querySelector("#debugCanvas");
+const debugContext = debugCanvas.getContext("2d");
 const errorOutput = document.querySelector("#error");
-const pressedKeys = new Set();
+const gameUi = document.querySelector("#gameUi");
+const coordinatesUi = createCoordinatesUi();
 
 async function start() {
   if (!navigator.gpu) {
@@ -36,113 +61,306 @@ async function start() {
   }
 
   const engine = await createEngine(canvas);
-  const [terrainAtlas, archerAtlas] = await Promise.all([
+  const animationManager = createSpriteAnimationManager();
+  const [terrainAtlas, archerAtlas, arrowAtlas, waterFoamAtlas] = await Promise.all([
     loadSpriteAtlas(engine, "./assets/terrain/Tilemap_color3.png", {
       gridSize: [TILE_SIZE, TILE_SIZE],
       sampling: "nearest",
     }),
-    loadSpriteAtlas(engine, "./assets/units/archer/Archer_Run.png", {
-      gridSize: [ARCHER_FRAME_WIDTH, ARCHER_FRAME_HEIGHT],
+    loadPlayerAtlases(engine),
+    loadArrowAtlas(engine),
+    loadSpriteAtlas(engine, "./assets/terrain/Water Foam.png", {
+      gridSize: [WATER_FOAM_FRAME_SIZE, WATER_FOAM_FRAME_SIZE],
       sampling: "nearest",
     }),
   ]);
 
+  const terrainTiles = createTerrainReviewTiles(
+    TERRAIN_FRAME_COUNT,
+    TERRAIN_COLUMNS,
+    TILE_SIZE,
+    SCREEN_HEIGHT,
+    NON_WALKABLE_TERRAIN_FRAMES,
+    EMPTY_TERRAIN_FRAMES,
+    PARTIAL_TERRAIN_COLLIDERS,
+  );
+  const obstacleColliders = terrainTiles
+    .filter(({ collider }) => collider !== null)
+    .map(({ collider }) => collider);
+
   const terrainLayer = createSprite2DLayer(terrainAtlas, {
-    capacity: (SCREEN_WIDTH / TILE_SIZE) * (SCREEN_HEIGHT / TILE_SIZE),
+    capacity: TERRAIN_FRAME_COUNT,
     order: 0,
     pivot: [0, 0],
   });
 
-  for (let y = 0; y < SCREEN_HEIGHT; y += TILE_SIZE) {
-    for (let x = 0; x < SCREEN_WIDTH; x += TILE_SIZE) {
-      addSprite2D(terrainLayer, {
-        positionPx: [x, y],
-        sizePx: [TILE_SIZE, TILE_SIZE],
-        frame: 10,
-      });
+  for (const tile of terrainTiles) {
+    if (!tile.valid) {
+      continue;
     }
+
+    addSprite2D(terrainLayer, {
+      positionPx: [tile.screenPosition.x, tile.screenPosition.y],
+      sizePx: [TILE_SIZE, TILE_SIZE],
+      frame: tile.frame,
+    });
   }
 
-  const unitLayer = createSprite2DLayer(archerAtlas, {
-    capacity: 1,
-    order: 1,
-    pivot: [0.5, 0.78],
+  const projectiles = createProjectileRenderer({
+    atlas: arrowAtlas,
+    bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+    obstacles: obstacleColliders,
+  });
+  const player = createPlayer({
+    atlases: archerAtlas,
+    bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+    obstacles: obstacleColliders,
+    initialPosition: { x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 },
+    onShoot: (position, direction) => projectiles.shoot(position, direction),
   });
 
-  let worldPosition = { x: SCREEN_WIDTH / 2, y: SCREEN_HEIGHT / 2 };
-  const initialScreenPosition = worldToScreen(worldPosition, 1, SCREEN_HEIGHT);
-  const archer = addSprite2D(unitLayer, {
-    positionPx: [initialScreenPosition.x, initialScreenPosition.y],
-    sizePx: [ARCHER_FRAME_WIDTH, ARCHER_FRAME_HEIGHT],
+  // Temporary preview layer: keep animated terrain isolated until the final
+  // terrain-layering strategy is decided.
+  const animatedTerrainLayer = createSprite2DLayer(waterFoamAtlas, {
+    capacity: 1,
+    order: 2,
+    pivot: [0, 0],
+  });
+  const waterFoamPosition = gridCellToScreenForFrame(
+    { x: 0, y: 0 },
+    TILE_SIZE,
+    WATER_FOAM_FRAME_SIZE,
+    SCREEN_HEIGHT,
+  );
+  const waterFoam = addSprite2D(animatedTerrainLayer, {
+    positionPx: [waterFoamPosition.x, waterFoamPosition.y],
+    sizePx: [WATER_FOAM_FRAME_SIZE, WATER_FOAM_FRAME_SIZE],
     frame: 0,
   });
 
+  const particleFxLayout = createParticleFxPreviewLayout(
+    SCREEN_WIDTH,
+    SCREEN_HEIGHT,
+  );
+  const particleEffects = await Promise.all(
+    particleFxLayout.map(({ key, position, order }) => (
+      PARTICLE_FX_CLASS_BY_KEY[key].create({
+        engine,
+        animationManager,
+        position,
+        order,
+      })
+    )),
+  );
+
   const renderer = createSpriteRenderer(engine, {
-    layers: [terrainLayer, unitLayer],
+    layers: [
+      terrainLayer,
+      ...player.layers,
+      projectiles.layer,
+      animatedTerrainLayer,
+      ...particleEffects.map((effect) => effect.layer),
+    ],
     clearValue: { r: 0.25, g: 0.48, b: 0.22, a: 1 },
   });
   registerSpriteRenderer(renderer);
 
-  const animationManager = createSpriteAnimationManager();
-  attachSpriteAnimationsToRenderer(renderer, animationManager);
-  playSprite2DAnimation(animationManager, archer, 0, 3, true, 100);
+  player.playAnimation(animationManager);
+  playSprite2DAnimation(
+    animationManager,
+    waterFoam,
+    0,
+    WATER_FOAM_FRAME_COUNT - 1,
+    true,
+    WATER_FOAM_FRAME_DURATION_MS,
+  );
+  for (const effect of particleEffects) {
+    effect.play();
+  }
+  globalThis.particleFxPreview = Object.freeze({
+    effects: Object.freeze([...particleEffects]),
+  });
 
   let previousTime = performance.now();
+  let showColliders = settingsStore.get(DEBUG_SETTING_KEYS.showColliders);
+  const unsubscribeColliders = settingsStore.subscribe(
+    DEBUG_SETTING_KEYS.showColliders,
+    (value) => {
+      showColliders = value;
+      if (!value) {
+        debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+      }
+    },
+  );
+  const pauseController = createPauseController({
+    onPause: () => player.setInputEnabled(false),
+    onResume: () => {
+      player.setInputEnabled(true);
+      previousTime = performance.now();
+    },
+  });
+  createSettingsUi({ host: gameUi, pauseController });
 
   function update(currentTime) {
     const deltaSeconds = Math.min((currentTime - previousTime) / 1000, 0.05);
     previousTime = currentTime;
+    const activeDelta = pauseController.getDelta(deltaSeconds);
 
-    const movement = getMovementVector(pressedKeys);
-    worldPosition = moveWithinBounds(
-      worldPosition,
-      movement,
-      ARCHER_SPEED * deltaSeconds,
+    const viewportScale = getLogicalViewportScale(
+      canvas.width,
+      canvas.height,
       SCREEN_WIDTH,
       SCREEN_HEIGHT,
     );
+    terrainLayer.view.zoom = viewportScale;
+    for (const layer of player.layers) {
+      layer.view.zoom = viewportScale;
+    }
+    projectiles.layer.view.zoom = viewportScale;
+    animatedTerrainLayer.view.zoom = viewportScale;
+    for (const effect of particleEffects) {
+      effect.layer.view.zoom = viewportScale;
+    }
 
-    const screenPosition = worldToScreen(worldPosition, 1, SCREEN_HEIGHT);
-    updateSprite2D(archer, {
-      positionPx: [screenPosition.x, screenPosition.y],
-      flipX: movement.x < 0 ? true : movement.x > 0 ? false : undefined,
-    });
-    coordinates.value = `X ${Math.round(worldPosition.x)} · Y ${Math.round(worldPosition.y)}`;
+    updateSpriteAnimationManager(animationManager, activeDelta * 1000);
+    if (activeDelta > 0) {
+      const { position } = player.update(activeDelta);
+      projectiles.update(activeDelta);
+      const gridPosition = player.getGridPosition(TILE_SIZE);
+      coordinatesUi.update(position, gridPosition);
+    }
+    drawDiagnostics(terrainTiles, player.getCollider(), projectiles.getColliders(), showColliders);
 
     requestAnimationFrame(update);
   }
 
   requestAnimationFrame(update);
+  window.addEventListener("pagehide", () => {
+    unsubscribeColliders();
+    for (const effect of particleEffects) {
+      effect.stop();
+    }
+    player.dispose();
+    projectiles.dispose();
+  }, { once: true });
   await startEngine(engine);
 }
 
-function setKey(event, isPressed) {
-  const movementKeys = new Set([
-    "KeyW",
-    "KeyA",
-    "KeyS",
-    "KeyD",
-    "ArrowUp",
-    "ArrowLeft",
-    "ArrowDown",
-    "ArrowRight",
-  ]);
+function worldAabbToScreen(aabb) {
+  return {
+    x: aabb.x,
+    y: SCREEN_HEIGHT - aabb.y - aabb.height,
+    width: aabb.width,
+    height: aabb.height,
+  };
+}
 
-  if (!movementKeys.has(event.code)) {
+function drawAabb(aabb, fillStyle, strokeStyle) {
+  const screenAabb = worldAabbToScreen(aabb);
+  debugContext.fillStyle = fillStyle;
+  debugContext.fillRect(
+    screenAabb.x,
+    screenAabb.y,
+    screenAabb.width,
+    screenAabb.height,
+  );
+  debugContext.strokeStyle = strokeStyle;
+  debugContext.lineWidth = 2;
+  debugContext.strokeRect(
+    screenAabb.x + 1,
+    screenAabb.y + 1,
+    screenAabb.width - 2,
+    screenAabb.height - 2,
+  );
+}
+
+function drawPolygon(polygon, fillStyle, strokeStyle) {
+  const screenPoints = polygon.points.map((point) => ({
+    x: point.x,
+    y: SCREEN_HEIGHT - point.y,
+  }));
+  debugContext.beginPath();
+  debugContext.moveTo(screenPoints[0].x, screenPoints[0].y);
+  for (const point of screenPoints.slice(1)) {
+    debugContext.lineTo(point.x, point.y);
+  }
+  debugContext.closePath();
+  debugContext.fillStyle = fillStyle;
+  debugContext.fill();
+  debugContext.strokeStyle = strokeStyle;
+  debugContext.lineWidth = 2;
+  debugContext.stroke();
+}
+
+function drawTerrainCollider(collider) {
+  if (collider.type === "polygon") {
+    drawPolygon(collider, "rgb(255 44 72 / 24%)", "#ff2c48");
     return;
   }
 
-  event.preventDefault();
-  if (isPressed) {
-    pressedKeys.add(event.code);
-  } else {
-    pressedKeys.delete(event.code);
-  }
+  drawAabb(collider, "rgb(255 44 72 / 24%)", "#ff2c48");
 }
 
-window.addEventListener("keydown", (event) => setKey(event, true));
-window.addEventListener("keyup", (event) => setKey(event, false));
-window.addEventListener("blur", () => pressedKeys.clear());
+function drawCircle(circle, fillStyle, strokeStyle) {
+  debugContext.beginPath();
+  debugContext.arc(
+    circle.x,
+    SCREEN_HEIGHT - circle.y,
+    circle.radius,
+    0,
+    Math.PI * 2,
+  );
+  debugContext.fillStyle = fillStyle;
+  debugContext.fill();
+  debugContext.strokeStyle = strokeStyle;
+  debugContext.lineWidth = 2;
+  debugContext.stroke();
+}
+
+function drawCharacterCollider(collider) {
+  if (collider.type === "circle") {
+    drawCircle(collider, "rgb(36 228 255 / 20%)", "#24e4ff");
+    return;
+  }
+
+  drawAabb(collider, "rgb(36 228 255 / 20%)", "#24e4ff");
+}
+
+function drawDiagnostics(terrainTiles, characterCollider, projectileColliders, enabled) {
+  debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  if (!enabled) {
+    return;
+  }
+  debugContext.font = "700 14px system-ui, sans-serif";
+  debugContext.textBaseline = "top";
+
+  for (const tile of terrainTiles) {
+    if (tile.collider) {
+      drawTerrainCollider(tile.collider);
+    }
+
+    const label = String(tile.frame);
+    const labelWidth = debugContext.measureText(label).width + 8;
+    debugContext.fillStyle = "rgb(5 10 18 / 78%)";
+    debugContext.fillRect(
+      tile.screenPosition.x + 3,
+      tile.screenPosition.y + 3,
+      labelWidth,
+      20,
+    );
+    debugContext.fillStyle = tile.valid ? "#ffffff" : "#8f969f";
+    debugContext.fillText(
+      label,
+      tile.screenPosition.x + 7,
+      tile.screenPosition.y + 5,
+    );
+  }
+
+  drawCharacterCollider(characterCollider);
+  for (const { collider } of projectileColliders) {
+    drawAabb(collider, "rgb(255 220 64 / 38%)", "#ffe066");
+  }
+}
 
 start().catch((error) => {
   console.error(error);
