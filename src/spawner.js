@@ -1,4 +1,6 @@
 export const DEFAULT_SPAWN_CHECK_INTERVAL_SECONDS = 1;
+export const SPAWN_MODE_NEARBY = "nearby";
+export const SPAWN_MODE_ANYWHERE_WALKABLE = "anywhere-walkable";
 
 function requireNonNegativeInteger(name, value) {
   if (!Number.isInteger(value) || value < 0) {
@@ -27,6 +29,9 @@ export function createSpawner({
   guaranteeInitialPopulation = false,
   random = Math.random,
   tileSize = null,
+  spawnMode = SPAWN_MODE_NEARBY,
+  spawnMaxDistance = 1,
+  getWalkableCells = null,
   isWalkable = () => true,
   getActorPosition = (actor) => actor?.position ?? actor?.actor?.getPosition?.(),
   createActor,
@@ -56,6 +61,15 @@ export function createSpawner({
   if (tileSize !== null && (!Number.isFinite(tileSize) || tileSize <= 0)) {
     throw new RangeError("tileSize must be a positive number or null");
   }
+  if (![SPAWN_MODE_NEARBY, SPAWN_MODE_ANYWHERE_WALKABLE].includes(spawnMode)) {
+    throw new RangeError("spawnMode must be 'nearby' or 'anywhere-walkable'");
+  }
+  if (!Number.isInteger(spawnMaxDistance) || spawnMaxDistance < 0) {
+    throw new RangeError("spawnMaxDistance must be a non-negative integer");
+  }
+  if (getWalkableCells !== null && typeof getWalkableCells !== "function") {
+    throw new TypeError("getWalkableCells must be a function or null");
+  }
   if (typeof isWalkable !== "function") {
     throw new TypeError("isWalkable must be a function");
   }
@@ -82,6 +96,8 @@ export function createSpawner({
     maximumCount,
     checkIntervalSeconds,
     guaranteeInitialPopulation: Boolean(guaranteeInitialPopulation),
+    spawnMode,
+    spawnMaxDistance,
   });
 
   function getNearbySpawnPositions() {
@@ -102,8 +118,8 @@ export function createSpawner({
       y: Math.floor(config.position.y / tileSize),
     };
     const candidates = [];
-    for (let yOffset = -1; yOffset <= 1; yOffset += 1) {
-      for (let xOffset = -1; xOffset <= 1; xOffset += 1) {
+    for (let yOffset = -config.spawnMaxDistance; yOffset <= config.spawnMaxDistance; yOffset += 1) {
+      for (let xOffset = -config.spawnMaxDistance; xOffset <= config.spawnMaxDistance; xOffset += 1) {
         const cell = { x: centerCell.x + xOffset, y: centerCell.y + yOffset };
         const candidate = {
           x: (cell.x + 0.5) * tileSize,
@@ -117,10 +133,25 @@ export function createSpawner({
     return candidates;
   }
 
+  function getAnywhereSpawnPositions() {
+    if (!getWalkableCells) return [];
+    return getWalkableCells().map((cell) => ({
+      x: (cell.x + 0.5) * tileSize,
+      y: (cell.y + 0.5) * tileSize,
+    }));
+  }
+
   function spawn(count) {
     let created = 0;
     for (let index = 0; index < count; index += 1) {
-      const candidates = getNearbySpawnPositions();
+      const candidates = tileSize === null
+        ? [{ ...config.position }]
+        : config.spawnMode === SPAWN_MODE_ANYWHERE_WALKABLE
+          ? getAnywhereSpawnPositions().filter((candidate) => isWalkable(
+            candidate,
+            { x: Math.floor(candidate.x / tileSize), y: Math.floor(candidate.y / tileSize) },
+          ))
+          : getNearbySpawnPositions();
       if (candidates.length === 0) {
         break;
       }

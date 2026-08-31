@@ -2,20 +2,20 @@
     "activeFile": "maps/Level01.tmj",
     "expandedProjectPaths": [
         "maps",
-        ".",
-        "tilesets"
+        "tilesets",
+        "."
     ],
     "fileStates": {
         "maps/Level01.tmj": {
             "expandedObjectLayers": [
-                5,
-                6
+                6,
+                5
             ],
             "scale": 0.5,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": -138,
-                "y": 427
+                "x": 218,
+                "y": 432
             }
         },
         "maps/Level01.tmj.bak.tmj": {
@@ -34,11 +34,15 @@
                 "y": 513.3879925945516
             }
         },
+        "tilesets/GoldStoneObjects.tsj": {
+            "scaleInDock": 1
+        },
         "tilesets/SpawnerTypes.tsj": {
             "dynamicWrapping": false,
             "scaleInDock": 1
         },
         "tilesets/Tilemap_color1.tsj": {
+            "dynamicWrapping": false,
             "scaleInDock": 1,
             "scaleInEditor": 1
         },

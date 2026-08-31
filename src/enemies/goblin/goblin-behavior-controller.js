@@ -1,5 +1,6 @@
 import { gridCellCenter } from "../../npc/sheep/sheep-navigation.js";
 import { collidersOverlap } from "../../game-logic.js";
+import { getCharacterGridCell, getColliderCenter } from "../../character-spatial.js";
 
 const NEIGHBORS = Object.freeze([
   { x: 1, y: 0 }, { x: -1, y: 0 },
@@ -9,6 +10,20 @@ const NEIGHBORS = Object.freeze([
 const key = ({ x, y }) => `${x},${y}`;
 const distance = (a, b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 const cardinalDistance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+
+export function canBurnBushFromCell(goblinCell, bushCell) {
+  return cardinalDistance(goblinCell, bushCell) === 1;
+}
+
+export function isAlignedForBushBurn(
+  _goblinPosition,
+  _bushPosition,
+  goblinCell,
+  bushCell,
+  _tileSize,
+) {
+  return canBurnBushFromCell(goblinCell, bushCell);
+}
 
 export function findRoute(start, goals, isWalkable, maximumDepth = Infinity) {
   const goalKeys = new Set(goals.map(key));
@@ -91,24 +106,33 @@ export function createGoblinBehaviorController(goblin, {
   let route = [];
   let bushTargetId = null;
   let characterTargetId = null;
-  const initialPosition = goblin.getPosition();
-  const initialCollider = goblin.getMovementCollider();
-  const colliderOffset = {
-    x: initialCollider.x - initialPosition.x,
-    y: initialCollider.y - initialPosition.y,
-  };
 
   function stop() { goblin.setMovementIntent({ x: 0, y: 0 }); }
   function currentCell() {
-    const collider = goblin.getMovementCollider();
-    return {
-      x: Math.floor(collider.x / grid.tileSizePx),
-      y: Math.floor(collider.y / grid.tileSizePx),
-    };
+    return getCharacterGridCell(goblin.getMovementCollider(), grid.tileSizePx);
+  }
+  function canStartBushAttack(target) {
+    const position = getColliderCenter(goblin.getMovementCollider());
+    return isAlignedForBushBurn(
+      position,
+      target.position,
+      currentCell(),
+      target.cell,
+      grid.tileSizePx,
+    );
   }
   function startAttack(target, type) {
+    if (type === "bush" && !canStartBushAttack(target)) {
+      stop();
+      return false;
+    }
     const from = goblin.getPosition();
-    const direction = { x: target.position.x - from.x, y: target.position.y - from.y };
+    const direction = type === "bush"
+      ? {
+          x: target.cell.x - currentCell().x,
+          y: target.cell.y - currentCell().y,
+        }
+      : { x: target.position.x - from.x, y: target.position.y - from.y };
     stop();
     if (goblin.attack(direction)) {
       mode = "recovering";
@@ -122,7 +146,9 @@ export function createGoblinBehaviorController(goblin, {
           target.combatCollider,
         )
       ) target.applyFireDamage(50);
+      return true;
     }
+    return false;
   }
   function nearbyCharacter(world) {
     const nearby = world.characters
@@ -145,7 +171,12 @@ export function createGoblinBehaviorController(goblin, {
     if (!target) return false;
     bushTargetId = target.bush.id;
     route = target.route;
-    if (route.length === 0) startAttack(target.bush, "bush");
+    if (route.length === 0 && canStartBushAttack(target.bush)) {
+      startAttack(target.bush, "bush");
+    } else if (route.length === 0) {
+      route = [currentCell()];
+      mode = "walking-bush";
+    }
     else mode = "walking-bush";
     return true;
   }
@@ -172,12 +203,8 @@ export function createGoblinBehaviorController(goblin, {
   }
   function followRoute() {
     if (route.length === 0) return false;
-    const center = gridCellCenter(route[0], grid.tileSizePx);
-    const waypoint = {
-      x: center.x - colliderOffset.x,
-      y: center.y - colliderOffset.y,
-    };
-    const position = goblin.getPosition();
+    const waypoint = gridCellCenter(route[0], grid.tileSizePx);
+    const position = getColliderCenter(goblin.getMovementCollider());
     const dx = waypoint.x - position.x;
     const dy = waypoint.y - position.y;
     if (Math.hypot(dx, dy) <= 5) route.shift();
@@ -208,7 +235,9 @@ export function createGoblinBehaviorController(goblin, {
         stop();
         if (mode === "walking-bush") {
           const target = getWorld().bushes.find(({ id, isAlive }) => id === bushTargetId && isAlive);
-          if (target && distance(currentCell(), target.cell) === 1) startAttack(target, "bush");
+          if (target && canStartBushAttack(target)) {
+            startAttack(target, "bush");
+          }
           else mode = "idle";
         } else {
           mode = "idle";

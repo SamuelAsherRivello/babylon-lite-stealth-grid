@@ -7,16 +7,16 @@ function getPointerId(event) {
 export function createVirtualController({
   joystick,
   puck,
-  jumpButton,
-  shootButton,
-  onJump,
-  onShoot = () => {},
+  itemButton,
+  attackButton,
+  onItem = () => {},
+  onAttack = () => {},
   onMovementChange = () => {},
 }) {
   const removers = [];
   const actionPointers = new Map([
-    [jumpButton, new Set()],
-    [shootButton, new Set()],
+    [itemButton, new Set()],
+    [attackButton, new Set()],
   ]);
   let activeMovementPointer;
   let movement = { x: 0, y: 0 };
@@ -125,8 +125,8 @@ export function createVirtualController({
     });
   }
 
-  registerAction(jumpButton, onJump);
-  registerAction(shootButton, onShoot);
+  registerAction(itemButton, onItem);
+  registerAction(attackButton, onAttack);
 
   function reset() {
     resetMovement();

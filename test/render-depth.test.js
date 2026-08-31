@@ -32,7 +32,7 @@ test("Y-sorted world layers draw lower ground contacts in front", () => {
   assert.ok(inFront < GAME_DEPTH.player);
 });
 
-test("every moving character recalculates layer order from Y while updating sprites", async () => {
+test("every moving character recalculates layer order from its movement collider while updating sprites", async () => {
   const characterModules = [
     "../src/player.js",
     "../src/enemies/goblin/goblin.js",
@@ -42,7 +42,8 @@ test("every moving character recalculates layer order from Y while updating spri
 
   for (const modulePath of characterModules) {
     const source = await readFile(new URL(modulePath, import.meta.url), "utf8");
-    assert.match(source, /getYSortedLayerOrder\(position\.y, bounds\.height\)/, modulePath);
+    assert.match(source, /getCharacterLayerOrder\(/, modulePath);
+    assert.match(source, /getMovementCollider\(\)/, modulePath);
     assert.match(source, /layer\.order = order/, modulePath);
   }
 });

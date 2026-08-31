@@ -107,3 +107,13 @@ The system SHALL use the existing collider diagnostic setting as the sole visibi
 - **WHEN** the existing collider diagnostic setting changes to disabled
 - **THEN** all spawner markers become hidden while the spawners continue population maintenance
 
+### Requirement: Spawn placement and reveal animation
+Every spawner SHALL use explicit actor identity, spawn mode, and maximum distance metadata. Newly created Player, Sheep, Goblin, and Warrior actors SHALL begin at zero rendered scale and opacity and reach their full rendered scale and opacity over 0.25 seconds, regardless of whether renderer registration has occurred when they are attached.
+
+#### Scenario: Initial actor begins its reveal
+- **WHEN** an actor is created before renderer initialization
+- **THEN** its spawn animation is initialized and progresses from zero to full visibility
+
+#### Scenario: Runtime actor begins its reveal
+- **WHEN** an actor is created after renderer initialization
+- **THEN** it also progresses from zero to full visibility over 0.25 seconds

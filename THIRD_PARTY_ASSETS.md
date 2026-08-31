@@ -30,3 +30,24 @@ must not be repackaged or distributed separately from the game.
 - Attribution: Not required by the creator, but included here voluntarily.
 - Redistribution: These files must remain part of the game and must not be
   redistributed or repackaged as a standalone asset pack.
+- Tiny Swords (Free Pack), Gold Stone 1/2/5/6 Highlight assets, used for Gold Stone and Gold Pickup objects.
+
+## Tiny Swords - Wood Resource
+
+- Creator: Pixel Frog
+- Official source: https://pixelfrog-assets.itch.io/tiny-swords
+- Pack: Tiny Swords Free Pack
+- Source: `Terrain/Resources/Wood/Wood Resource/Wood Resource.png`
+- Project use: The 64×64 source image is used as a Tiled editor-only pickup object preview. Runtime pickup behavior will be added programmatically later.
+- Attribution: Not required by the creator, but included here voluntarily.
+- Redistribution: This file must remain part of the game and must not be redistributed or repackaged as a standalone asset pack.
+
+## Tiny Swords - Meat Resource
+
+- Creator: Pixel Frog
+- Official source: https://pixelfrog-assets.itch.io/tiny-swords
+- Pack: Tiny Swords Free Pack
+- Source: `Terrain/Resources/Meat/Meat Resource/Meat Resource.png`
+- Project use: The 64×64 source image is used as a Tiled editor-only pickup object preview. Runtime pickup behavior will be added programmatically later.
+- Attribution: Not required by the creator, but included here voluntarily.
+- Redistribution: This file must remain part of the game and must not be redistributed or repackaged as a standalone asset pack.

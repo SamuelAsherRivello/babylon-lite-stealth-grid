@@ -5,6 +5,7 @@ import {
   DEFAULT_SPAWN_CHECK_INTERVAL_SECONDS,
   createSpawner,
   selectWeightedSpawnCount,
+  SPAWN_MODE_ANYWHERE_WALKABLE,
 } from "../src/spawner.js";
 
 function sequenceRandom(values) {
@@ -46,6 +47,8 @@ test("spawner validates population, interval, position, and callbacks", () => {
   assert.throws(() => createSpawner({ ...base, checkIntervalSeconds: 0 }), /checkIntervalSeconds/);
   assert.throws(() => createSpawner({ ...base, position: { x: NaN, y: 0 } }), /position/);
   assert.throws(() => createSpawner({ ...base, createActor: null }), /createActor/);
+  assert.throws(() => createSpawner({ ...base, spawnMode: "invalid" }), /spawnMode/);
+  assert.throws(() => createSpawner({ ...base, spawnMaxDistance: -1 }), /spawnMaxDistance/);
 });
 
 test("spawner defaults to a one-second evaluation interval", () => {
@@ -108,6 +111,27 @@ test("a spawner skips excess creations when no unoccupied walkable nearby cell r
   assert.equal(spawner.initialize(), 1);
   assert.equal(spawner.actors.length, 1);
   assert.deepEqual(spawner.actors[0].position, { x: 15, y: 25 });
+});
+
+test("nearby radius three can reach a cell three tiles from the spawner", () => {
+  const { spawner } = createHarness({
+    position: { x: 35, y: 35 }, minimumCount: 1, maximumCount: 1,
+    guaranteeInitialPopulation: true, tileSize: 10, spawnMaxDistance: 3,
+    isWalkable: ({ x, y }) => x === 5 && y === 5,
+  });
+  assert.equal(spawner.initialize(), 1);
+  assert.deepEqual(spawner.actors[0].position, { x: 5, y: 5 });
+});
+
+test("anywhere-walkable can reach a cell outside the nearby neighborhood", () => {
+  const { spawner } = createHarness({
+    position: { x: 5, y: 5 }, minimumCount: 1, maximumCount: 1,
+    guaranteeInitialPopulation: true, tileSize: 10,
+    spawnMode: SPAWN_MODE_ANYWHERE_WALKABLE,
+    getWalkableCells: () => [{ x: 8, y: 8 }],
+  });
+  assert.equal(spawner.initialize(), 1);
+  assert.deepEqual(spawner.actors[0].position, { x: 85, y: 85 });
 });
 
 test("non-player startup and later evaluations can choose zero", () => {

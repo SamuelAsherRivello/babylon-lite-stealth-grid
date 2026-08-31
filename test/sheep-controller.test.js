@@ -43,7 +43,7 @@ function createTestSheep(overrides = {}) {
 
 const nearbyPlayer = {
   type: CharacterType.PLAYER,
-  cell: { x: 2, y: 3 },
+  cell: { x: 2, y: 4 },
 };
 
 test("sheep exposes and validates its AI configuration", () => {
@@ -94,8 +94,8 @@ test("sheep moves without overshoot, faces travel, and returns idle on a cell ce
   sheep.update(1, [nearbyPlayer]);
 
   assert.equal(sheep.state, SheepState.IDLE);
-  assert.deepEqual(sheep.getPosition(), { x: 288, y: 224 });
-  assert.equal(api.spriteUpdates.at(-1).positionPx[1], 212);
+  assert.deepEqual(sheep.getPosition(), { x: 288, y: 241.48000000000002 });
+  assert.equal(api.spriteUpdates.at(-1).positionPx[1], 194.51999999999998);
   assert.equal(api.spriteUpdates.at(-1).flipX, false);
 });
 
@@ -108,17 +108,18 @@ test("sheep stops safely if a planned segment becomes blocked", () => {
   });
   sheep.update(0.016, [nearbyPlayer]);
   api.animations.at(-1).options.onEnd();
-  obstacles.push({ x: 256, y: 192, width: 64, height: 64 });
+  obstacles.push({ x: 256, y: 256, width: 64, height: 64 });
+  sheep.update(1, [nearbyPlayer]);
   sheep.update(1, [nearbyPlayer]);
 
   assert.equal(sheep.state, SheepState.IDLE);
-  assert.deepEqual(sheep.getPosition(), { x: 224, y: 224 });
+  assert.deepEqual(sheep.getPosition(), { x: 224, y: 241.48000000000002 });
 });
 
 test("player and NPC dynamic colliders both block fleeing", () => {
   const playerBlocker = {
     type: "player",
-    collider: { type: "circle", x: 288, y: 224, radius: 26 },
+    collider: { type: "circle", x: 288, y: 270.52, radius: 26 },
   };
   const npcBlocker = { ...playerBlocker, type: "npc" };
 
@@ -160,7 +161,7 @@ test("contact command cancels running, bounces stationary, then separates", () =
   api.animations.at(-1).options.onEnd();
   assert.equal(sheep.state, SheepState.RUNNING);
   sheep.update(1, [], []);
-  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
+  assert.deepEqual(sheep.getPosition(), { x: 160, y: 241.48000000000002 });
 });
 
 test("coincident contact partners can move apart without ignoring other sheep", () => {
@@ -179,7 +180,7 @@ test("coincident contact partners can move apart without ignoring other sheep", 
   api.animations.at(-1).options.onEnd();
   assert.equal(sheep.state, SheepState.RUNNING);
   sheep.update(1, [], [coincidentPartner]);
-  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
+  assert.deepEqual(sheep.getPosition(), { x: 160, y: 241.48000000000002 });
 });
 
 test("knockback cannot move through another living sheep", () => {

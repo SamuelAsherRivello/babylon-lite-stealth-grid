@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  canBurnBushFromCell,
   createGoblinBehaviorController,
   createGoblinFireHitCollider,
   findRoute,
@@ -10,6 +11,19 @@ import {
 
 const grid = { tileSizePx: 64, columns: 9, rows: 16 };
 const open = ({ x, y }) => x >= 0 && x < grid.columns && y >= 0 && y < grid.rows;
+
+test("a bush burn is valid only from the four cardinal adjacent cells", () => {
+  const bush = { x: 4, y: 5 };
+  for (const cell of [
+    { x: 3, y: 5 }, { x: 5, y: 5 }, { x: 4, y: 4 }, { x: 4, y: 6 },
+  ]) assert.equal(canBurnBushFromCell(cell, bush), true);
+
+  for (const cell of [
+    { x: 4, y: 5 },
+    { x: 3, y: 4 }, { x: 3, y: 6 }, { x: 5, y: 4 }, { x: 5, y: 6 },
+    { x: 2, y: 5 }, { x: 6, y: 5 }, { x: 4, y: 3 }, { x: 4, y: 7 },
+  ]) assert.equal(canBurnBushFromCell(cell, bush), false);
+});
 
 test("route search turns through cardinal cells and selects nearest reachable bush", () => {
   const blocked = new Set(["1,0"]);
@@ -35,13 +49,18 @@ test("fire swing projects one grid cell toward the locked direction", () => {
   });
 });
 
-function harness(randomValues, world, options = {}) {
+function harness(randomValues, world, options = {}, movementColliderOffset = { x: 0, y: 0 }) {
   const events = [];
   let position = { x: 32, y: 32 };
   const goblin = {
     getPosition: () => ({ ...position }),
     getGridPosition: () => ({ x: Math.floor(position.x / 64), y: Math.floor(position.y / 64) }),
-    getMovementCollider: () => ({ type: "circle", x: position.x, y: position.y, radius: 24 }),
+    getMovementCollider: () => ({
+      type: "circle",
+      x: position.x + movementColliderOffset.x,
+      y: position.y + movementColliderOffset.y,
+      radius: 24,
+    }),
     getCombatCollider: () => ({ x: position.x - 32, y: position.y - 48, width: 64, height: 96 }),
     setMovementIntent: (movement) => events.push({ type: "move", movement }),
     attack: (direction) => { events.push({ type: "attack", direction }); return true; },
@@ -54,6 +73,29 @@ function harness(randomValues, world, options = {}) {
   });
   return { controller, events, setPosition: (next) => { position = next; } };
 }
+
+test("the real goblin collider center, not its artwork anchor, determines adjacency", () => {
+  let hits = 0;
+  const bush = {
+    id: "bush", isAlive: true, cell: { x: 3, y: 0 }, position: { x: 224, y: 32 },
+    combatCollider: { x: 188, y: -4, width: 72, height: 72 },
+    applyFireDamage() { hits += 1; },
+  };
+  const { controller, events, setPosition } = harness([0.5], {
+    characters: [], bushes: [bush],
+  }, { prioritizeBushes: true, bushChance: 1 }, {
+    x: 0,
+    y: 192 * 0.84 - 123,
+  });
+
+  // The artwork anchor is outside cell 2,0 while the movement-collider center
+  // is in cell 2,0. The collider-center contract therefore permits this hit.
+  setPosition({ x: 160, y: 32 - (192 * 0.84 - 123) });
+  controller.update(0.01);
+
+  assert.equal(hits, 1);
+  assert.equal(events.filter(({ type }) => type === "attack").length, 1);
+});
 
 test("temporary QA mode walks to a cardinal adjacent cell and hits the bush twice", () => {
   let health = 100;
@@ -82,10 +124,32 @@ test("temporary QA mode walks to a cardinal adjacent cell and hits the bush twic
     type === "move" && movement.x === 1 && movement.y === 0
   )));
   assert.deepEqual(events.filter(({ type }) => type === "attack").map(({ direction }) => direction), [
-    { x: 64, y: 0 },
-    { x: 64, y: 0 },
+    { x: 1, y: 0 },
+    { x: 1, y: 0 },
   ]);
   assert.equal(health, 0);
+});
+
+test("a collider center in a diagonal cell does not permit a corner burn", () => {
+  let hits = 0;
+  const bush = {
+    id: "bush", isAlive: true, cell: { x: 2, y: 0 }, position: { x: 160, y: 32 },
+    combatCollider: { x: 124, y: -4, width: 72, height: 72 },
+    applyFireDamage() { hits += 1; },
+  };
+  const { controller, events, setPosition } = harness([0.5], {
+    characters: [], bushes: [bush],
+  }, { prioritizeBushes: true, bushChance: 1 });
+  setPosition({ x: 70, y: 70 });
+
+  controller.update(0.01);
+  controller.update(0.01);
+
+  assert.equal(hits, 0);
+  assert.equal(events.filter(({ type }) => type === "attack").length, 0);
+  assert.ok(events.some(({ type, movement }) => (
+    type === "move" && (movement.x !== 0 || movement.y !== 0)
+  )));
 });
 
 test("character priority avoids the bush roll", () => {

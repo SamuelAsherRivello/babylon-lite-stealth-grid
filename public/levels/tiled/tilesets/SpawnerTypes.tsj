@@ -13,7 +13,7 @@
       "imageheight": 64,
       "imagewidth": 64,
       "name": "Player Spawner",
-      "properties": [{ "name": "type", "type": "string", "value": "PLAYER" }]
+      "properties": [{ "name": "type", "type": "string", "value": "PLAYER" }, { "name": "spawnMode", "type": "string", "value": "nearby" }, { "name": "spawnMaxDistance", "type": "int", "value": 0 }]
     },
     {
       "class": "Spawner",
@@ -22,7 +22,7 @@
       "imageheight": 64,
       "imagewidth": 64,
       "name": "Sheep Spawner",
-      "properties": [{ "name": "type", "type": "string", "value": "SHEEP" }]
+      "properties": [{ "name": "type", "type": "string", "value": "SHEEP" }, { "name": "spawnMode", "type": "string", "value": "nearby" }, { "name": "spawnMaxDistance", "type": "int", "value": 3 }]
     },
     {
       "class": "Spawner",
@@ -31,7 +31,7 @@
       "imageheight": 64,
       "imagewidth": 64,
       "name": "Enemy Spawner",
-      "properties": [{ "name": "type", "type": "string", "value": "GOBLIN" }]
+      "properties": [{ "name": "type", "type": "string", "value": "GOBLIN" }, { "name": "spawnMode", "type": "string", "value": "nearby" }, { "name": "spawnMaxDistance", "type": "int", "value": 3 }]
     }
   ],
   "tilewidth": 64,

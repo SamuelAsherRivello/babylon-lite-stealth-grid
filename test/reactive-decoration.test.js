@@ -66,7 +66,9 @@ test("fire effect is centered over the bush artwork", () => {
 test("bush owns 100 health, a living-only combat collider, and two fire hits", () => {
   const { decoration, calls } = createHarness({ x: 96, y: 160 }, true);
   assert.equal(decoration.health, 100);
-  assert.deepEqual(decoration.cell, { x: 1, y: 2 });
+  assert.deepEqual(decoration.interactionPosition, { x: 96, y: 204 });
+  assert.deepEqual(decoration.cell, { x: 1, y: 3 });
+  assert.deepEqual(decoration.getSnapshot().position, { x: 96, y: 204 });
   assert.ok(decoration.getCombatCollider());
   assert.equal(decoration.applyFireDamage(50), true);
   assert.equal(decoration.health, 50);

@@ -88,6 +88,43 @@ test("Level01 normalizes the bush as a bottom-centered independent object", asyn
   });
 });
 
+test("Level01 normalizes one visible Gold Stone object", async () => {
+  const [map, terrain, bush, spawners, colorOne, gold] = await Promise.all([
+    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL), json(COLOR_ONE_URL),
+    json(new URL("../public/levels/tiled/tilesets/GoldStoneObjects.tsj", import.meta.url)),
+  ]);
+  const level = normalizeTiledMap(map, new Map([
+    ["../tilesets/Tilemap_color3.tsj", terrain], ["../tilesets/TinySwordsBushDecorations.tsj", bush],
+    ["../tilesets/SpawnerTypes.tsj", spawners], ["../tilesets/Tilemap_color1.tsj", colorOne],
+    ["../tilesets/GoldStoneObjects.tsj", gold],
+  ]));
+  assert.equal(level.goldStones.length, 1);
+  assert.equal(level.goldStones[0].position.x, 288);
+  assert.equal(level.goldStones[0].position.y, 768);
+  assert.equal(level.goldStones[0].goldStone.variantImages.length, 2);
+  assert.deepEqual(level.goldStones[0].goldStone.combatCollider, { x: 264, y: 776, width: 48, height: 48 });
+});
+
+test("GoldObject keeps its attack collider and gold-drop descriptor", async () => {
+  const [map, terrain, bush, spawners, colorOne, gold] = await Promise.all([
+    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL), json(COLOR_ONE_URL),
+    json(new URL("../public/levels/tiled/tilesets/GoldStoneObjects.tsj", import.meta.url)),
+  ]);
+  const errors = validateTiledMap(map, new Map([
+    ["../tilesets/Tilemap_color3.tsj", terrain], ["../tilesets/TinySwordsBushDecorations.tsj", bush],
+    ["../tilesets/SpawnerTypes.tsj", spawners], ["../tilesets/Tilemap_color1.tsj", colorOne],
+    ["../tilesets/GoldStoneObjects.tsj", gold],
+  ]));
+  assert.deepEqual(errors, []);
+  const level = normalizeTiledMap(map, new Map([
+    ["../tilesets/Tilemap_color3.tsj", terrain], ["../tilesets/TinySwordsBushDecorations.tsj", bush],
+    ["../tilesets/SpawnerTypes.tsj", spawners], ["../tilesets/Tilemap_color1.tsj", colorOne],
+    ["../tilesets/GoldStoneObjects.tsj", gold],
+  ]));
+  assert.equal(level.goldStones[0].class, "GoldObject");
+  assert.ok(level.goldStones[0].goldStone.combatCollider);
+});
+
 test("reactive decoration property precedence is class then tile then object", () => {
   const tile = {
     id: 0, class: "ReactiveDecoration", imagewidth: 128, imageheight: 128,

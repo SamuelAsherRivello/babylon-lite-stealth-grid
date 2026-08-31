@@ -33,11 +33,11 @@ test("player keeps its movement circle and gains a centered feet-anchored combat
     type: "circle", x: 93, y: 126, radius: 18.2,
   });
   assert.deepEqual(PLAYER_COMBAT_COLLIDER, {
-    x: 64, y: 21.75999999999999, width: 64, height: 128,
+    x: 64, y: 69.75999999999999, width: 64, height: 80,
   });
   assert.deepEqual(
     getCharacterCollider(position, PLAYER_FRAME, { x: 0.5, y: 0.78 }, PLAYER_COMBAT_COLLIDER),
-    { x: 168, y: 300, width: 64, height: 128 },
+    { x: 168, y: 300, width: 64, height: 80 },
   );
 });
 

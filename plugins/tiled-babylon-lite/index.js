@@ -24,7 +24,7 @@ export function validateTiledMap(map, externalTilesets = null) {
       errors.push(`Layer "${layer.name}" must contain ${map.width * map.height} cells.`);
     }
   }
-  if (externalTilesets) errors.push(...validateReactiveDecorations(map, externalTilesets));
+  if (externalTilesets) errors.push(...validateReactiveDecorations(map, externalTilesets), ...validateGoldStones(map, externalTilesets));
   return errors;
 }
 
@@ -55,6 +55,10 @@ export function normalizeTiledMap(map, externalTilesets) {
         if (!source) throw new Error(`No tileset resolves global tile id ${gid}.`);
         const frame = gid - source.firstgid;
         const tileDefinition = source.tileset.tiles?.find(({ id }) => id === frame);
+        if (!source.tileset.image) {
+          console.warn(`Skipping terrain tile ${gid} in layer "${layer.name}": tileset "${source.source}" has no terrain atlas image.`);
+          return [];
+        }
         const column = index % map.width;
         const row = Math.floor(index / map.width);
         return [{
@@ -94,7 +98,8 @@ export function normalizeTiledMap(map, externalTilesets) {
         layerName: layer.name, gid, tileId, source: source.source,
         position, properties,
         decoration: className === "ReactiveDecoration" ? {
-          image: properties.runtimeImage,
+          image: properties.runtimeImage ?? tile.image,
+          variantImages: [properties.runtimeImage ?? tile.image, properties.runtimeImageAlt].filter(Boolean),
           frameSize: { width: frameWidth, height: frameHeight },
           frameCount: Number(properties.frameCount),
           frameDurationMs: Number(properties.frameDurationMs),
@@ -110,6 +115,13 @@ export function normalizeTiledMap(map, externalTilesets) {
           combatCollider: normalizeTileObject(
             tile, "CombatCollider", position, frameWidth, frameHeight,
           ),
+        } : null,
+          goldStone: className === "GoldObject" ? {
+          image: properties.runtimeImage ?? tile.image,
+          variantImages: [properties.runtimeImage ?? tile.image, properties.runtimeImageAlt].filter(Boolean),
+          frameSize: { width: frameWidth, height: frameHeight },
+          frameCount: Number(properties.frameCount),
+          combatCollider: normalizeTileObject(tile, "CombatCollider", position, frameWidth, frameHeight),
         } : null,
       }];
     }));
@@ -130,6 +142,10 @@ export function normalizeTiledMap(map, externalTilesets) {
         id: object.id,
         name: object.name ?? "",
         type: String(properties.type ?? "").toUpperCase(),
+        spawnMode: String(properties.spawnMode ?? "nearby").toLowerCase(),
+        spawnMaxDistance: Number(properties.spawnMaxDistance ?? (
+          String(properties.type ?? "").toUpperCase() === "PLAYER" ? 0 : 3
+        )),
         gameCell: { x: column - originColumn, y: originRow - row },
       }];
     }));
@@ -139,7 +155,8 @@ export function normalizeTiledMap(map, externalTilesets) {
     tileWidth: map.tilewidth, tileHeight: map.tileheight,
     origin: { x: originColumn, y: map.height - originRow - 1 },
     layers, objects, spawners,
-    reactiveDecorations: objects.filter(({ decoration }) => decoration !== null),
+    reactiveDecorations: objects.filter(({ decoration }) => decoration?.frameCount > 1 && decoration.triggerMode),
+    goldStones: objects.filter(({ class: className }) => className === "GoldObject"),
   };
 }
 
@@ -166,6 +183,14 @@ export async function loadTiledMap(url, fetchImpl = fetch) {
         object.decoration.image,
         new URL(object.source, mapUrl),
       ).href,
+    },
+  }));
+  level.goldStones = level.goldStones.map((object) => ({
+    ...object,
+    goldStone: {
+      ...object.goldStone,
+      image: new URL(object.goldStone.image, new URL(object.source, mapUrl)).href,
+      variantImages: object.goldStone.variantImages.map((image) => new URL(image, new URL(object.source, mapUrl)).href),
     },
   }));
   return level;
@@ -282,12 +307,29 @@ function validateReactiveDecorations(map, externalTilesets) {
   return errors;
 }
 
+function validateGoldStones(map, externalTilesets) {
+  const errors = [];
+  for (const layer of map?.layers ?? []) for (const object of layer.objects ?? []) {
+    if (!object.gid) continue;
+    const source = resolveTileset((map.tilesets ?? []).map(({ firstgid, source }) => ({ firstgid, source, tileset: externalTilesets.get(source) })).sort((a, b) => a.firstgid - b.firstgid), object.gid & ~FLIP_FLAGS);
+    const tile = source?.tileset?.tiles?.find(({ id }) => id === ((object.gid & ~FLIP_FLAGS) - source.firstgid));
+    const className = object.class || object.type || tile?.class || tile?.type || "";
+    if (className !== "GoldObject") continue;
+    const properties = propertiesToObject(tile?.properties);
+    if (!properties.runtimeImage || !properties.runtimeImageAlt) errors.push(`Gold Stone object ${object.id ?? "(unknown)"} is missing both runtime variants.`);
+    if (properties.frameWidth !== 64 || properties.frameHeight !== 64 || properties.frameCount !== 6) errors.push(`Gold Object ${object.id ?? "(unknown)"} has invalid frame metadata.`);
+    const collider = tile?.objectgroup?.objects?.find((entry) => (entry.class || entry.type) === "CombatCollider");
+    if (!collider || collider.width <= 0 || collider.height <= 0) errors.push(`Gold Stone object ${object.id ?? "(unknown)"} is missing valid CombatCollider geometry.`);
+  }
+  return errors;
+}
+
 function validateSpawners(spawners) {
   const playerCount = spawners.filter(({ type }) => type === "PLAYER").length;
   if (playerCount !== 1) {
     throw new Error("Invalid Level Format: Must contain 1 Player Spawner");
   }
-  const supportedTypes = new Set(["PLAYER", "SHEEP", "GOBLIN", "WARRIOR"]);
+  const supportedTypes = new Set(["PLAYER", "SHEEP", "GOBLIN", "WARRIOR", "ARCHER"]);
   for (const spawner of spawners) {
     if (!supportedTypes.has(spawner.type)) {
       const name = spawner.name ? ` ("${spawner.name}")` : "";
@@ -297,6 +339,12 @@ function validateSpawners(spawners) {
     }
     if (!Number.isFinite(spawner.gameCell.x) || !Number.isFinite(spawner.gameCell.y)) {
       throw new Error(`Spawner object ${spawner.id ?? "(unknown)"} has an invalid position`);
+    }
+    if (!["nearby", "anywhere-walkable"].includes(spawner.spawnMode)) {
+      throw new Error(`Spawner object ${spawner.id ?? "(unknown)"} has unsupported spawn mode "${spawner.spawnMode}"`);
+    }
+    if (!Number.isInteger(spawner.spawnMaxDistance) || spawner.spawnMaxDistance < 0) {
+      throw new Error(`Spawner object ${spawner.id ?? "(unknown)"} has invalid spawn max distance "${spawner.spawnMaxDistance}"`);
     }
   }
 }

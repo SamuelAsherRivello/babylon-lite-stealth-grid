@@ -70,3 +70,14 @@ Level01 SHALL explicitly contain exactly one Player Spawner, one Sheep Spawner, 
 #### Scenario: Existing Warrior placement is present
 - **WHEN** the map also contains a supported enemy spawner whose character identity is Warrior
 - **THEN** it remains a distinct authored spawner and is not converted into or replaced by the Goblin palette item
+
+### Requirement: Authored placement metadata
+Spawner placements SHALL carry or receive defaults for actor identity, spawn mode, and maximum distance. Spawn mode SHALL be `nearby` or `anywhere-walkable`, and maximum distance SHALL be a non-negative integer measured in grid cells.
+
+#### Scenario: Placement metadata is normalized
+- **WHEN** a valid spawner placement is loaded
+- **THEN** its normalized data exposes spawn mode and maximum distance alongside its actor identity
+
+#### Scenario: Invalid placement metadata is rejected
+- **WHEN** a placement contains an unsupported mode or malformed maximum distance
+- **THEN** loading fails with an object-specific actionable error

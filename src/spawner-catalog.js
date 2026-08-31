@@ -2,6 +2,7 @@ export const SpawnerType = Object.freeze({
   PLAYER: "player",
   SHEEP: "sheep",
   ENEMY: "enemy",
+  OBJECT: "object",
 });
 
 export const SpawnerCharacter = Object.freeze({
@@ -9,6 +10,12 @@ export const SpawnerCharacter = Object.freeze({
   SHEEP: "sheep",
   GOBLIN: "goblin",
   WARRIOR: "warrior",
+  ARCHER: "archer",
+});
+
+export const SpawnMode = Object.freeze({
+  NEARBY: "nearby",
+  ANYWHERE_WALKABLE: "anywhere-walkable",
 });
 
 const SPAWNER_DEFAULTS = Object.freeze({
@@ -18,6 +25,8 @@ const SPAWNER_DEFAULTS = Object.freeze({
     minimumCount: 1,
     maximumCount: 1,
     guaranteeInitialPopulation: true,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 0,
   }),
   SHEEP: Object.freeze({
     type: SpawnerType.SHEEP,
@@ -25,6 +34,8 @@ const SPAWNER_DEFAULTS = Object.freeze({
     minimumCount: 2,
     maximumCount: 2,
     guaranteeInitialPopulation: false,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 3,
   }),
   GOBLIN: Object.freeze({
     type: SpawnerType.ENEMY,
@@ -32,6 +43,8 @@ const SPAWNER_DEFAULTS = Object.freeze({
     minimumCount: 1,
     maximumCount: 1,
     guaranteeInitialPopulation: false,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 3,
   }),
   WARRIOR: Object.freeze({
     type: SpawnerType.ENEMY,
@@ -39,6 +52,17 @@ const SPAWNER_DEFAULTS = Object.freeze({
     minimumCount: 1,
     maximumCount: 1,
     guaranteeInitialPopulation: true,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 3,
+  }),
+  ARCHER: Object.freeze({
+    type: SpawnerType.ENEMY,
+    character: SpawnerCharacter.ARCHER,
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 3,
   }),
 });
 
@@ -70,6 +94,9 @@ export function createInitialSpawnerConfigs({
         y: (spawner.gameCell.y + 0.5) * tileSize,
       },
       gameCell: { ...spawner.gameCell },
+      ...(spawner.spawnMode ? { spawnMode: spawner.spawnMode } : {}),
+      ...(Number.isInteger(spawner.spawnMaxDistance)
+        ? { spawnMaxDistance: spawner.spawnMaxDistance } : {}),
     };
   });
 }

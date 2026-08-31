@@ -21,6 +21,13 @@ test("runtime routes combat colliders to projectiles and contact checks", () => 
   assert.match(mainSource, /sheepCombatColliders/);
 });
 
+test("Level01 runtime exposes Gold Stone combat colliders to projectile targets and diagnostics", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("../src/main.js", import.meta.url), "utf8");
+  assert.match(source, /goldStoneObjects\.map\(\(object\) => \(\{ record: \{ type: "object", combat: object \}, collider: object\.getCombatCollider\(\) \}\)\)/);
+  assert.match(source, /goldStoneObjects[\s\S]*combatCollider: object\.getCombatCollider\(\)/);
+});
+
 test("an upper-body projectile can overlap combat geometry without the movement circle", () => {
   const movementCollider = { type: "circle", x: 200, y: 324, radius: 18.2 };
   const combatCollider = { x: 168, y: 172, width: 64, height: 128 };

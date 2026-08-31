@@ -20,6 +20,14 @@ const TILESET_URLS = TILESET_NAMES.map((name) => new URL(
   `../public/levels/tiled/tilesets/${name}.tsj`,
   import.meta.url,
 ));
+const WOOD_RESOURCE_TILESET_URL = new URL(
+  "../public/levels/tiled/tilesets/WoodResourceObjects.tsj",
+  import.meta.url,
+);
+const MEAT_RESOURCE_TILESET_URL = new URL(
+  "../public/levels/tiled/tilesets/MeatResourceObjects.tsj",
+  import.meta.url,
+);
 const COLOR_THREE_SOURCE = "../tilesets/Tilemap_color3.tsj";
 const COLOR_THREE_COLLIDABLE_IDS = [
   0, 1, 2, 3, 5, 6, 7, 9, 11, 12, 14, 16, 18, 19, 20, 21, 23, 24, 25,
@@ -105,6 +113,30 @@ test("all five filename-matched Tiny Swords tilesets share the 64 pixel grid", a
     assert.equal(tileset.columns, 9);
     assert.equal(tileset.tilecount, 54);
   }
+});
+
+test("Wood Resource is available as a standalone Tiled pickup object item", async () => {
+  const tileset = await readJson(WOOD_RESOURCE_TILESET_URL);
+  assert.equal(tileset.name, "Wood Resource Objects");
+  assert.equal(tileset.tilecount, 1);
+  assert.equal(tileset.tilewidth, 64);
+  assert.equal(tileset.tileheight, 64);
+  assert.equal(tileset.tiles[0].class, "WoodPickup");
+  assert.equal(tileset.tiles[0].name, "Wood Resource");
+  assert.equal(tileset.tiles[0].image, "../../../assets/terrain/resources/wood/Wood Resource.png");
+  assert.equal(tileset.tiles[0].properties.find(({ name }) => name === "frameCount").value, 1);
+});
+
+test("Meat Resource is available as a standalone Tiled pickup object item", async () => {
+  const tileset = await readJson(MEAT_RESOURCE_TILESET_URL);
+  assert.equal(tileset.name, "Meat Resource Objects");
+  assert.equal(tileset.tilecount, 1);
+  assert.equal(tileset.tilewidth, 64);
+  assert.equal(tileset.tileheight, 64);
+  assert.equal(tileset.tiles[0].class, "MeatPickup");
+  assert.equal(tileset.tiles[0].name, "Meat Resource");
+  assert.equal(tileset.tiles[0].image, "../../../assets/terrain/resources/meat/Meat Resource.png");
+  assert.equal(tileset.tiles[0].properties.find(({ name }) => name === "frameCount").value, 1);
 });
 
 test("normalization preserves the image for each tile's source tileset", async () => {
@@ -214,7 +246,7 @@ test("normalization imports Tiled collision objects into bottom-left local coord
   }]);
 });
 
-test("Level01 exposes one Player, Sheep, Goblin, and Warrior spawner", async () => {
+test("Level01 exposes implemented Player, Sheep, Goblin, Warrior, and Archer spawners", async () => {
   const { map, externalTilesets } = await readLevelWithTilesets();
   const level = normalizeTiledMap(map, externalTilesets);
   assert.deepEqual(level.spawners.map(({ type, gameCell }) => ({ type, gameCell })), [
@@ -222,6 +254,7 @@ test("Level01 exposes one Player, Sheep, Goblin, and Warrior spawner", async () 
     { type: "SHEEP", gameCell: { x: 6, y: 4 } },
     { type: "GOBLIN", gameCell: { x: 2, y: 5 } },
     { type: "WARRIOR", gameCell: { x: 5, y: 9 } },
+    { type: "ARCHER", gameCell: { x: 4, y: 7 } },
   ]);
 });
 

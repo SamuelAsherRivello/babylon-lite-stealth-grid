@@ -39,7 +39,7 @@ test("Coordinates UI visibility follows the collider diagnostic setting", () => 
   assert.equal(container.hidden, false);
 });
 
-test("virtual controller contains matching Move, Jump (C), and Shoot (V) labels", async () => {
+test("virtual controller contains matching Move, Jump (C), and Attack (V) labels", async () => {
   const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const jumpIndex = html.indexOf('id="jump-action"');
   const shootIndex = html.indexOf('id="shoot-action"');
@@ -48,7 +48,7 @@ test("virtual controller contains matching Move, Jump (C), and Shoot (V) labels"
   assert.ok(jumpIndex >= 0);
   assert.ok(shootIndex > jumpIndex);
   assert.match(html, /<span class="control-label">Jump \(C\)<\/span>/);
-  assert.match(html, /<span class="control-label">Shoot \(V\)<\/span>/);
+  assert.match(html, /<span class="control-label">Attack \(V\)<\/span>/);
   assert.match(html, /<div class="movement-control action-control-layout">/);
   assert.doesNotMatch(html, /class="controls"/);
 });

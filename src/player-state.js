@@ -1,7 +1,8 @@
 export const PlayerState = Object.freeze({
   IDLE: "idle",
   RUNNING: "running",
-  SHOOTING: "shooting",
+  ATTACKING: "attacking",
+  SHOOTING: "attacking",
 });
 
 export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
@@ -9,6 +10,7 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
   let facing = 1;
   let shotReleased = false;
   let shotDirection = { x: 1, y: 0 };
+  let attackWeapon = null;
 
   function transition(nextState) {
     const changed = state !== nextState;
@@ -33,12 +35,10 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
       return { ...shotDirection };
     },
     get movementLocked() {
-      return state === PlayerState.SHOOTING;
+      return false;
     },
     updateLocomotion(movement) {
-      if (state === PlayerState.SHOOTING) {
-        return { changed: false, state };
-      }
+      if (state === PlayerState.ATTACKING) return { changed: false, state };
       updateFacing(movement);
       return transition(
         movement.x !== 0 || movement.y !== 0
@@ -46,17 +46,31 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
           : PlayerState.IDLE,
       );
     },
-    startShooting(direction = { x: facing, y: 0 }) {
-      if (state === PlayerState.SHOOTING) {
+    startShooting(direction = { x: facing, y: 0 }, weapon = null) {
+      if (state === PlayerState.ATTACKING) {
         return { changed: false, state };
       }
+      attackWeapon = weapon;
       shotDirection = { x: direction.x, y: direction.y };
       shotReleased = false;
-      return transition(PlayerState.SHOOTING);
+      return transition(PlayerState.ATTACKING);
+    },
+    startAttack(weapon) {
+      if (!weapon || state === PlayerState.ATTACKING) {
+        return { changed: false, state };
+      }
+      attackWeapon = weapon;
+      return transition(PlayerState.ATTACKING);
+    },
+    get attackWeapon() {
+      return attackWeapon;
+    },
+    get canChangeLoadout() {
+      return state !== PlayerState.ATTACKING;
     },
     releaseShot(currentFrame) {
       if (
-        state !== PlayerState.SHOOTING
+        state !== PlayerState.ATTACKING
         || shotReleased
         || currentFrame < releaseFrame
       ) {
@@ -66,7 +80,7 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
       return true;
     },
     completeShooting(movement) {
-      if (state !== PlayerState.SHOOTING) {
+      if (state !== PlayerState.ATTACKING) {
         return { changed: false, state };
       }
       updateFacing(movement);

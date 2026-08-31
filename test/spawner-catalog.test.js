@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   SpawnerCharacter,
   SpawnerType,
+  SpawnMode,
   createInitialSpawnerConfigs,
 } from "../src/spawner-catalog.js";
 
@@ -29,6 +30,8 @@ test("spawner catalog derives Babylon defaults from authored types and cells", (
       minimumCount: 1,
       maximumCount: 1,
       guaranteeInitialPopulation: true,
+      spawnMode: SpawnMode.NEARBY,
+      spawnMaxDistance: 0,
     },
     {
       type: SpawnerType.SHEEP,
@@ -38,6 +41,8 @@ test("spawner catalog derives Babylon defaults from authored types and cells", (
       minimumCount: 2,
       maximumCount: 2,
       guaranteeInitialPopulation: false,
+      spawnMode: SpawnMode.NEARBY,
+      spawnMaxDistance: 3,
     },
     {
       type: SpawnerType.ENEMY,
@@ -47,6 +52,8 @@ test("spawner catalog derives Babylon defaults from authored types and cells", (
       minimumCount: 1,
       maximumCount: 1,
       guaranteeInitialPopulation: false,
+      spawnMode: SpawnMode.NEARBY,
+      spawnMaxDistance: 3,
     },
     {
       type: SpawnerType.ENEMY,
@@ -56,6 +63,8 @@ test("spawner catalog derives Babylon defaults from authored types and cells", (
       minimumCount: 1,
       maximumCount: 1,
       guaranteeInitialPopulation: true,
+      spawnMode: SpawnMode.NEARBY,
+      spawnMaxDistance: 3,
     },
   ]);
   assert.equal("checkIntervalSeconds" in configs[0], false);
@@ -76,6 +85,8 @@ test("optional non-player types can be omitted without fallback placements", () 
     minimumCount: 1,
     maximumCount: 1,
     guaranteeInitialPopulation: true,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 0,
   }]);
 });
 

@@ -57,38 +57,38 @@ function pointerEvent(type, pointerId, clientX = 0, clientY = 0) {
 globalThis.window = new EventTarget();
 const { createVirtualController } = await import("../src/ui/virtual-controller.js");
 
-function createHarness(onShoot, onMovementChange) {
+function createHarness(onAttack, onMovementChange) {
   const joystick = new FakeControl();
   const puck = new FakeControl({ left: 0, top: 0, width: 40, height: 40 });
-  const jumpButton = new FakeControl();
-  const shootButton = new FakeControl();
-  let jumps = 0;
-  let shots = 0;
+  const itemButton = new FakeControl();
+  const attackButton = new FakeControl();
+  let items = 0;
+  let attacks = 0;
   const controller = createVirtualController({
     joystick,
     puck,
-    jumpButton,
-    shootButton,
-    onJump: () => {
-      jumps += 1;
+    itemButton,
+    attackButton,
+    onItem: () => {
+      items += 1;
     },
-    onShoot: onShoot ?? (() => {
-      shots += 1;
+    onAttack: onAttack ?? (() => {
+      attacks += 1;
     }),
     onMovementChange,
   });
 
   return {
     controller,
-    get jumps() {
-      return jumps;
+    get items() {
+      return items;
     },
     joystick,
-    jumpButton,
+    itemButton,
     puck,
-    shootButton,
-    get shots() {
-      return shots;
+    attackButton,
+    get attacks() {
+      return attacks;
     },
   };
 }
@@ -97,16 +97,16 @@ test("movement capture and action pointers remain independent", () => {
   const harness = createHarness();
 
   harness.joystick.dispatchEvent(pointerEvent("pointerdown", 1, 100, 50));
-  harness.jumpButton.dispatchEvent(pointerEvent("pointerdown", 2));
+  harness.itemButton.dispatchEvent(pointerEvent("pointerdown", 2));
 
   assert.deepEqual(harness.controller.getMovement(), { x: 1, y: 0 });
-  assert.equal(harness.jumps, 1);
+  assert.equal(harness.items, 1);
   assert.equal(harness.joystick.classList.contains("is-pressed"), true);
-  assert.equal(harness.jumpButton.classList.contains("is-pressed"), true);
+  assert.equal(harness.itemButton.classList.contains("is-pressed"), true);
 
-  harness.jumpButton.dispatchEvent(pointerEvent("pointercancel", 2));
+  harness.itemButton.dispatchEvent(pointerEvent("pointercancel", 2));
   assert.deepEqual(harness.controller.getMovement(), { x: 1, y: 0 });
-  assert.equal(harness.jumpButton.classList.contains("is-pressed"), false);
+  assert.equal(harness.itemButton.classList.contains("is-pressed"), false);
 
   harness.joystick.dispatchEvent(pointerEvent("pointerup", 1));
   assert.deepEqual(harness.controller.getMovement(), { x: 0, y: 0 });
@@ -124,17 +124,17 @@ test("movement changes report analog direction without reporting release as an a
   harness.controller.dispose();
 });
 
-test("Shoot fires once per pointer press and safely supports a no-op", () => {
+test("Attack fires once per pointer press and safely supports a no-op", () => {
   const harness = createHarness();
 
-  harness.shootButton.dispatchEvent(pointerEvent("pointerdown", 7));
-  harness.shootButton.dispatchEvent(pointerEvent("pointerdown", 7));
-  assert.equal(harness.shots, 1);
-  harness.shootButton.dispatchEvent(pointerEvent("pointerup", 7));
+  harness.attackButton.dispatchEvent(pointerEvent("pointerdown", 7));
+  harness.attackButton.dispatchEvent(pointerEvent("pointerdown", 7));
+  assert.equal(harness.attacks, 1);
+  harness.attackButton.dispatchEvent(pointerEvent("pointerup", 7));
 
   const noOpHarness = createHarness(() => {});
   assert.doesNotThrow(() => {
-    noOpHarness.shootButton.dispatchEvent(pointerEvent("pointerdown", 8));
+    noOpHarness.attackButton.dispatchEvent(pointerEvent("pointerdown", 8));
   });
 
   harness.controller.dispose();
@@ -144,12 +144,12 @@ test("Shoot fires once per pointer press and safely supports a no-op", () => {
 test("blur resets movement and every pressed appearance", () => {
   const harness = createHarness();
   harness.joystick.dispatchEvent(pointerEvent("pointerdown", 1, 50, 0));
-  harness.shootButton.dispatchEvent(pointerEvent("pointerdown", 2));
+  harness.attackButton.dispatchEvent(pointerEvent("pointerdown", 2));
 
   window.dispatchEvent(new Event("blur"));
 
   assert.deepEqual(harness.controller.getMovement(), { x: 0, y: 0 });
   assert.equal(harness.joystick.classList.contains("is-pressed"), false);
-  assert.equal(harness.shootButton.classList.contains("is-pressed"), false);
+  assert.equal(harness.attackButton.classList.contains("is-pressed"), false);
   harness.controller.dispose();
 });

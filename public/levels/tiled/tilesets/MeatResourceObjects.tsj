@@ -1,0 +1,26 @@
+{
+  "columns": 0,
+  "grid": { "height": 1, "orientation": "orthogonal", "width": 1 },
+  "name": "Meat Resource Objects",
+  "objectalignment": "bottom",
+  "tilecount": 1,
+  "tileheight": 64,
+  "tilewidth": 64,
+  "type": "tileset",
+  "version": "1.11",
+  "tileoffset": { "x": 0, "y": -64 },
+  "tiles": [{
+    "class": "MeatPickup",
+    "id": 0,
+    "name": "Meat Resource",
+    "image": "../../../assets/terrain/resources/meat/Meat Resource.png",
+    "imagewidth": 64,
+    "imageheight": 64,
+    "properties": [
+      { "name": "runtimeImage", "type": "file", "value": "../../../assets/terrain/resources/meat/Meat Resource.png" },
+      { "name": "frameWidth", "type": "int", "value": 64 },
+      { "name": "frameHeight", "type": "int", "value": 64 },
+      { "name": "frameCount", "type": "int", "value": 1 }
+    ]
+  }]
+}

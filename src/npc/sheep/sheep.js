@@ -24,7 +24,7 @@ import {
   planFleeRoute,
   planSeparationRoute,
 } from "./sheep-navigation.js";
-import { getYSortedLayerOrder } from "../../render-depth.js";
+import { getCharacterGridCell, getCharacterLayerOrder } from "../../character-spatial.js";
 
 export const SHEEP_FRAME_SIZE = 128;
 export const SHEEP_PIVOT = { x: 0.5, y: 0.84 };
@@ -121,7 +121,10 @@ export function createSheep({
   const layers = {};
   const sprites = {};
   const initialScreenPosition = worldToScreen(position, 1, bounds.height);
-  const initialOrder = getYSortedLayerOrder(position.y, bounds.height);
+  const initialOrder = getCharacterLayerOrder(
+    getCharacterCollider(position, character.frame, character.pivot, character.collider),
+    bounds.height,
+  );
   for (const animationName of Object.keys(ANIMATIONS)) {
     const layer = api.createSprite2DLayer(atlases[animationName], {
       capacity: 1,
@@ -138,15 +141,28 @@ export function createSheep({
   }
 
   function getGridCell() {
-    return {
-      x: Math.floor(position.x / grid.tileSizePx),
-      y: Math.floor(position.y / grid.tileSizePx),
-    };
+    return getCharacterGridCell(
+      getCharacterCollider(position, character.frame, character.pivot, character.collider),
+      grid.tileSizePx,
+    );
+  }
+
+  function getMovementCenter() {
+    const collider = getCharacterCollider(
+      position,
+      character.frame,
+      character.pivot,
+      character.collider,
+    );
+    return { x: collider.x, y: collider.y };
   }
 
   function updateSprites() {
     const screenPosition = worldToScreen(position, 1, bounds.height);
-    const order = getYSortedLayerOrder(position.y, bounds.height);
+    const order = getCharacterLayerOrder(
+      getCharacterCollider(position, character.frame, character.pivot, character.collider),
+      bounds.height,
+    );
     for (const layer of Object.values(layers)) {
       layer.order = order;
     }
@@ -161,14 +177,11 @@ export function createSheep({
   function planRoute() {
     const separationIntent = stateMachine.separationIntent;
     if (separationIntent) {
-      const separationBlockers = dynamicColliders.filter(
-        ({ id }) => id !== separationIntent.partnerId,
-      );
       return planSeparationRoute({
         start: getGridCell(),
         partner: separationIntent.partnerCell,
         preferredDirection: separationIntent.direction,
-        isWalkable: (cell) => isWalkable(cell, separationBlockers),
+        isWalkable: (cell) => isWalkable(cell, dynamicColliders),
       }).map((cell) => gridCellCenter(cell, grid.tileSizePx));
     }
     const threat = stateMachine.threat;
@@ -236,7 +249,8 @@ export function createSheep({
       stopRunning();
       return;
     }
-    const offset = { x: target.x - position.x, y: target.y - position.y };
+    const movementCenter = getMovementCenter();
+    const offset = { x: target.x - movementCenter.x, y: target.y - movementCenter.y };
     const distance = Math.hypot(offset.x, offset.y);
     if (distance === 0) {
       route.shift();
@@ -248,10 +262,6 @@ export function createSheep({
       facing = movement.x < 0 ? -1 : 1;
     }
     const step = Math.min(movementSpeed * deltaSeconds, distance);
-    const separationPartnerId = stateMachine.separationIntent?.partnerId;
-    const movementBlockers = dynamicColliders.filter(
-      ({ id }) => id !== separationPartnerId,
-    );
     const nextPosition = moveWithCollisions(
       position,
       movement,
@@ -260,7 +270,7 @@ export function createSheep({
       character,
       [
         ...obstacles,
-        ...movementBlockers.map(({ collider }) => collider),
+        ...dynamicColliders.map(({ collider }) => collider),
       ],
     );
     if (nextPosition.x === position.x && nextPosition.y === position.y) {
@@ -268,8 +278,12 @@ export function createSheep({
       return;
     }
     position = nextPosition;
-    if (Math.hypot(target.x - position.x, target.y - position.y) < 1e-7) {
-      position = { ...target };
+    const nextCenter = getMovementCenter();
+    if (Math.hypot(target.x - nextCenter.x, target.y - nextCenter.y) < 1e-7) {
+      position = {
+        x: position.x + target.x - nextCenter.x,
+        y: position.y + target.y - nextCenter.y,
+      };
       route.shift();
       if (route.length === 0) {
         stopRunning();

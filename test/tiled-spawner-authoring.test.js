@@ -41,9 +41,9 @@ test("spawner palette contains Player, Sheep, and Enemy items with only type met
     name,
     properties,
   })), [
-    { id: 0, name: "Player Spawner", properties: [{ name: "type", type: "string", value: "PLAYER" }] },
-    { id: 1, name: "Sheep Spawner", properties: [{ name: "type", type: "string", value: "SHEEP" }] },
-    { id: 2, name: "Enemy Spawner", properties: [{ name: "type", type: "string", value: "GOBLIN" }] },
+    { id: 0, name: "Player Spawner", properties: [{ name: "type", type: "string", value: "PLAYER" }, { name: "spawnMode", type: "string", value: "nearby" }, { name: "spawnMaxDistance", type: "int", value: 0 }] },
+      { id: 1, name: "Sheep Spawner", properties: [{ name: "type", type: "string", value: "SHEEP" }, { name: "spawnMode", type: "string", value: "nearby" }, { name: "spawnMaxDistance", type: "int", value: 3 }] },
+      { id: 2, name: "Enemy Spawner", properties: [{ name: "type", type: "string", value: "GOBLIN" }, { name: "spawnMode", type: "string", value: "nearby" }, { name: "spawnMaxDistance", type: "int", value: 3 }] },
   ]);
 });
 
@@ -58,8 +58,8 @@ test("tile spawners normalize type defaults, Warrior override, and origin-relati
   ]));
 
   assert.deepEqual(level.spawners, [
-    { id: 1, name: "Player", type: "PLAYER", gameCell: { x: 2, y: 2 } },
-    { id: 2, name: "Warrior", type: "WARRIOR", gameCell: { x: 6, y: 9 } },
+    { id: 1, name: "Player", type: "PLAYER", spawnMode: "nearby", spawnMaxDistance: 0, gameCell: { x: 2, y: 2 } },
+    { id: 2, name: "Warrior", type: "WARRIOR", spawnMode: "nearby", spawnMaxDistance: 3, gameCell: { x: 6, y: 9 } },
   ]);
 });
 

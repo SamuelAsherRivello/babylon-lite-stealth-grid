@@ -4,6 +4,7 @@ import {
   isColliderWithinBounds,
 } from "../../game-logic.js";
 import { chebyshevDistance } from "./sheep-state.js";
+import { getColliderCenter } from "../../character-spatial.js";
 
 const CARDINAL_NEIGHBORS = Object.freeze([
   { x: 1, y: 0 }, { x: -1, y: 0 },
@@ -33,7 +34,17 @@ export function createGridWalkability({ bounds, character, grid, obstacles }) {
     ) {
       return false;
     }
-    const position = gridCellCenter(cell, grid.tileSizePx);
+    const desiredCenter = gridCellCenter(cell, grid.tileSizePx);
+    const localCenter = getColliderCenter(getCharacterCollider(
+      { x: 0, y: 0 },
+      character.frame,
+      character.pivot,
+      character.collider,
+    ));
+    const position = {
+      x: desiredCenter.x - localCenter.x,
+      y: desiredCenter.y - localCenter.y,
+    };
     const collider = getCharacterCollider(
       position,
       character.frame,

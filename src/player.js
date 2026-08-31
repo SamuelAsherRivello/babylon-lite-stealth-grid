@@ -9,26 +9,38 @@ import {
 
 import {
   createGridAlignedMovementController,
-  createJumpState,
   getCharacterCollider,
   getMovementVector,
   moveWithCollisions,
   selectMovementInput,
-  startJump,
-  updateJump,
-  worldToGrid,
   worldToScreen,
 } from "./game-logic.js";
 import { GRID } from "./grid-contract.js";
 import { PlayerState, createPlayerStateMachine } from "./player-state.js";
 import { createVirtualController } from "./ui/virtual-controller.js";
-import { getYSortedLayerOrder } from "./render-depth.js";
+import { getCharacterGridCell, getCharacterLayerOrder } from "./character-spatial.js";
+import {
+  PLAYER_ITEMS,
+  PLAYER_PAWN_FRAME,
+  PLAYER_WEAPONS,
+  cycleLoadout,
+} from "./player-pawn-catalog.js";
 import {
   CardinalDirection,
   createCardinalDirectionMemory,
 } from "./cardinal-direction.js";
 
-export const PLAYER_FRAME = { width: 192, height: 192 };
+export function getLoadoutCycleType(event) {
+  if (event.code === "Digit1" || event.code === "Numpad1" || event.key === "1") {
+    return "weapon";
+  }
+  if (event.code === "Digit2" || event.code === "Numpad2" || event.key === "2") {
+    return "item";
+  }
+  return null;
+}
+
+export const PLAYER_FRAME = PLAYER_PAWN_FRAME;
 export const PLAYER_PIVOT = { x: 0.5, y: 0.78 };
 export const PLAYER_MOVEMENT_COLLIDER = {
   type: "circle",
@@ -38,9 +50,9 @@ export const PLAYER_MOVEMENT_COLLIDER = {
 };
 export const PLAYER_COMBAT_COLLIDER = {
   x: 64,
-  y: PLAYER_FRAME.height * PLAYER_PIVOT.y - 128,
+  y: PLAYER_FRAME.height * PLAYER_PIVOT.y - 80,
   width: 64,
-  height: 128,
+  height: 80,
 };
 const PLAYER_CHARACTER = {
   frame: PLAYER_FRAME,
@@ -83,12 +95,21 @@ export async function loadPlayerAtlases(engine) {
     gridSize: [PLAYER_FRAME.width, PLAYER_FRAME.height],
     sampling: "nearest",
   };
-  const [idle, run, shoot] = await Promise.all([
-    loadSpriteAtlas(engine, "./assets/units/archer/Archer_Idle.png", options),
-    loadSpriteAtlas(engine, "./assets/units/archer/Archer_Run.png", options),
-    loadSpriteAtlas(engine, "./assets/units/archer/Archer_Shoot.png", options),
+  const [idle, run, shoot, ...loadoutAtlases] = await Promise.all([
+    loadSpriteAtlas(engine, "./assets/player/pawn/Pawn_Idle.png", options),
+    loadSpriteAtlas(engine, "./assets/player/pawn/Pawn_Run.png", options),
+    loadSpriteAtlas(engine, "./assets/player/pawn/Pawn_Interact Knife.png", options),
+    ...["Axe", "Gold", "Hammer", "Knife", "Meat", "Pickaxe", "Wood"].flatMap((name) => [
+      loadSpriteAtlas(engine, `./assets/player/pawn/Pawn_Idle ${name}.png`, options),
+      loadSpriteAtlas(engine, `./assets/player/pawn/Pawn_Run ${name}.png`, options),
+    ]),
   ]);
-  return { idle, run, shoot };
+  const atlases = { idle, run, shoot };
+  for (const [index, name] of ["axe", "gold", "hammer", "knife", "meat", "pickaxe", "wood"].entries()) {
+    atlases[`idle-${name}`] = loadoutAtlases[index * 2];
+    atlases[`run-${name}`] = loadoutAtlases[index * 2 + 1];
+  }
+  return atlases;
 }
 
 export function createPlayer({
@@ -97,13 +118,17 @@ export function createPlayer({
   obstacles,
   initialPosition,
   onShoot = () => {},
+  onDropItem = () => {},
 }) {
   let position = { ...initialPosition };
   const initialScreenPosition = worldToScreen(position, 1, bounds.height);
-  const initialOrder = getYSortedLayerOrder(position.y, bounds.height);
+  const initialOrder = getCharacterLayerOrder(
+    getCharacterCollider(position, PLAYER_FRAME, PLAYER_PIVOT, PLAYER_MOVEMENT_COLLIDER),
+    bounds.height,
+  );
   const layers = {};
   const sprites = {};
-  for (const animation of ["idle", "run", "shoot"]) {
+  for (const animation of Object.keys(atlases)) {
     const layer = createSprite2DLayer(atlases[animation], {
       capacity: 1,
       order: initialOrder,
@@ -119,12 +144,15 @@ export function createPlayer({
   }
 
   const pressedKeys = new Set();
-  const jumpState = createJumpState();
   let inputEnabled = true;
   let knockback = { x: 0, y: 0 };
   let knockbackTimer = 0;
   let knockbackDuration = 0;
   const stateMachine = createPlayerStateMachine();
+  let weaponSlot = null;
+  let itemSlot = null;
+  let presentationOverride = null;
+  let presentationOverrideTimer = 0;
   let animationManager = null;
   let activeAnimation = null;
   const shotDirectionMemory = createCardinalDirectionMemory(
@@ -149,18 +177,23 @@ export function createPlayer({
     if (activeAnimation) {
       stopSpriteAnimation(activeAnimation);
     }
+    const visibleName = name === "idle" || name === "run"
+      ? getLocomotionAnimationName(name)
+      : name;
     for (const [layerName, layer] of Object.entries(layers)) {
-      layer.visible = layerName === name;
+      layer.visible = layerName === visibleName;
     }
-    const lastFrame = name === "idle" ? 5 : name === "run" ? 3 : 7;
+    const lastFrame = visibleName.startsWith("idle")
+      ? 7
+      : visibleName.startsWith("run") ? 5 : 3;
     activeAnimation = playSprite2DAnimation(
       animationManager,
-      sprites[name],
+      sprites[visibleName],
       0,
       lastFrame,
-      name !== "shoot",
+      visibleName !== "shoot",
       100,
-      name === "shoot"
+      visibleName === "shoot"
         ? {
             onEnd: () => {
               const transition = stateMachine.completeShooting(
@@ -175,6 +208,13 @@ export function createPlayer({
     );
   }
 
+  function getLocomotionAnimationName(name) {
+    const suffix = presentationOverride
+      || itemSlot
+      || (!itemSlot && weaponSlot);
+    return suffix ? `${name}-${suffix}` : name;
+  }
+
   function getAnimationName(state) {
     if (state === PlayerState.RUNNING) {
       return "run";
@@ -186,7 +226,7 @@ export function createPlayer({
   }
 
   function shoot() {
-    if (!inputEnabled) {
+    if (!inputEnabled || !weaponSlot) {
       return;
     }
     const transition = stateMachine.startShooting(
@@ -234,13 +274,22 @@ export function createPlayer({
     }
   }
 
+  function useItem() {
+    if (!inputEnabled || !itemSlot) return;
+    const item = itemSlot;
+    itemSlot = null;
+    presentationOverride = null;
+    onDropItem(item, { ...position }, getSelectedMovement());
+    playStateAnimation(stateMachine.state === PlayerState.RUNNING ? "run" : "idle");
+  }
+
   const virtualController = createVirtualController({
     joystick: document.querySelector("#movement-joystick"),
     puck: document.querySelector("#movement-puck"),
-    jumpButton: document.querySelector("#jump-action"),
-    shootButton: document.querySelector("#shoot-action"),
-    onJump: () => inputEnabled && startJump(jumpState),
-    onShoot: shoot,
+    itemButton: document.querySelector("#item-action"),
+    attackButton: document.querySelector("#attack-action"),
+    onItem: useItem,
+    onAttack: shoot,
     onMovementChange: (movement) => {
       shotDirectionMemory.rememberMovement(movement);
     },
@@ -271,11 +320,32 @@ export function createPlayer({
   }
 
   function handleKeyDown(event) {
+    const loadoutCycleType = getLoadoutCycleType(event);
+    if (loadoutCycleType && !event.repeat) {
+      event.preventDefault();
+      if (inputEnabled && stateMachine.canChangeLoadout) {
+        if (loadoutCycleType === "weapon") {
+          weaponSlot = cycleLoadout(weaponSlot, PLAYER_WEAPONS);
+          presentationOverride = weaponSlot;
+          presentationOverrideTimer = weaponSlot ? 0.5 : 0;
+        } else {
+          itemSlot = cycleLoadout(itemSlot, PLAYER_ITEMS);
+          presentationOverride = itemSlot;
+          presentationOverrideTimer = 0;
+        }
+        if (stateMachine.state !== PlayerState.ATTACKING) {
+          playStateAnimation(
+            stateMachine.state === PlayerState.RUNNING ? "run" : "idle",
+          );
+        }
+      }
+      return;
+    }
     if (event.code === "KeyC" || event.code === "KeyV") {
       event.preventDefault();
       if (!event.repeat && inputEnabled) {
         if (event.code === "KeyC") {
-          startJump(jumpState);
+          useItem();
         } else {
           shoot();
         }
@@ -352,13 +422,11 @@ export function createPlayer({
     getPosition() {
       return { ...position };
     },
+    getLoadout() {
+      return { weapon: weaponSlot, item: itemSlot };
+    },
     getGridPosition(tileSize) {
-      return worldToGrid(position, tileSize, {
-        width: PLAYER_FRAME.width,
-        height: PLAYER_FRAME.height,
-        pivotX: PLAYER_PIVOT.x,
-        pivotY: PLAYER_PIVOT.y,
-      });
+      return getCharacterGridCell(this.getMovementCollider(), tileSize);
     },
     resetInput,
     setInputEnabled(enabled) {
@@ -373,6 +441,18 @@ export function createPlayer({
     },
     setVisualTransform,
     update(deltaSeconds, dynamicColliders = []) {
+      if (presentationOverrideTimer > 0) {
+        presentationOverrideTimer = Math.max(
+          0,
+          presentationOverrideTimer - Math.max(0, deltaSeconds),
+        );
+        if (presentationOverrideTimer === 0) {
+          presentationOverride = null;
+          playStateAnimation(
+            stateMachine.state === PlayerState.RUNNING ? "run" : "idle",
+          );
+        }
+      }
       const selectedMovement = getSelectedMovement();
       const knockbackMovement = getKnockbackMovement(deltaSeconds);
       const transition = stateMachine.updateLocomotion(selectedMovement);
@@ -433,14 +513,13 @@ export function createPlayer({
       }
 
       const screenPosition = worldToScreen(position, 1, bounds.height);
-      const order = getYSortedLayerOrder(position.y, bounds.height);
-      const jumpOffset = updateJump(jumpState, deltaSeconds);
+      const order = getCharacterLayerOrder(this.getMovementCollider(), bounds.height);
       for (const layer of Object.values(layers)) {
         layer.order = order;
       }
       for (const sprite of Object.values(sprites)) {
         updateSprite2D(sprite, {
-          positionPx: [screenPosition.x, screenPosition.y - jumpOffset],
+          positionPx: [screenPosition.x, screenPosition.y],
           flipX: stateMachine.facing < 0,
         });
       }

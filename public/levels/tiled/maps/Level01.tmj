@@ -5,9 +5,21 @@
         {
          "draworder":"topdown",
          "id":5,
-         "locked":true,
          "name":"Spawners",
          "objects":[
+                {
+                 "gid":113,
+                 "height":64,
+                 "id":8,
+                 "name":"Gold Stone 6",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"GoldObject",
+                 "visible":true,
+                 "width":64,
+                 "x":288,
+                 "y":256
+                }, 
                 {
                  "gid":56,
                  "height":64,
@@ -65,6 +77,25 @@
                  "width":64,
                  "x":352,
                  "y":448
+                }, 
+                {
+                 "gid":58,
+                 "height":64,
+                 "id":9,
+                 "name":"Archer Spawner",
+                 "opacity":1,
+                 "properties":[
+                        {
+                         "name":"type",
+                         "type":"string",
+                         "value":"ARCHER"
+                        }],
+                 "rotation":0,
+                 "type":"",
+                 "visible":true,
+                 "width":64,
+                 "x":223.5,
+                 "y":576.5
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -110,7 +141,7 @@
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 90, 0,
             0, 0, 0, 0, 0, 95, 92, 93, 0,
-            0, 0, 0, 0, 0, 104, 101, 103, 0,
+            0, 0, 0, 0, 0, 104, 43, 44, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0, 0,
             64, 65, 66, 0, 0, 64, 65, 65, 66,
@@ -261,6 +292,10 @@
         {
          "firstgid":59,
          "source":"..\/tilesets\/Tilemap_color1.tsj"
+        }, 
+        {
+         "firstgid":113,
+         "source":"..\/tilesets\/GoldStoneObjects.tsj"
         }],
  "tilewidth":64,
  "type":"map",

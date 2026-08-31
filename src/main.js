@@ -24,6 +24,7 @@ import {
   loadTiledMap,
 } from "../plugins/tiled-babylon-lite/index.js";
 import { GRID } from "./grid-contract.js";
+import { getCharacterGridCell, getCharacterLayerOrder } from "./character-spatial.js";
 import { createLevelTerrainTiles } from "./tiled-terrain.js";
 import {
   PLAYER_FRAME,
@@ -40,6 +41,7 @@ import {
   loadGoblinAtlases,
 } from "./enemies/goblin/goblin.js";
 import { createGoblinBehaviorController } from "./enemies/goblin/goblin-behavior-controller.js";
+import { ARCHER_FRAME, ARCHER_MOVEMENT_COLLIDER, ARCHER_PIVOT, createArcher, loadArcherAtlases } from "./enemies/archer/archer.js";
 import { createGridWalkability } from "./npc/sheep/sheep-navigation.js";
 import {
   WARRIOR_FRAME,
@@ -85,9 +87,11 @@ import {
 import {
   GAME_DEPTH,
   TILE_MAP_SUB_Z,
-  getYSortedLayerOrder,
 } from "./render-depth.js";
 import { createSpawner } from "./spawner.js";
+import { createGoldStone } from "./objects/gold-stone.js";
+import { chooseNineGridDestinations, createGoldPickup } from "./objects/gold-pickup.js";
+import { createPickupSystem } from "./pickup-system.js";
 import {
   SpawnerCharacter,
   SpawnerType,
@@ -106,6 +110,7 @@ const TILE_SIZE = GRID.tileSizePx;
 const WATER_FOAM_FRAME_SIZE = 192;
 const WATER_FOAM_FRAME_COUNT = 16;
 const WATER_FOAM_FRAME_DURATION_MS = 100;
+const SPAWN_ANIMATION_DURATION_SECONDS = 0.25;
 const DEATH_ANIMATION_DURATION_SECONDS = 0.25;
 const DAMAGE_FLASH_DURATION_SECONDS = 0.6;
 const DEATH_ROTATION_DEGREES = 20;
@@ -133,15 +138,24 @@ function createCombatActorState({
   setVisualTransform,
   onDeathStart,
   onDeathProgress,
+  onSpawnProgress,
   onHitFlashStart,
   onKnockback,
 }) {
   let health = MAX_HEALTH;
   let isDying = false;
   let isDead = false;
+  // A sprite must have a valid visible transform before its first renderer
+  // update.  Initializing at zero size/opacity can leave Lite's saved sprite
+  // size at zero, making the actor permanently invisible.
+  let spawnElapsedSeconds = SPAWN_ANIMATION_DURATION_SECONDS;
   let deathElapsedSeconds = 0;
   let deathRotation = 0;
   let hitFlashRemainingSeconds = 0;
+
+  if (onSpawnProgress) {
+    onSpawnProgress(1);
+  }
 
   function startDeath() {
     if (isDying || isDead) {
@@ -182,6 +196,26 @@ function createCombatActorState({
     },
     getCombatCollider: getActiveCombatCollider,
     setVisualTransform,
+    beginSpawn() {
+      spawnElapsedSeconds = 0;
+      if (onSpawnProgress) {
+        onSpawnProgress(0);
+      }
+    },
+    updateSpawn(deltaSeconds) {
+      if (spawnElapsedSeconds >= SPAWN_ANIMATION_DURATION_SECONDS) {
+        return;
+      }
+
+      spawnElapsedSeconds = Math.min(
+        SPAWN_ANIMATION_DURATION_SECONDS,
+        spawnElapsedSeconds + Math.max(0, deltaSeconds),
+      );
+      const progress = spawnElapsedSeconds / SPAWN_ANIMATION_DURATION_SECONDS;
+      if (onSpawnProgress) {
+        onSpawnProgress(progress);
+      }
+    },
     applyDamage(amount, hitDirection = { x: 1, y: 0 }) {
       if (!this.isAlive || amount <= 0) {
         return;
@@ -254,6 +288,15 @@ function createCombatActorState({
   };
 }
 
+function setCharacterSpawnProgress(actor, size, progress) {
+  actor.setVisualTransform({
+    sizePx: [size * Math.max(progress, 0.001), size * Math.max(progress, 0.001)],
+  });
+  for (const layer of actor.layers) {
+    layer.opacity = progress;
+  }
+}
+
 function makeTouchKey(a, b) {
   return a < b ? `${a}|${b}` : `${b}|${a}`;
 }
@@ -284,6 +327,7 @@ async function start() {
   const [
     terrainAtlasEntries,
     archerAtlas,
+    archerEnemyAtlases,
     arrowAtlas,
     waterFoamAtlas,
     sheepAtlases,
@@ -299,6 +343,7 @@ async function start() {
       }),
     ])),
     loadPlayerAtlases(engine),
+    loadArcherAtlases(engine),
     loadArrowAtlas(engine),
     loadSpriteAtlas(engine, "./assets/terrain/Water Foam.png", {
       gridSize: [WATER_FOAM_FRAME_SIZE, WATER_FOAM_FRAME_SIZE],
@@ -330,6 +375,32 @@ async function start() {
       }),
     ]),
   ));
+  const goldStoneImages = new Set(level.goldStones.flatMap(({ goldStone }) => goldStone.variantImages ?? [goldStone.image]));
+  const goldPickupImages = [
+    `${import.meta.env.BASE_URL}assets/terrain/resources/gold/Gold-Stone-1.png`,
+    `${import.meta.env.BASE_URL}assets/terrain/resources/gold/Gold-Stone-2.png`,
+  ];
+  const goldStoneAtlases = new Map(await Promise.all([...goldStoneImages].map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
+  const goldPickupAtlases = new Map(await Promise.all(goldPickupImages.map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
+  const pickupSystem = createPickupSystem();
+  const goldPickupDefinition = {
+    create: ({ position, index }) => {
+      const image = goldPickupImages[Math.floor(Math.random() * goldPickupImages.length)];
+      const pickup = createGoldPickup({ object: { id: `gold-${index}` }, atlas: goldPickupAtlases.get(image), startPosition: position.start, destination: position.destination, screenHeight: SCREEN_HEIGHT });
+      pickup.destination = position.cell;
+      return pickup;
+    },
+  };
+  const goldStoneObjects = level.goldStones.map((object) => {
+    const image = object.goldStone.variantImages[Math.floor(Math.random() * object.goldStone.variantImages.length)];
+    return createGoldStone({ object: { ...object, goldStone: { ...object.goldStone, image } }, atlas: goldStoneAtlases.get(image), animationManager, screenHeight: SCREEN_HEIGHT, onDeathComplete: (position) => {
+      const origin = { x: Math.floor(position.x / TILE_SIZE), y: Math.floor(position.y / TILE_SIZE) };
+      const destinations = chooseNineGridDestinations(origin, Math.random() < 0.5 ? 2 : 3, (cell) => cell.x >= 0 && cell.x < GRID.columns && cell.y >= 0 && cell.y < GRID.rows && !pickupSystem.pickups.some((pickup) => pickup.destination?.x === cell.x && pickup.destination?.y === cell.y));
+      for (const cell of destinations) {
+        pickupSystem.spawn(goldPickupDefinition, { start: position, cell, destination: { x: (cell.x + 0.5) * TILE_SIZE, y: (cell.y + 0.5) * TILE_SIZE } });
+      }
+    } });
+  });
   const bushFireEffects = await Promise.all(level.reactiveDecorations.map((object) => (
     Fire03ParticleEffect.create({
       engine,
@@ -396,6 +467,9 @@ async function start() {
       }
       record.actor.playAnimation(animationManager);
     }
+    // Initial actors are attached before the renderer is created. Spawn state
+    // must still begin there, so every actor gets the same reveal animation.
+    record.combat.beginSpawn();
     return record;
   }
 
@@ -415,11 +489,32 @@ async function start() {
       obstacles: obstacleColliders,
       initialPosition: position,
       onShoot: (spawnPosition, direction) => projectiles.shoot(spawnPosition, direction),
+      onDropItem: (item, startPosition, movement) => {
+        if (item !== "gold") return;
+        const direction = movement.x !== 0 || movement.y !== 0
+          ? movement
+          : { x: 1, y: 0 };
+        const length = Math.hypot(direction.x, direction.y) || 1;
+        const destination = {
+          x: Math.max(0, Math.min(GRID.columns - 1, Math.floor(startPosition.x / TILE_SIZE + direction.x / length))) + 0.5,
+          y: Math.max(0, Math.min(GRID.rows - 1, Math.floor(startPosition.y / TILE_SIZE + direction.y / length))) + 0.5,
+        };
+        pickupSystem.spawn(goldPickupDefinition, {
+          start: startPosition,
+          cell: { x: destination.x - 0.5, y: destination.y - 0.5 },
+          destination: { x: destination.x * TILE_SIZE, y: destination.y * TILE_SIZE },
+        });
+      },
     });
     const combat = createCombatActorState({
       label: `player-${nextActorId++}`,
       getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
+      onSpawnProgress: (progress) => setCharacterSpawnProgress(
+        actor,
+        PLAYER_FRAME.width,
+        progress,
+      ),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [PLAYER_FRAME.width * value, PLAYER_FRAME.height * value],
       }),
@@ -446,6 +541,11 @@ async function start() {
       label: `sheep-${nextActorId++}`,
       getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
+      onSpawnProgress: (progress) => setCharacterSpawnProgress(
+        actor,
+        SHEEP_FRAME_SIZE,
+        progress,
+      ),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [SHEEP_FRAME_SIZE * value, SHEEP_FRAME_SIZE * value],
       }),
@@ -453,6 +553,12 @@ async function start() {
       onKnockback: (direction, options) => actor.applyKnockback(direction, options),
     });
     return attachActor({ type: SpawnerType.SHEEP, actor, combat });
+  }
+
+  function createArcherRecord(position) {
+    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } });
+    const combat = createCombatActorState({ label: `archer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: { update() {} } });
   }
 
   function createGoblinRecord(position) {
@@ -466,6 +572,11 @@ async function start() {
       label: `goblin-${nextActorId++}`,
       getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
+      onSpawnProgress: (progress) => setCharacterSpawnProgress(
+        actor,
+        GOBLIN_FRAME.width,
+        progress,
+      ),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [GOBLIN_FRAME.width * value, GOBLIN_FRAME.height * value],
       }),
@@ -487,10 +598,7 @@ async function start() {
     });
     record.controller = createGoblinBehaviorController(actor, {
       grid: GRID,
-      spawnCell: {
-        x: Math.floor(actor.getMovementCollider().x / TILE_SIZE),
-        y: Math.floor(actor.getMovementCollider().y / TILE_SIZE),
-      },
+      spawnCell: getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE),
       isWalkable,
       bushChance: verifyBushBurning ? 1 : 0.25,
       idleRange: verifyBushBurning ? [0, 0] : [3, 5],
@@ -503,12 +611,7 @@ async function start() {
           id: target.combat.label,
           isAlive: target.combat.isAlive,
           position: target.actor.getPosition(),
-          cell: typeof target.actor.getGridPosition === "function"
-            ? target.actor.getGridPosition(TILE_SIZE)
-            : {
-                x: Math.floor(target.actor.getPosition().x / TILE_SIZE),
-                y: Math.floor(target.actor.getPosition().y / TILE_SIZE),
-              },
+          cell: getCharacterGridCell(target.actor.getMovementCollider(), TILE_SIZE),
         })),
         bushes: reactiveDecorations.filter((decoration) => !decoration.isDead)
           .map((decoration) => decoration.getSnapshot()),
@@ -528,6 +631,11 @@ async function start() {
       label: `warrior-${nextActorId++}`,
       getCombatCollider: () => actor.getCombatCollider(),
       setVisualTransform: (transform) => actor.setVisualTransform(transform),
+      onSpawnProgress: (progress) => setCharacterSpawnProgress(
+        actor,
+        WARRIOR_FRAME.width,
+        progress,
+      ),
       onDeathProgress: (value) => actor.setVisualTransform({
         sizePx: [WARRIOR_FRAME.width * value, WARRIOR_FRAME.height * value],
       }),
@@ -570,12 +678,14 @@ async function start() {
       atlas: warriorAtlases.idle,
       frameSize: WARRIOR_FRAME,
     },
+    [SpawnerCharacter.ARCHER]: { atlas: archerEnemyAtlases.idle, frameSize: ARCHER_FRAME },
   };
   const actorFactories = {
     [SpawnerCharacter.PLAYER]: createPlayerRecord,
     [SpawnerCharacter.SHEEP]: createSheepRecord,
     [SpawnerCharacter.GOBLIN]: createGoblinRecord,
     [SpawnerCharacter.WARRIOR]: createWarriorRecord,
+    [SpawnerCharacter.ARCHER]: createArcherRecord,
   };
   const spawnCharacterShapes = {
     [SpawnerCharacter.PLAYER]: {
@@ -598,6 +708,7 @@ async function start() {
       pivot: WARRIOR_PIVOT,
       collider: WARRIOR_MOVEMENT_COLLIDER,
     },
+    [SpawnerCharacter.ARCHER]: { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER },
   };
   const spawnWalkability = Object.fromEntries(Object.entries(spawnCharacterShapes)
     .map(([character, shape]) => [character, createGridWalkability({
@@ -615,7 +726,14 @@ async function start() {
   const spawners = spawnerConfigs.map((config) => createSpawner({
     ...config,
     tileSize: TILE_SIZE,
-    isWalkable: (_position, cell) => spawnWalkability[config.character](cell),
+    spawnMaxDistance: [SpawnerCharacter.GOBLIN, SpawnerCharacter.WARRIOR, SpawnerCharacter.ARCHER]
+      .includes(config.character) ? 0 : 1,
+    isWalkable: (_position, cell) => spawnWalkability[config.character](cell,
+      spawners.flatMap((otherSpawner) => otherSpawner.actors
+        .map((record) => ({ collider: record.actor.getMovementCollider() }))),
+    ),
+    getWalkableCells: () => Array.from({ length: GRID.rows }, (_, y) => y)
+      .flatMap((y) => Array.from({ length: GRID.columns }, (_, x) => ({ x, y }))),
     getActorPosition: (record) => record.actor.getPosition(),
     createActor: actorFactories[config.character],
     disposeActor: disposeActorRecord,
@@ -635,10 +753,15 @@ async function start() {
         isDying: decoration.isDying,
         isDead: decoration.isDead,
         firePlaying: decoration.firePlaying,
+        cell: decoration.cell,
       })),
       goblins: getRecordsByType(SpawnerType.ENEMY)
         .filter(({ character }) => character === SpawnerCharacter.GOBLIN)
-        .map(({ combat, controller }) => ({ id: combat.label, mode: controller.mode })),
+        .map(({ actor, combat, controller }) => ({
+          id: combat.label,
+          mode: controller.mode,
+          cell: getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE),
+        })),
     });
   globalThis.bushBurningDebug = Object.freeze({ snapshot: getBushBurningSnapshot });
   let activeTouchPairs = new Set();
@@ -683,6 +806,8 @@ async function start() {
     layers: [
       ...terrainLayers,
       ...reactiveDecorations.map((decoration) => decoration.layer),
+      ...goldStoneObjects.map((object) => object.layer),
+      ...pickupSystem.pickups.map((pickup) => pickup.layer),
       ...bushFireEffects.map((effect) => effect.layer),
       ...spawnerMarkers.map((marker) => marker.layer),
       ...spawners.flatMap((spawner) => (
@@ -695,6 +820,7 @@ async function start() {
     clearValue: { r: 0.25, g: 0.48, b: 0.22, a: 1 },
   });
   registerSpriteRenderer(renderer);
+  pickupSystem.setRenderer({ add: (layer) => addSpriteRendererLayer(renderer, layer), remove: (layer) => removeSpriteRendererLayer(renderer, layer) });
 
   for (const spawner of spawners) {
     for (const record of spawner.actors) {
@@ -792,10 +918,11 @@ async function start() {
     for (const decoration of reactiveDecorations) {
       decoration.setViewportScale(viewportScale);
     }
+    for (const object of goldStoneObjects) object.layer.view.zoom = viewportScale;
     for (const spawner of spawners) {
       for (const record of spawner.actors) {
-        const ySortedOrder = getYSortedLayerOrder(
-          record.actor.getPosition().y,
+        const ySortedOrder = getCharacterLayerOrder(
+          record.actor.getMovementCollider(),
           SCREEN_HEIGHT,
         );
         for (const layer of record.actor.layers) {
@@ -818,6 +945,7 @@ async function start() {
       const nextTouchPairs = new Set();
       for (const spawner of spawners) {
         for (const record of spawner.actors) {
+          record.combat.updateSpawn(activeDelta);
           record.combat.updateDeath(activeDelta);
           if (record.combat.isDead) {
             spawner.remove(record);
@@ -951,17 +1079,21 @@ async function start() {
       for (const decoration of reactiveDecorations) {
         decoration.update(reactiveCharacters, activeDelta);
       }
+      for (const object of goldStoneObjects) object.update(activeDelta);
+      pickupSystem.update(activeDelta, playerMovementCollider);
 
       projectiles.update(activeDelta);
       const projectilesToRemove = [];
       for (const { id, collider, direction } of projectiles.getColliders()) {
         let hit = false;
-        for (const target of [...sheepCombatColliders, ...enemyCombatColliders]) {
+        for (const target of [...sheepCombatColliders, ...enemyCombatColliders, ...goldStoneObjects.map((object) => ({ record: { type: "object", combat: object }, collider: object.getCombatCollider() }))]) {
           if (!target.record.combat.isAlive || !target.collider) {
             continue;
           }
           if (collidersOverlap(collider, target.collider)) {
-            const result = resolveProjectileHit(
+            const result = target.record.type === "object"
+              ? (target.record.combat.applyDamage(1), projectiles.markHit(id), "damaged")
+              : resolveProjectileHit(
               projectiles,
               { id, direction },
               target.record,
@@ -1062,6 +1194,12 @@ async function start() {
         combatCollider: decoration.getCombatCollider(),
         movementCollider: decoration.sensor,
       })));
+    diagnosticCharacters.push(...goldStoneObjects
+      .filter((object) => !object.isDead)
+      .map((object) => ({
+        combatCollider: object.getCombatCollider(),
+        movementCollider: null,
+      })));
     drawDiagnostics(
       terrainTiles,
       diagnosticCharacters,
@@ -1091,6 +1229,8 @@ async function start() {
     for (const decoration of reactiveDecorations) {
       decoration.dispose();
     }
+    for (const object of goldStoneObjects) object.dispose();
+    pickupSystem.dispose();
     projectiles.dispose();
   }, { once: true });
   await startEngine(engine);

@@ -8,6 +8,7 @@ import {
 } from "@babylonjs/lite";
 
 import { collidersOverlap } from "../game-logic.js";
+import { getColliderCenter } from "../character-spatial.js";
 import { getYSortedLayerOrder } from "../render-depth.js";
 
 const DEFAULT_API = {
@@ -65,6 +66,7 @@ export function createReactiveDecoration({
   let deathElapsed = 0;
   const deathRotation = (Math.random() < 0.5 ? -1 : 1) * 20 * Math.PI / 180;
   const acceptedTypes = new Set(descriptor.acceptedCharacterTypes);
+  const interactionPosition = getColliderCenter(descriptor.combatCollider);
 
   function startAnimation() {
     if (!armed || playing || disposed) return false;
@@ -105,10 +107,11 @@ export function createReactiveDecoration({
     get firePlaying() { return firePlaying; },
     get id() { return `bush-${object.id}`; },
     get position() { return { ...object.position }; },
+    get interactionPosition() { return { ...interactionPosition }; },
     get cell() {
       return {
-        x: Math.floor(object.position.x / tileSize),
-        y: Math.floor(object.position.y / tileSize),
+        x: Math.floor(interactionPosition.x / tileSize),
+        y: Math.floor(interactionPosition.y / tileSize),
       };
     },
     getCombatCollider() {
@@ -118,7 +121,7 @@ export function createReactiveDecoration({
       return {
         id: `bush-${object.id}`,
         type: "bush",
-        position: { ...object.position },
+        position: { ...interactionPosition },
         cell: this.cell,
         isAlive,
         isBurning: firePlaying,

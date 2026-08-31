@@ -1,0 +1,9 @@
+{
+  "columns": 0, "grid": { "height": 1, "orientation": "orthogonal", "width": 1 },
+  "name": "Gold Stone Objects", "objectalignment": "bottom", "tilecount": 1,
+  "tileheight": 64, "tilewidth": 64, "type": "tileset", "version": "1.11", "tileoffset": { "x": 0, "y": -64 },
+  "tiles": [{ "class": "GoldObject", "id": 0, "name": "Gold Object", "image": "../../../assets/terrain/resources/gold/Gold-Stone-6-Highlight.png", "imagewidth": 768, "imageheight": 128,
+      "properties": [{ "name": "runtimeImage", "type": "file", "value": "../../../assets/terrain/resources/gold/Gold-Stone-6-Highlight.png" }, { "name": "runtimeImageAlt", "type": "file", "value": "../../../assets/terrain/resources/gold/Gold-Stone-5-Highlight.png" }, { "name": "frameWidth", "type": "int", "value": 64 }, { "name": "frameHeight", "type": "int", "value": 64 }, { "name": "frameCount", "type": "int", "value": 6 }],
+      "objectgroup": { "draworder": "index", "id": 1, "name": "Collision", "objects": [{ "class": "CombatCollider", "height": 48, "id": 1, "name": "Gold Object Collider", "width": 48, "x": 8, "y": 8 }], "type": "objectgroup" }
+  }]
+}
