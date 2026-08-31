@@ -31,6 +31,7 @@ export const PLAYER_COLLIDER = {
 };
 
 const PLAYER_SPEED = 210;
+const ARROW_SPAWN_OFFSET = { x: 72, y: 18 };
 const MOVEMENT_KEYS = new Set([
   "KeyW",
   "KeyA",
@@ -258,8 +259,8 @@ export function createPlayer({
       ) {
         onShoot(
           {
-            x: position.x + stateMachine.facing * 54,
-            y: position.y + 18,
+            x: position.x + stateMachine.facing * ARROW_SPAWN_OFFSET.x,
+            y: position.y + ARROW_SPAWN_OFFSET.y,
           },
           stateMachine.facing,
         );

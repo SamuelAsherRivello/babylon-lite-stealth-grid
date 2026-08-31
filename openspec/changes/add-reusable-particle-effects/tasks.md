@@ -24,5 +24,5 @@
 ## 5. Final Verification
 
 - [ ] 5.1 Run `npm.cmd test`, `npm.cmd run build`, `openspec validate add-reusable-particle-effects --strict`, and `git diff --check`, and verify every command passes.
-- [ ] 5.2 Run the app and perform a real WebGPU browser smoke test at desktop and portrait viewport sizes, verifying exactly eight distinct animations loop in one centered horizontal row above existing sprites, remain aligned after resize, and produce no console or asset-loading errors.
-- [ ] 5.3 Exercise one particle instance's `stop()` and `play()` methods in the browser, verifying stop freezes its current visible frame, repeated stop/play calls are safe, and play restarts looping from frame zero without creating concurrent animation handles.
+- [x] 5.2 Run the app and perform a real WebGPU browser smoke test at desktop and portrait viewport sizes, verifying exactly eight distinct animations loop in one centered horizontal row above existing sprites, remain aligned after resize, and produce no console or asset-loading errors.
+- [x] 5.3 Exercise one particle instance's `stop()` and `play()` methods in the browser, verifying stop freezes its current visible frame, repeated stop/play calls are safe, and play restarts looping from frame zero without creating concurrent animation handles.

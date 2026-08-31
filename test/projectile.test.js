@@ -9,7 +9,7 @@ import {
 } from "../src/projectile.js";
 
 test("the arrow renders and collides at 200 percent of its prior size", () => {
-  assert.deepEqual(ARROW_SIZE, { width: 144, height: 40 });
+  assert.deepEqual(ARROW_SIZE, { width: 72, height: 20 });
 });
 
 test("the arrow atlas uses its full square frame so transparent padding is scaled too", async () => {
@@ -17,7 +17,7 @@ test("the arrow atlas uses its full square frame so transparent padding is scale
   const source = await import("node:fs/promises").then(({ readFile }) =>
     readFile(new URL("../src/projectile-renderer.js", import.meta.url), "utf8"));
   assert.match(source, /ARROW_ATLAS_FRAME = \{ width: 64, height: 64 \}/);
-  assert.match(source, /const ARROW_RENDER_SIZE = 213/);
+  assert.match(source, /const ARROW_RENDER_SIZE = 107/);
   assert.match(source, /sizePx: \[ARROW_RENDER_SIZE, ARROW_RENDER_SIZE\]/);
   assert.equal(typeof renderer.loadArrowAtlas, "function");
 });

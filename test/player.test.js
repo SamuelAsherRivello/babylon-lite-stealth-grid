@@ -26,6 +26,7 @@ test("player module owns archer input and animation", async () => {
   assert.match(playerSource, /KeyC/);
   assert.match(playerSource, /KeyV/);
   assert.match(playerSource, /onShoot/);
+  assert.match(playerSource, /ARROW_SPAWN_OFFSET = \{ x: 72, y: 18 \}/);
   assert.match(playerSource, /Archer_Idle\.png/);
   assert.match(playerSource, /Archer_Run\.png/);
   assert.match(playerSource, /Archer_Shoot\.png/);

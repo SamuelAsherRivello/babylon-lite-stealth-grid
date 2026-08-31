@@ -1,7 +1,7 @@
 import { aabbOverlapsObstacle } from "./game-logic.js";
 
 // Tight gameplay bounds for the opaque arrow artwork after proportional scaling.
-export const ARROW_SIZE = { width: 144, height: 40 };
+export const ARROW_SIZE = { width: 72, height: 20 };
 export const ARROW_SPEED = 600;
 
 export function createProjectile(position, direction) {
