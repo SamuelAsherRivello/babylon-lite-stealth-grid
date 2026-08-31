@@ -11,6 +11,7 @@ export function createVirtualController({
   shootButton,
   onJump,
   onShoot = () => {},
+  onMovementChange = () => {},
 }) {
   const removers = [];
   const actionPointers = new Map([
@@ -44,6 +45,7 @@ export function createVirtualController({
       center,
       Math.min(rect.width, rect.height) / 2,
     );
+    onMovementChange({ ...movement });
     setPuckPosition(movement);
   }
 

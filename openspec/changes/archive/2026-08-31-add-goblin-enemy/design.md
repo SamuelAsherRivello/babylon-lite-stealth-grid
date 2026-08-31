@@ -82,7 +82,7 @@ cost without enabling a requirement in this change.
 The attack request is normalized by dominant axis. Up and down choose their
 dedicated sheets; horizontal attacks use `Attack_Right`, mirrored for left.
 Zero direction uses the last horizontal facing, defaulting to right. Direction
-does not change midway through the non-looping six-frame attack.
+does not change midway through the non-looping attack.
 
 Alternative: continually retarget the attack animation. Rejected because it
 would cause visual discontinuities and make attack completion nondeterministic.

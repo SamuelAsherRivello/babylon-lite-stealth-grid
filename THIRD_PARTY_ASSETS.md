@@ -17,3 +17,16 @@ The paid `.aseprite` source is kept only in the Git-ignored local directory
 `assets/local-imports/enemies/goblin/`. The runtime sheets under
 `public/assets/enemies/goblin/` are game-ready exports used by this project and
 must not be repackaged or distributed separately from the game.
+
+## Tiny Swords - Bush Decoration
+
+- Creator: Pixel Frog
+- Official source: https://pixelfrog-assets.itch.io/tiny-swords
+- Pack: Tiny Swords Free Pack
+- Source: `Terrain/Decorations/Bushes/Bushe1.png`
+- Project use: The original eight-frame sheet is used by the game as a reactive
+  terrain decoration. `Bushe1-frame0.png` is a derived editor-only preview of
+  frame zero so Tiled presents the animation as one placeable object item.
+- Attribution: Not required by the creator, but included here voluntarily.
+- Redistribution: These files must remain part of the game and must not be
+  redistributed or repackaged as a standalone asset pack.

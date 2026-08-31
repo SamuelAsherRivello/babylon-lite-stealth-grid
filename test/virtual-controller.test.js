@@ -57,7 +57,7 @@ function pointerEvent(type, pointerId, clientX = 0, clientY = 0) {
 globalThis.window = new EventTarget();
 const { createVirtualController } = await import("../src/ui/virtual-controller.js");
 
-function createHarness(onShoot) {
+function createHarness(onShoot, onMovementChange) {
   const joystick = new FakeControl();
   const puck = new FakeControl({ left: 0, top: 0, width: 40, height: 40 });
   const jumpButton = new FakeControl();
@@ -75,6 +75,7 @@ function createHarness(onShoot) {
     onShoot: onShoot ?? (() => {
       shots += 1;
     }),
+    onMovementChange,
   });
 
   return {
@@ -109,6 +110,17 @@ test("movement capture and action pointers remain independent", () => {
 
   harness.joystick.dispatchEvent(pointerEvent("pointerup", 1));
   assert.deepEqual(harness.controller.getMovement(), { x: 0, y: 0 });
+  harness.controller.dispose();
+});
+
+test("movement changes report analog direction without reporting release as an activation", () => {
+  const changes = [];
+  const harness = createHarness(undefined, (movement) => changes.push(movement));
+  harness.joystick.dispatchEvent(pointerEvent("pointerdown", 1, 100, 50));
+  harness.joystick.dispatchEvent(pointerEvent("pointermove", 1, 50, 0));
+  harness.joystick.dispatchEvent(pointerEvent("pointerup", 1));
+
+  assert.deepEqual(changes, [{ x: 1, y: 0 }, { x: 0, y: 1 }]);
   harness.controller.dispose();
 });
 

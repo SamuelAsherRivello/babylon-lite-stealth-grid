@@ -24,21 +24,21 @@
 - [x] 3.1 Add a frozen goblin animation catalog with image URLs, 192x192 grid
   size, verified frame counts, 100 ms duration, loop flags, pivot, and display
   size, and verify catalog tests reject inconsistent descriptors
-- [ ] 3.2 Add failing tests for shared atlas loading, initial idle rendering,
+- [x] 3.2 Add failing tests for shared atlas loading, initial idle rendering,
   animation switching, horizontal mirroring, update behavior, and complete
   disposal, and verify the focused renderer tests fail before implementation
-- [ ] 3.3 Implement goblin atlas loading and sprite creation using the common
+- [x] 3.3 Implement goblin atlas loading and sprite creation using the common
   movement/collision and world-to-screen contracts, and verify the renderer
   and lifecycle tests pass
 
 ## 4. Game Integration and Verification
 
-- [ ] 4.1 Spawn one goblin through the existing game lifecycle with an explicit
+- [x] 4.1 Spawn one goblin through the existing game lifecycle with an explicit
   temporary intent driver that demonstrates idle, walking, and all attack
   directions, and verify game pause/disposal does not leave it updating
-- [ ] 4.2 Run the full automated test suite and production build and verify both
+- [x] 4.2 Run the full automated test suite and production build and verify both
   commands complete successfully without regressions
-- [ ] 4.3 Inspect the game in a real browser at desktop and portrait dimensions
+- [x] 4.3 Inspect the game in a real browser at desktop and portrait dimensions
   and verify the goblin is feet-anchored, depth-sorted, nearest-neighbor crisp,
   collision-safe, and visually transitions through idle, walking, left/right,
   up, and down attacks without frame jumps

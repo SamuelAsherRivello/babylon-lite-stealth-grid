@@ -1,0 +1,23 @@
+{
+  "automappingRulesFile": "",
+  "commands": [],
+  "extensionsPath": "extensions",
+  "folders": ["."],
+  "propertyTypes": [
+    {
+      "color": "#7aa95c",
+      "members": [
+        { "name": "acceptedCharacterTypes", "type": "string", "value": "player,npc,enemy" },
+        { "name": "blocking", "type": "bool", "value": false },
+        { "name": "idleFrame", "type": "int", "value": 0 },
+        { "name": "playbackMode", "type": "string", "value": "once" },
+        { "name": "rearmOnExit", "type": "bool", "value": true },
+        { "name": "resetAfterPlay", "type": "bool", "value": true },
+        { "name": "triggerMode", "type": "string", "value": "character-enter" }
+      ],
+      "name": "ReactiveDecoration",
+      "type": "class"
+    },
+    { "color": "#efc94c", "members": [], "name": "Sensor", "type": "class" }
+  ]
+}

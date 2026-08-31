@@ -73,6 +73,8 @@ JavaScript, Vite, and WebGPU.
   workflow.
 - [`documentation/grid-and-ui-contract.md`](documentation/grid-and-ui-contract.md): Logical grid
   and UI placement contract.
+- [`documentation/render-depth-order.md`](documentation/render-depth-order.md): Babylon Lite
+  sprite and DOM overlay depth bands.
 
 ### Configuration
 

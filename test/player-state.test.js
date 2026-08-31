@@ -48,7 +48,11 @@ test("PlayerState shooting overrides locomotion until the sequence completes", (
 
 test("PlayerState machine releases one shot at the configured frame", () => {
   const machine = createPlayerStateMachine();
-  machine.startShooting();
+  machine.startShooting({ x: 0, y: 1 });
+
+  assert.deepEqual(machine.shotDirection, { x: 0, y: 1 });
+  machine.updateLocomotion({ x: 0, y: -1 });
+  assert.deepEqual(machine.shotDirection, { x: 0, y: 1 });
 
   assert.equal(machine.releaseShot(4), false);
   assert.equal(machine.releaseShot(5), true);

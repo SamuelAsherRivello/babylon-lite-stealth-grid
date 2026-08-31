@@ -1,5 +1,18 @@
 :root {
   --screen-margin: 30px;
+  --ui-safe-top: calc(env(safe-area-inset-top, 0px) + var(--screen-margin));
+  --ui-safe-right: calc(env(safe-area-inset-right, 0px) + var(--screen-margin));
+  --ui-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--screen-margin));
+  --ui-safe-left: calc(env(safe-area-inset-left, 0px) + var(--screen-margin));
+  --z-coordinate-guide: 1000;
+  --z-coordinates: 1010;
+  --z-release-metadata: 1020;
+  --z-settings-gear: 1030;
+  --z-virtual-controller: 1040;
+  --z-settings-backdrop: 2000;
+  --z-settings-window: 2010;
+  --z-settings-close: 2020;
+  --z-error: 3000;
   background: #090c16;
   color-scheme: dark;
 }
@@ -26,6 +39,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   place-items: center;
+  overflow: hidden;
 }
 
 .game-frame {
@@ -41,6 +55,27 @@ body {
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
 }
 
+.ui-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: var(--z-coordinate-guide);
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  container-type: inline-size;
+  pointer-events: none;
+}
+
+.ui-layer:not(.is-viewport-ready) {
+  visibility: hidden;
+}
+
+.ui-layer.is-viewport-ready {
+  visibility: visible;
+}
+
 #renderCanvas,
 #debugCanvas {
   display: block;
@@ -50,6 +85,12 @@ body {
   outline: none;
 }
 
+.coordinate-guide {
+  position: absolute;
+  z-index: var(--z-coordinate-guide);
+  pointer-events: none;
+}
+
 #debugCanvas {
   position: absolute;
   inset: 0;
@@ -57,59 +98,9 @@ body {
   pointer-events: none;
 }
 
-.coordinate-guide {
-  position: absolute;
-  bottom: clamp(7.25rem, 25cqw, 10rem);
-  left: 1rem;
-  width: 3.5rem;
-  height: 3.5rem;
-  border-bottom: 2px solid rgb(255 255 255 / 78%);
-  border-left: 2px solid rgb(255 255 255 / 78%);
-  color: white;
-  font: 700 0.65rem/1 system-ui, sans-serif;
-  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 70%));
-  pointer-events: none;
-}
-
-.coordinate-guide::before,
-.coordinate-guide::after {
-  position: absolute;
-  content: "";
-  width: 0;
-  height: 0;
-}
-
-.coordinate-guide::before {
-  top: -1px;
-  left: -5px;
-  border-right: 4px solid transparent;
-  border-bottom: 7px solid white;
-  border-left: 4px solid transparent;
-}
-
-.coordinate-guide::after {
-  right: -1px;
-  bottom: -5px;
-  border-top: 4px solid transparent;
-  border-bottom: 4px solid transparent;
-  border-left: 7px solid white;
-}
-
-.axis-y {
-  position: absolute;
-  top: -0.2rem;
-  left: 0.35rem;
-}
-
-.axis-x {
-  position: absolute;
-  right: -0.1rem;
-  bottom: 0.35rem;
-}
-
 .coordinates-ui {
   position: absolute;
-  right: var(--screen-margin);
+  right: var(--ui-safe-right);
   margin: 0;
   border: 1px solid rgb(255 255 255 / 20%);
   border-radius: 999px;
@@ -119,10 +110,11 @@ body {
   letter-spacing: 0.03em;
   pointer-events: none;
   backdrop-filter: blur(4px);
+  z-index: var(--z-coordinates);
 }
 
 .coordinates-ui {
-  top: 18cqw;
+  top: max(18cqw, var(--ui-safe-top));
   padding: 0.48rem 0.65rem;
   line-height: 1.45;
   text-align: center;
@@ -137,30 +129,30 @@ body {
 
 .release-metadata {
   position: absolute;
-  top: var(--screen-margin);
-  left: var(--screen-margin);
-  z-index: 10;
+  top: var(--ui-safe-top);
+  left: var(--ui-safe-left);
+  z-index: var(--z-release-metadata);
   margin: 0;
   color: #fff7dc;
   font-family: Arial, sans-serif;
-  font-size: 2.67cqw;
+  font-size: clamp(0.75rem, 2.67cqw, 1rem);
   font-weight: 700;
-  line-height: 5.33cqw;
+  line-height: 1.5;
   white-space: nowrap;
-  -webkit-text-stroke: 0.44cqw #261b17;
+  -webkit-text-stroke: clamp(1px, 0.44cqw, 2px) #261b17;
   paint-order: stroke fill;
   pointer-events: none;
 }
 
 .settings-gear {
   position: absolute;
-  top: var(--screen-margin);
-  right: var(--screen-margin);
-  z-index: 30;
-  width: 8cqw;
-  height: 8cqw;
-  padding: 0.7cqw;
-  border: 0.35cqw solid rgb(255 255 255 / 72%);
+  top: var(--ui-safe-top);
+  right: var(--ui-safe-right);
+  z-index: var(--z-settings-gear);
+  width: clamp(1.375rem, 4cqw, 2rem);
+  height: clamp(1.375rem, 4cqw, 2rem);
+  padding: 0.35cqw;
+  border: 0.175cqw solid rgb(255 255 255 / 72%);
   border-radius: 50%;
   background: rgb(11 16 32 / 82%);
   box-shadow: 0 0.8cqw 2.5cqw rgb(0 0 0 / 42%);
@@ -185,8 +177,9 @@ body {
 .game-window-backdrop {
   position: absolute;
   inset: 0;
-  z-index: 20;
+  z-index: var(--z-settings-backdrop);
   display: grid;
+  padding: var(--ui-safe-top) var(--ui-safe-right) var(--ui-safe-bottom) var(--ui-safe-left);
   place-items: center;
   background: rgb(0 0 0 / 50%);
   pointer-events: auto;
@@ -194,14 +187,18 @@ body {
 
 .game-window {
   position: relative;
-  width: 76cqw;
-  min-height: 55cqw;
-  padding: 8cqw 7cqw 7cqw;
+  width: min(76cqw, 30rem, 100%);
+  max-height: 100%;
+  min-height: min(55cqw, 34rem, 100%);
+  padding: clamp(2.5rem, 8cqw, 4rem) clamp(2rem, 7cqw, 3.5rem) clamp(2rem, 7cqw, 3.5rem);
   border: 0.65cqw solid rgb(255 255 255 / 78%);
   border-radius: 3cqw;
   background: linear-gradient(155deg, #17213b, #0b1020);
   box-shadow: 0 3cqw 9cqw rgb(0 0 0 / 55%);
   color: #eef6ff;
+  overflow: auto;
+  container-type: inline-size;
+  z-index: var(--z-settings-window);
 }
 
 .game-window-title {
@@ -224,6 +221,7 @@ body {
   cursor: pointer;
   place-items: center;
   touch-action: manipulation;
+  z-index: var(--z-settings-close);
 }
 
 .game-window-close::before,
@@ -356,10 +354,10 @@ body {
   --controller-fill: rgb(25 20 22 / 48%);
   --controller-puck: rgb(216 181 117 / 82%);
   position: absolute;
-  z-index: 3;
-  right: max(0.75rem, env(safe-area-inset-right));
-  bottom: max(0.75rem, env(safe-area-inset-bottom));
-  left: max(0.75rem, env(safe-area-inset-left));
+  z-index: var(--z-virtual-controller);
+  right: var(--ui-safe-right);
+  bottom: var(--ui-safe-bottom);
+  left: var(--ui-safe-left);
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -474,7 +472,7 @@ body {
 
 .error {
   position: absolute;
-  inset: 1rem;
+  inset: var(--ui-safe-top) var(--ui-safe-right) var(--ui-safe-bottom) var(--ui-safe-left);
   display: none;
   place-items: center;
   margin: 0;
@@ -483,6 +481,7 @@ body {
   color: #ffd9df;
   font: 600 0.8rem/1.5 system-ui, sans-serif;
   text-align: center;
+  z-index: var(--z-error);
 }
 
 .error:not(:empty) {

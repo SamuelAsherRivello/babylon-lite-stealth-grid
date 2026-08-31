@@ -1,113 +1,106 @@
 ## Context
 
-See `proposal.md` for motivation and
-`specs/responsive-game-viewport/spec.md` for the behavior contract. The current
-page centers a 9:16 `.game-frame` whose width is derived from viewport height.
-On screens narrower than 9:16, the frame is wider than the visible viewport and
-clips both game content and DOM controls. The page also omits
-`viewport-fit=cover`, allowing some mobile fullscreen configurations to reserve
-a page-background strip at the top.
+The current page centers a full-height 9:16 `.game-frame`. On viewports narrower
+than 9:16, that world frame is intentionally wider than the screen, but the DOM
+HUD currently lives inside the same clipped frame. As a result, the world crop
+also cuts off the version, gear, coordinates, virtual controls, and settings
+dialog. The page also omits `viewport-fit=cover`, which can leave mobile
+fullscreen showing page background above the game.
 
-The `babylon-walking-mobile` reference uses `viewport-fit=cover`, full-height
-viewport units, safe-area variables, fixed top alignment, `ResizeObserver`, and
-`visualViewport` listeners. Its centered 9:16 crop is suitable for a 3D camera
-and crop-aware HUD, but this sprite game has a fixed logical 576x1024 world and
-must not crop its map or controls.
+The approved model separates presentation into two coordinate spaces: a
+centered, full-height 9:16 world layer that may crop horizontally, and a UI
+layer bounded by the visible intersection of that world and the viewport.
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- Make the game container equal the current drawable viewport rectangle.
-- Preserve a uniform logical-world scale and expose all logical content.
-- Extend only the background into cutout regions while keeping controls safe.
-- Respond reliably to fullscreen, orientation, layout-viewport, and
-  visual-viewport changes.
-- Keep the solution dependency-free and compatible with the existing Babylon
-  Lite render loop and DOM overlays.
+- Fill the drawable viewport vertically with the game world and no top bar.
+- Preserve the world's 9:16 aspect ratio without stretching.
+- Allow peripheral world content to crop horizontally on narrow screens.
+- Keep every HUD and interactive UI element inside a margin-preserving safe
+  rectangle derived from the visual viewport and device safe-area insets.
+- Recalculate both layers across fullscreen, orientation, and visual viewport
+  changes.
 
 **Non-Goals:**
 
-- Changing the 576x1024 logical world, tile grid, gameplay coordinates, or
-  sprite assets.
-- Copying the reference game's fixed 9:16 horizontal crop.
-- Redesigning HUD positions, control artwork, or settings behavior beyond the
-  adjustments required to keep them visible.
-- Implementing browser-specific JavaScript branches when standards-based
-  viewport and safe-area primitives suffice.
+- Changing the 576x1024 logical world, gameplay coordinates, camera, or assets.
+- Making the whole world visible on every aspect ratio.
+- Moving the UI back inside the cropped world frame.
+- Redesigning controls or settings beyond responsive containment.
 
 ## Decisions
 
-### Use a viewport-shaped frame instead of a fixed-aspect frame
+### Keep the world as a centered full-height 9:16 crop
 
-The stage and `.game-frame` will occupy the full drawable viewport width and
-height. The frame will no longer derive width from height or declare a fixed CSS
-aspect ratio. Both canvases and the DOM overlay will fill that frame exactly.
+`.game-frame` remains `56.25dvh` wide and `100dvh` high with a 9:16 aspect
+ratio, centered inside an overflow-hidden viewport stage. This fills the
+vertical space first, preserves world proportions, and permits only peripheral
+horizontal cropping on narrower screens.
 
-Alternative considered: retain the 9:16 frame and center-crop it like
-`babylon-walking-mobile`. Rejected because the reported failure is loss of
-actual 2D map and control content, not merely peripheral 3D camera scenery.
+Alternative considered: stretch or contain the complete logical world within
+the viewport. Rejected because stretching distorts the game and containing it
+reintroduces letterboxing instead of the approved full-height crop.
 
-### Separate viewport coverage from logical-world scaling
+### Put UI in an independent visual-viewport layer
 
-The render surface and green clear color will cover the complete frame. The
-logical 576x1024 view will use a uniform contain scale based on the smaller of
-the horizontal and vertical scale factors, with the logical view centered in
-the remaining game-background space. DOM overlays will use the full frame and
-safe-area constraints rather than inheriting a cropped logical width.
+The HUD, coordinates, virtual controller, settings UI, and error output move
+from `.game-frame` into a sibling `.ui-layer`. Its bounds are the intersection
+of the game frame and visible viewport: on wide screens it matches the game
+window, while on narrow screens it matches only the visible crop. This keeps UI
+inside the game window without allowing world cropping to hide it. It also acts
+as the query container for responsive UI sizing.
 
-Alternative considered: non-uniformly stretch the 576x1024 canvas to the
-viewport. Rejected because it would distort sprites, tiles, colliders, and
-movement geometry.
+Alternative considered: counter-transform individual controls inside the world
+frame. Rejected because it couples every UI element to world crop math and is
+fragile as controls are added.
 
-### Adopt the reference viewport and safe-area contract
+### Define one safe rectangle for all UI edges
 
-Add `viewport-fit=cover`, expose all four `env(safe-area-inset-*)` values, and
-size the root, body, stage, and frame with full width plus `100vh`/`100dvh`
-height fallbacks. The background may render behind unsafe regions; interactive
-controls will add the appropriate safe-area inset to their edge offsets.
+The page opts into `viewport-fit=cover`. CSS combines each
+`env(safe-area-inset-*)` with the configured `--screen-margin`; release
+metadata, gear, coordinates, controller groups, and settings dialog all anchor
+or constrain themselves using those shared safe edges. The settings backdrop
+may cover the viewport, while the complete dialog must fit and scroll inside
+the safe rectangle.
 
-Alternative considered: pad the entire game frame by safe-area values. Rejected
-because it recreates visible outer bars and wastes drawable background space.
+Alternative considered: pad the entire world by safe-area values. Rejected
+because that creates visible outer bars and reduces the world coverage.
 
-### Synchronize with every viewport signal that can change mobile layout
+### Track the visual viewport with a disposable coordinator
 
-Use a small disposable viewport coordinator to respond to window resize,
-orientation change, fullscreen change, frame `ResizeObserver` notifications,
-and `visualViewport` resize/scroll. Updates will be coalesced when practical and
-will synchronize render-surface dimensions, logical scale/offset, and overlays.
+A small coordinator reads `window.visualViewport` when present, otherwise the
+layout viewport, intersects it with `.game-frame`, and applies the resulting
+offset and dimensions to `.ui-layer`. It
+updates on window resize, orientation change, fullscreen change, visual
+viewport resize/scroll, and document resize observation. All subscriptions are
+disposed on pagehide.
 
-Alternative considered: rely only on CSS and the existing engine start loop.
-Rejected because mobile browser chrome and fullscreen transitions can change
-the visual viewport without producing a reliable layout result at the same
-moment as a conventional window resize.
+The world remains CSS-sized; the coordinator owns only visible UI bounds. This
+keeps one clear responsibility and avoids changing Babylon Lite's existing
+canvas/backing-surface behavior.
 
 ## Risks / Trade-offs
 
-- [Tall screens show additional green space outside the logical game view] →
-  Treat that area as intentional game background so all content remains visible
-  without distortion or black letterboxing.
-- [Safe-area padding could crowd controls on unusually small displays] → Use
-  the existing responsive clamps and validate minimum hit-target visibility at
-  the narrowest supported portrait viewport.
-- [Several resize signals may fire for one transition] → Coalesce layout work
-  and make updates idempotent; dispose every observer and listener on pagehide.
-- [Babylon Lite may already resize its backing surface internally] → Inspect
-  the current engine behavior during apply and keep one authoritative resize
-  path, adding coordination only where browser tests prove it is needed.
-- [Other active changes also modify `src/main.js` and `style.css`] → Re-read the
-  live files before apply and preserve unrelated release metadata, NPC, and
-  particle work.
+- [Peripheral world content is hidden on narrow screens] -> This is intentional
+  and limited to the world layer; gameplay UI remains fully visible.
+- [Safe insets plus the screen margin leave little room on very small screens]
+  -> Constrain the dialog to the safe rectangle and allow its contents to
+  scroll; retain responsive clamps for control sizes.
+- [Desktop viewport-width query units could oversize UI] -> Cap critical HUD
+  and dialog sizes while retaining proportional mobile sizing.
+- [Several viewport signals fire for one transition] -> Make updates
+  idempotent and dispose all observers/listeners.
+- [Other active changes touch shared files] -> Re-read live files immediately
+  before editing and preserve unrelated work.
 
 ## Migration Plan
 
-1. Add failing contract tests for viewport coverage, no fixed-aspect overflow,
-   safe-area offsets, and the required viewport meta declaration.
-2. Replace fixed-aspect frame sizing with full-viewport sizing and uniform
-   logical contain scaling.
-3. Add and dispose the required viewport synchronization hooks.
-4. Run focused tests, the full Node test suite, and a production build.
-5. Verify narrow portrait, tall portrait, landscape, and desktop layouts in a
-   real browser, including fullscreen entry and exit where supported.
-6. Publish through the existing demo workflow. Rollback is an additive revert
-   commit restoring the prior frame rules if a supported browser regresses.
+1. Add failing contracts for the sibling UI layer, safe rectangle, viewport
+   coordinator, and lifecycle disposal.
+2. Move UI markup outside the world and add `viewport-fit=cover`.
+3. Implement safe-edge CSS and settings containment.
+4. Integrate the viewport coordinator without changing world coordinates.
+5. Run focused tests, the full suite, a production build, and responsive real-
+   browser checks. Release remains a separately authorized step.

@@ -153,7 +153,7 @@ test("terrain review lays out every atlas frame once in row-major order", () => 
     screenPosition: { x: 512, y: 256 },
     valid: true,
     blocked: true,
-    collider: null,
+    collider: { x: 512, y: 704, width: 64, height: 64 },
   });
   assert.deepEqual(tiles[53].screenPosition, { x: 512, y: 320 });
   assert.deepEqual(

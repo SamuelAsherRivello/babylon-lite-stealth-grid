@@ -23,6 +23,7 @@ import {
   gridCellCenter,
   planFleeRoute,
 } from "./sheep-navigation.js";
+import { GAME_DEPTH } from "../../render-depth.js";
 
 export const SHEEP_FRAME_SIZE = 128;
 export const SHEEP_PIVOT = { x: 0.5, y: 0.84 };
@@ -46,6 +47,8 @@ const DEFAULT_API = {
   stopSpriteAnimation,
   updateSprite2D,
 };
+const DEFAULT_KNOCKBACK_DURATION_SECONDS = 0.15;
+const DEFAULT_KNOCKBACK_SPEED = 220;
 
 export async function loadSheepAtlases(engine) {
   const options = {
@@ -104,6 +107,9 @@ export function createSheep({
   let activeAnimation = null;
   let facing = 1;
   let dynamicColliders = [];
+  let knockback = { x: 0, y: 0 };
+  let knockbackTimer = 0;
+  let knockbackDuration = 0;
 
   const layers = {};
   const sprites = {};
@@ -111,7 +117,7 @@ export function createSheep({
   for (const animationName of Object.keys(ANIMATIONS)) {
     const layer = api.createSprite2DLayer(atlases[animationName], {
       capacity: 1,
-      order: 1,
+      order: GAME_DEPTH.npcs,
       pivot: [SHEEP_PIVOT.x, SHEEP_PIVOT.y],
       visible: animationName === SheepState.IDLE,
     });
@@ -246,6 +252,69 @@ export function createSheep({
     updateSprites();
   }
 
+  function setVisualTransform({
+    scaleX,
+    scaleY,
+    alpha,
+    rotation,
+    color,
+    sizePx,
+  }) {
+    const patch = {};
+    if (scaleX !== undefined) {
+      patch.scaleX = scaleX;
+    }
+    if (scaleY !== undefined) {
+      patch.scaleY = scaleY;
+    }
+    if (alpha !== undefined) {
+      patch.alpha = alpha;
+    }
+    if (rotation !== undefined) {
+      patch.rotation = rotation;
+    }
+    if (color !== undefined) {
+      patch.color = color;
+    }
+    if (sizePx !== undefined) {
+      patch.sizePx = sizePx;
+      const screenPosition = worldToScreen(position, 1, bounds.height);
+      patch.positionPx = [
+        screenPosition.x + (0.5 - SHEEP_PIVOT.x) * (SHEEP_FRAME_SIZE - sizePx[0]),
+        screenPosition.y - SHEEP_RENDER_OFFSET_Y
+          + (0.5 - SHEEP_PIVOT.y) * (SHEEP_FRAME_SIZE - sizePx[1]),
+      ];
+    }
+    for (const sprite of Object.values(sprites)) {
+      api.updateSprite2D(sprite, patch);
+    }
+  }
+
+  function applyKnockback(direction, {
+    duration = DEFAULT_KNOCKBACK_DURATION_SECONDS,
+    speed = DEFAULT_KNOCKBACK_SPEED,
+  } = {}) {
+    const normalizer = Math.hypot(direction.x, direction.y) || 1;
+    knockback = {
+      x: direction.x / normalizer * speed,
+      y: direction.y / normalizer * speed,
+    };
+    knockbackTimer = duration;
+    knockbackDuration = Math.max(0.0001, duration);
+  }
+
+  function getKnockbackMovement(deltaSeconds) {
+    if (knockbackTimer <= 0) {
+      return null;
+    }
+    const intensity = Math.max(0, knockbackTimer / knockbackDuration);
+    knockbackTimer = Math.max(0, knockbackTimer - Math.max(0, deltaSeconds));
+    return {
+      x: knockback.x * intensity,
+      y: knockback.y * intensity,
+    };
+  }
+
   return {
     config: Object.freeze({
       scareDistanceCells,
@@ -277,8 +346,27 @@ export function createSheep({
       animationManager = manager;
       playStateAnimation(SheepState.IDLE);
     },
+    setVisualTransform,
     update(deltaSeconds, characters = [], currentDynamicColliders = []) {
       dynamicColliders = currentDynamicColliders;
+      const knockbackMovement = getKnockbackMovement(deltaSeconds);
+      if (knockbackMovement) {
+        position = moveWithCollisions(
+          position,
+          knockbackMovement,
+          Math.hypot(knockbackMovement.x, knockbackMovement.y) * deltaSeconds,
+          bounds,
+          character,
+          [
+            ...obstacles,
+            ...dynamicColliders
+              .filter(({ type }) => type !== "npc")
+              .map(({ collider }) => collider),
+          ],
+        );
+        updateSprites();
+        return { position: { ...position }, state: stateMachine.state };
+      }
       if (stateMachine.state === SheepState.IDLE) {
         const transition = stateMachine.updateFear(getGridCell(), characters);
         if (transition.changed) {
@@ -289,6 +377,7 @@ export function createSheep({
       }
       return { position: { ...position }, state: stateMachine.state };
     },
+    applyKnockback,
     dispose() {
       if (activeAnimation) {
         api.stopSpriteAnimation(activeAnimation);

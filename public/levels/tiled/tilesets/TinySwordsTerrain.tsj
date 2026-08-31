@@ -1,0 +1,14 @@
+{
+  "columns": 9,
+  "image": "../../../assets/terrain/Tilemap_color3.png",
+  "imageheight": 384,
+  "imagewidth": 576,
+  "margin": 0,
+  "name": "Tiny Swords Terrain",
+  "spacing": 0,
+  "tilecount": 54,
+  "tileheight": 64,
+  "tilewidth": 64,
+  "type": "tileset",
+  "version": "1.10"
+}

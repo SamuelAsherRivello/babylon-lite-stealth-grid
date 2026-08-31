@@ -1,0 +1,179 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  DEFAULT_SPAWN_CHECK_INTERVAL_SECONDS,
+  createSpawner,
+  selectWeightedSpawnCount,
+} from "../src/spawner.js";
+
+function sequenceRandom(values) {
+  let index = 0;
+  return () => values[Math.min(index++, values.length - 1)];
+}
+
+function createHarness(overrides = {}) {
+  const disposed = [];
+  let nextId = 1;
+  const spawner = createSpawner({
+    type: "enemy",
+    position: { x: 10, y: 20 },
+    minimumCount: 2,
+    maximumCount: 3,
+    random: () => 0.999999,
+    createActor: (position) => ({ id: nextId++, position: { ...position } }),
+    disposeActor: (actor) => disposed.push(actor.id),
+    ...overrides,
+  });
+  return { disposed, spawner };
+}
+
+test("spawner validates population, interval, position, and callbacks", () => {
+  const base = {
+    type: "enemy",
+    position: { x: 0, y: 0 },
+    minimumCount: 0,
+    maximumCount: 1,
+    createActor: () => ({}),
+  };
+
+  assert.throws(() => createSpawner({ ...base, minimumCount: -1 }), /minimumCount/);
+  assert.throws(() => createSpawner({ ...base, maximumCount: -1 }), /maximumCount/);
+  assert.throws(
+    () => createSpawner({ ...base, minimumCount: 2, maximumCount: 1 }),
+    /minimumCount.*maximumCount/,
+  );
+  assert.throws(() => createSpawner({ ...base, checkIntervalSeconds: 0 }), /checkIntervalSeconds/);
+  assert.throws(() => createSpawner({ ...base, position: { x: NaN, y: 0 } }), /position/);
+  assert.throws(() => createSpawner({ ...base, createActor: null }), /createActor/);
+});
+
+test("spawner defaults to a one-second evaluation interval", () => {
+  const { spawner } = createHarness();
+  assert.equal(spawner.config.checkIntervalSeconds, DEFAULT_SPAWN_CHECK_INTERVAL_SECONDS);
+  assert.equal(DEFAULT_SPAWN_CHECK_INTERVAL_SECONDS, 1);
+});
+
+test("weighted spawn selection includes zero and remaining capacity", () => {
+  assert.equal(selectWeightedSpawnCount(3, 0), 0);
+  assert.equal(selectWeightedSpawnCount(3, 0.49), 0);
+  assert.equal(selectWeightedSpawnCount(3, 0.5), 1);
+  assert.equal(selectWeightedSpawnCount(3, 0.999999), 3);
+  assert.throws(() => selectWeightedSpawnCount(-1, 0.5), /remainingCapacity/);
+  assert.throws(() => selectWeightedSpawnCount(1, 1), /randomValue/);
+});
+
+test("player can guarantee one actor during its immediate startup evaluation", () => {
+  const { spawner } = createHarness({
+    type: "player",
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+    random: () => 0,
+  });
+
+  assert.equal(spawner.actors.length, 0);
+  assert.equal(spawner.initialize(), 1);
+  assert.equal(spawner.actors.length, 1);
+  assert.deepEqual(spawner.actors[0].position, { x: 10, y: 20 });
+});
+
+test("non-player startup and later evaluations can choose zero", () => {
+  const { spawner } = createHarness({ random: () => 0 });
+
+  assert.equal(spawner.initialize(), 0);
+  assert.equal(spawner.update(0.999), 0);
+  assert.equal(spawner.update(0.001), 0);
+  assert.equal(spawner.actors.length, 0);
+});
+
+test("custom N-second interval delays a bounded random batch", () => {
+  const { spawner } = createHarness({
+    checkIntervalSeconds: 2,
+    random: sequenceRandom([0, 0.999999]),
+  });
+
+  spawner.initialize();
+  assert.equal(spawner.update(1.99), 0);
+  assert.equal(spawner.update(0.01), 3);
+  assert.equal(spawner.actors.length, 3);
+});
+
+test("large delta consumes complete intervals without spawning in range", () => {
+  const { spawner } = createHarness({
+    minimumCount: 1,
+    maximumCount: 2,
+    random: sequenceRandom([0, 0, 0.999999]),
+  });
+
+  spawner.initialize();
+  assert.equal(spawner.update(2), 2);
+  assert.equal(spawner.actors.length, 2);
+  assert.equal(spawner.update(10), 0);
+  assert.equal(spawner.actors.length, 2);
+});
+
+test("removing an owned actor disposes once and allows later replenishment", () => {
+  const { disposed, spawner } = createHarness({
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+  });
+  spawner.initialize();
+  const actor = spawner.actors[0];
+
+  assert.equal(spawner.remove(actor), true);
+  assert.equal(spawner.remove(actor), false);
+  assert.deepEqual(disposed, [actor.id]);
+  assert.equal(spawner.actors.length, 0);
+  assert.equal(spawner.update(1), 1);
+  assert.equal(spawner.actors.length, 1);
+});
+
+test("a dying actor remains counted until death completion, then replacement can be gradual", () => {
+  const { spawner } = createHarness({
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+    random: sequenceRandom([0, 0.999999]),
+  });
+  spawner.initialize();
+  const actor = spawner.actors[0];
+
+  actor.state = "dying";
+  assert.equal(spawner.update(1), 0);
+  assert.equal(spawner.actors.length, 1);
+
+  actor.state = "dead";
+  assert.equal(spawner.remove(actor), true);
+  assert.equal(spawner.update(1), 0);
+  assert.equal(spawner.actors.length, 0);
+  assert.equal(spawner.update(1), 1);
+  assert.equal(spawner.actors.length, 1);
+});
+
+test("actors owned by another spawner cannot be removed or counted", () => {
+  const first = createHarness({ minimumCount: 1, maximumCount: 1, guaranteeInitialPopulation: true });
+  const second = createHarness({ minimumCount: 1, maximumCount: 1, guaranteeInitialPopulation: true });
+  first.spawner.initialize();
+  second.spawner.initialize();
+
+  assert.equal(first.spawner.remove(second.spawner.actors[0]), false);
+  assert.equal(first.spawner.actors.length, 1);
+  assert.equal(second.spawner.actors.length, 1);
+});
+
+test("dispose is idempotent and stops future evaluations", () => {
+  const { disposed, spawner } = createHarness({
+    minimumCount: 1,
+    maximumCount: 2,
+    guaranteeInitialPopulation: true,
+  });
+  spawner.initialize();
+
+  spawner.dispose();
+  spawner.dispose();
+  assert.deepEqual(disposed, [1]);
+  assert.equal(spawner.actors.length, 0);
+  assert.equal(spawner.update(100), 0);
+});

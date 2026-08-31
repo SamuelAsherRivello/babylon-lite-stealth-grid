@@ -1,65 +1,67 @@
-## 1. Lock Down the Responsive Contract
+## 1. Lock Down the Two-Layer Contract
 
-- [ ] 1.1 Update `test/responsive-layout.test.js` to require
-  `viewport-fit=cover`, full viewport width and height, removal of the fixed
-  frame aspect ratio, and safe-area variables; run the focused test and verify
-  it fails against the current layout for the reported reasons.
-- [ ] 1.2 Add focused logical-view layout tests for narrow portrait, tall
-  portrait, landscape, and desktop rectangles; verify they require uniform
-  contain scaling, centered offsets, and no logical-content clipping.
-- [ ] 1.3 Add viewport lifecycle tests covering resize, orientation,
-  fullscreen, `ResizeObserver`, and `visualViewport` signals plus disposal;
-  verify the new tests fail before the coordinator exists.
+- [x] 1.1 Update responsive layout tests to require `viewport-fit=cover`, a
+  full-height centered 9:16 world, and a sibling viewport UI layer; run them and
+  verify the new assertions fail before production changes.
+- [x] 1.2 Add focused safe-viewport calculation tests for visual-viewport and
+  layout-viewport fallback rectangles; verify they fail before the coordinator
+  exists.
+- [x] 1.3 Add lifecycle tests for resize, orientation, fullscreen,
+  `ResizeObserver`, visual-viewport resize/scroll, idempotent updates, and
+  disposal; verify they fail before implementation.
 
-## 2. Implement Edge-to-Edge Presentation
+## 2. Separate World and UI Presentation
 
-- [ ] 2.1 Add `viewport-fit=cover` to `index.html` and full safe-area variables
-  to the root styles; verify the responsive contract test passes these
-  assertions.
-- [ ] 2.2 Replace height-derived 9:16 frame sizing with a top-aligned frame that
-  exactly fills the drawable viewport width and `100vh`/`100dvh` height; verify
-  computed bounds equal the test viewport without horizontal overflow.
-- [ ] 2.3 Update settings, coordinate, and virtual-control edge offsets to
-  include the relevant safe-area insets; verify every interactive hit target is
-  contained by the safe visible rectangle in focused layout tests.
+- [x] 2.1 Add `viewport-fit=cover` and move the complete UI markup into a
+  sibling `.ui-layer`, leaving only world canvases in `.game-frame`.
+- [x] 2.2 Preserve the centered full-height 9:16 world layer and stage overflow
+  crop without stretch or vertical letterboxing.
+- [x] 2.3 Make `.ui-layer` cover the visible intersection of the game frame and
+  viewport, accept pointer events only through its interactive descendants,
+  and provide the responsive query context for UI sizing.
 
-## 3. Preserve the Complete Logical Game View
+## 3. Preserve the UI Safe Area
 
-- [ ] 3.1 Implement a pure logical-view layout calculation that returns the
-  uniform contain scale and centering offsets for a 576x1024 world; verify all
-  focused aspect-ratio cases pass without sprite distortion or clipping.
-- [ ] 3.2 Apply the shared scale and offsets consistently to gameplay layers,
-  debug drawing, coordinate conversion, and preview layers while preserving
-  current gameplay coordinates; verify existing gameplay, projectile, NPC, and
-  particle layout tests remain green.
-- [ ] 3.3 Ensure the complete render surface clears to the game background
-  outside the contained logical view; verify portrait and landscape browser
-  screenshots contain no page-background bars.
+- [x] 3.1 Define shared safe-edge offsets from all four device safe-area insets
+  plus `--screen-margin`.
+- [x] 3.2 Anchor release metadata, gear, coordinates, joystick, action buttons,
+  labels, and errors inside the corresponding safe edges while capping critical
+  sizes on wide screens.
+- [x] 3.3 Let the settings backdrop cover the visible UI layer while constraining
+  the complete dialog to the safe rectangle with internal scrolling when
+  necessary.
 
-## 4. Synchronize Runtime Viewport Changes
+## 4. Synchronize Visual Viewport Changes
 
-- [ ] 4.1 Inspect Babylon Lite's current backing-surface resize behavior and
-  implement one disposable viewport coordinator for only the missing resize
-  responsibilities; verify no duplicate authoritative resize path remains.
-- [ ] 4.2 Subscribe the coordinator to window resize, orientation change,
-  fullscreen change, frame `ResizeObserver`, and visual-viewport resize/scroll;
-  verify focused lifecycle tests cover every signal and listener disposal.
-- [ ] 4.3 Coalesce repeated layout notifications and synchronize canvas size,
-  logical scale/offset, and overlay placement in one update; verify repeated
-  events are idempotent and do not accumulate animation or event handles.
+- [x] 4.1 Implement a pure visual-viewport reader and UI-layer bounds applier
+  with a layout-viewport fallback.
+- [x] 4.2 Subscribe one disposable coordinator to window resize, orientation,
+  fullscreen, document resize observation, and visual-viewport resize/scroll;
+  dispose it on pagehide.
+- [x] 4.3 Integrate the coordinator without changing Babylon Lite world sizing,
+  gameplay coordinates, or its existing canvas resize responsibility.
 
-## 5. Verify and Release
+## 5. Verify
 
-- [ ] 5.1 Run the focused responsive and viewport tests, then `npm.cmd test`,
-  `npm.cmd run build`, and `git diff --check`; record any unrelated pre-existing
-  failure separately from this change.
-- [ ] 5.2 Use a real browser to verify at least 614x1330 narrow portrait,
-  648x1369 tall portrait, 1369x648 landscape, and 1440x900 desktop viewports;
-  confirm frame edges, logical-content bounds, safe controls, and zero console
-  errors at each size.
-- [ ] 5.3 On a supported mobile or emulated fullscreen path, enter and exit
-  fullscreen and change orientation; verify no top black strip, no horizontal
-  clipping, and correct reflow without reload.
-- [ ] 5.4 If a release is separately authorized, publish through the existing
-  live-demo workflow and verify the public URL serves the updated viewport
-  contract rather than a cached prior build.
+- [x] 5.1 Run focused responsive and viewport tests, `npm.cmd test`,
+  `npm.cmd run build`, and `git diff --check`; record unrelated pre-existing
+  failures separately.
+- [x] 5.2 Use a real browser at narrow portrait, tall portrait, landscape, and
+  desktop sizes; verify the world touches top and bottom, UI bounds preserve
+  safe margins, settings stays contained, and there are no console errors.
+- [x] 5.3 Exercise fullscreen entry/exit and a viewport-size transition where
+  supported; verify the world crop and UI safe rectangle update without reload.
+
+## 6. Correct Wide-Screen UI Containment
+
+- [x] 6.1 Add a regression test proving the safe UI bounds equal the
+  game-frame/viewport intersection on both wide and narrow screens.
+- [x] 6.2 Apply the intersection bounds in the viewport coordinator and observe
+  the game frame for responsive changes.
+- [x] 6.3 Keep the UI layer hidden during its unbounded initial state and reveal
+  it immediately after the first correct intersection bounds are applied.
+
+## 7. Compact the Settings Gear
+
+- [x] 7.1 Halve the responsive gear width, height, padding, and border while
+  preserving its existing top and right safe-area anchors.

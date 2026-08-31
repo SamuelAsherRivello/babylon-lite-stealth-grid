@@ -1,0 +1,54 @@
+{
+  "columns": 0,
+  "grid": { "height": 1, "orientation": "orthogonal", "width": 1 },
+  "name": "Tiny Swords Bush Decorations",
+  "objectalignment": "bottom",
+  "tileoffset": { "x": 0, "y": -49 },
+  "tilecount": 1,
+  "tileheight": 46,
+  "tiles": [{
+    "class": "ReactiveDecoration",
+    "id": 0,
+    "image": "../../../assets/terrain/decorations/bushes/Bushe1-frame0.png",
+    "imageheight": 46,
+    "imagewidth": 68,
+    "objectgroup": {
+      "draworder": "index",
+      "id": 1,
+      "name": "Sensor",
+      "objects": [{
+        "class": "Sensor",
+        "height": 32,
+        "id": 1,
+        "name": "Character Sensor",
+        "rotation": 0,
+        "visible": true,
+        "width": 48,
+        "x": 40,
+        "y": 88
+      }],
+      "opacity": 1,
+      "type": "objectgroup",
+      "visible": true,
+      "x": 0,
+      "y": 0
+    },
+    "properties": [
+      { "name": "acceptedCharacterTypes", "type": "string", "value": "player,npc,enemy" },
+      { "name": "blocking", "type": "bool", "value": false },
+      { "name": "frameCount", "type": "int", "value": 8 },
+      { "name": "frameDurationMs", "type": "int", "value": 100 },
+      { "name": "frameHeight", "type": "int", "value": 128 },
+      { "name": "frameWidth", "type": "int", "value": 128 },
+      { "name": "idleFrame", "type": "int", "value": 0 },
+      { "name": "playbackMode", "type": "string", "value": "once" },
+      { "name": "rearmOnExit", "type": "bool", "value": true },
+      { "name": "resetAfterPlay", "type": "bool", "value": true },
+      { "name": "runtimeImage", "type": "file", "value": "../../../assets/terrain/decorations/bushes/Bushe1.png" },
+      { "name": "triggerMode", "type": "string", "value": "character-enter" }
+    ]
+  }],
+  "tilewidth": 68,
+  "type": "tileset",
+  "version": "1.11"
+}

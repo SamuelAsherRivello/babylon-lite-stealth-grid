@@ -184,9 +184,12 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.doesNotMatch(source, /Skip Start Menu/);
   assert.match(main, /createSettingsUi\(\{ host: gameUi, pauseController \}\)/);
   assert.match(main, /updateSpriteAnimationManager\(animationManager, activeDelta \* 1000\)/);
-  assert.match(main, /player\.update\(activeDelta, \[sheep\.getCollider\(\)\]\)/);
+  assert.match(main, /playerRecord\.actor\.update\(activeDelta, dynamicColliders\)/);
   assert.match(main, /showColliders = settingsStore\.get\(DEBUG_SETTING_KEYS\.showColliders\)/);
-  assert.match(main, /drawDiagnostics\([\s\S]*terrainTiles,[\s\S]*player\.getCollider\(\),[\s\S]*sheep\.getCollider\(\)\.collider,[\s\S]*projectiles\.getColliders\(\),[\s\S]*showColliders/);
+  assert.match(main, /marker\.setVisible\(value\)/);
+  assert.match(main, /drawDiagnostics\([\s\S]*diagnosticPlayer\?\.combat\.getCollider\(\)[\s\S]*SpawnerType\.SHEEP[\s\S]*SpawnerType\.ENEMY[\s\S]*projectiles\.getColliders\(\)[\s\S]*showColliders/);
+  assert.match(main, /function drawGridLines\(\)[\s\S]*rgb\(80 86 92 \/ 48%\)[\s\S]*lineWidth = 1/);
+  assert.match(main, /if \(!enabled\) \{[\s\S]*return;[\s\S]*\}[\s\S]*drawGridLines\(\)/);
   assert.doesNotMatch(main, /DISPLAY_SETTING_KEYS|applyFullscreenPreference/);
 });
 
@@ -203,8 +206,9 @@ test("settings chrome follows inspiration frame-relative measurements", async ()
     assert.doesNotMatch(declarations, /(?:\d|\.)(?:px|vw|vh)\b/);
   }
   assert.match(styles, /--screen-margin:\s*30px/);
-  assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*var\(--screen-margin\);[^}]*right:\s*var\(--screen-margin\);[^}]*width:\s*8cqw;[^}]*height:\s*8cqw;/s);
-  assert.match(styles, /\.game-window-backdrop\s*\{[^}]*inset:\s*0;[^}]*place-items:\s*center;[^}]*rgb\(0 0 0 \/ 50%\)/s);
+  assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*var\(--ui-safe-top\);[^}]*right:\s*var\(--ui-safe-right\);[^}]*width:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*height:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*padding:\s*0\.35cqw;[^}]*border:\s*0\.175cqw solid/s);
+  assert.match(styles, /\.game-window-backdrop\s*\{[^}]*inset:\s*0;[^}]*padding:\s*var\(--ui-safe-top\) var\(--ui-safe-right\) var\(--ui-safe-bottom\) var\(--ui-safe-left\);[^}]*place-items:\s*center;[^}]*rgb\(0 0 0 \/ 50%\)/s);
+  assert.match(styles, /\.game-window\s*\{[^}]*max-height:\s*100%;[^}]*overflow:\s*auto;/s);
 });
 
 test("gear icon is transparent vector artwork", async () => {

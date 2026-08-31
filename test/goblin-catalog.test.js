@@ -9,15 +9,15 @@ import {
 
 const EXPECTED = Object.freeze({
   idle: { filename: "goblin-idle.png", frameCount: 7, loop: true },
-  walking: { filename: "goblin-walk.png", frameCount: 6, loop: true },
+  walking: { filename: "goblin-walk.png", frameCount: 5, loop: true },
   "attack-right": {
     filename: "goblin-attack-right.png",
-    frameCount: 6,
+    frameCount: 5,
     loop: false,
   },
   "attack-down": {
     filename: "goblin-attack-down.png",
-    frameCount: 6,
+    frameCount: 5,
     loop: false,
   },
   "attack-up": {

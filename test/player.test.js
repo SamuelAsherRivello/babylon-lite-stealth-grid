@@ -19,7 +19,7 @@ test("player uses a circle collider centered on the previous body box", () => {
 });
 
 test("arrow spawns close to the bow on the right", () => {
-  assert.deepEqual(getArrowSpawnPosition({ x: 200, y: 300 }, 1), {
+  assert.deepEqual(getArrowSpawnPosition({ x: 200, y: 300 }, { x: 1, y: 0 }), {
     x: 264,
     y: 355,
   });
@@ -27,12 +27,24 @@ test("arrow spawns close to the bow on the right", () => {
 
 test("arrow spawn mirrors horizontally without changing its height", () => {
   const playerPosition = { x: 200, y: 300 };
-  const right = getArrowSpawnPosition(playerPosition, 1);
-  const left = getArrowSpawnPosition(playerPosition, -1);
+  const right = getArrowSpawnPosition(playerPosition, { x: 1, y: 0 });
+  const left = getArrowSpawnPosition(playerPosition, { x: -1, y: 0 });
 
   assert.deepEqual(left, { x: 136, y: 355 });
   assert.equal(right.x - playerPosition.x, playerPosition.x - left.x);
   assert.equal(right.y, left.y);
+});
+
+test("arrow spawn positions cover straight up and down", () => {
+  const playerPosition = { x: 200, y: 300 };
+  assert.deepEqual(getArrowSpawnPosition(playerPosition, { x: 0, y: 1 }), {
+    x: 200,
+    y: 364,
+  });
+  assert.deepEqual(getArrowSpawnPosition(playerPosition, { x: 0, y: -1 }), {
+    x: 200,
+    y: 300,
+  });
 });
 
 test("player module owns archer input and animation", async () => {
@@ -47,7 +59,7 @@ test("player module owns archer input and animation", async () => {
   assert.match(playerSource, /KeyC/);
   assert.match(playerSource, /KeyV/);
   assert.match(playerSource, /onShoot/);
-  assert.match(playerSource, /ARROW_SPAWN_OFFSET = \{ x: 64, y: 55 \}/);
+  assert.match(playerSource, /ARROW_SPAWN_OFFSETS/);
   assert.match(playerSource, /Archer_Idle\.png/);
   assert.match(playerSource, /Archer_Run\.png/);
   assert.match(playerSource, /Archer_Shoot\.png/);
@@ -57,7 +69,7 @@ test("player module owns archer input and animation", async () => {
   assert.match(playerSource, /getPosition\(\)/);
   assert.match(playerSource, /PlayerState\.SHOOTING/);
   assert.match(playerSource, /stateMachine\.releaseShot\(activeAnimation\.current\)/);
-  assert.match(mainSource, /\.\.\.player\.layers/);
+  assert.match(mainSource, /spawner\.actors\.flatMap\(\(record\) => record\.actor\.layers\)/);
   assert.doesNotMatch(mainSource, /createVirtualController/);
   assert.doesNotMatch(mainSource, /playSprite2DAnimation\(animationManager, archer/);
 });

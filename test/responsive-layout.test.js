@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 test("portrait frame always fills the visible viewport height first", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
   const styles = await readFile(new URL("../src/ui/style.css", import.meta.url), "utf8");
   const stage = styles.match(/\.stage\s*\{([^}]*)\}/s)?.[1] ?? "";
   const frame = styles.match(/\.game-frame\s*\{([^}]*)\}/s)?.[1] ?? "";
@@ -14,6 +15,24 @@ test("portrait frame always fills the visible viewport height first", async () =
   assert.doesNotMatch(frame, /width:\s*min\(/);
   assert.doesNotMatch(frame, /height:\s*min\(/);
   assert.match(frame, /aspect-ratio:\s*9\s*\/\s*16;/);
+  assert.match(html, /content="width=device-width, initial-scale=1\.0, viewport-fit=cover"/);
+});
+
+test("world crop and viewport-safe UI use independent sibling layers", async () => {
+  const html = await readFile(new URL("../index.html", import.meta.url), "utf8");
+  const styles = await readFile(new URL("../src/ui/style.css", import.meta.url), "utf8");
+  const uiLayer = styles.match(/\.ui-layer\s*\{([^}]*)\}/s)?.[1] ?? "";
+
+  assert.match(html, /<div class="game-frame">[\s\S]*?<\/div>\s*<div id="uiLayer" class="ui-layer">/);
+  assert.match(uiLayer, /position:\s*fixed;/);
+  assert.match(uiLayer, /container-type:\s*inline-size;/);
+  assert.match(uiLayer, /pointer-events:\s*none;/);
+  assert.match(styles, /--ui-safe-top:\s*calc\(env\(safe-area-inset-top, 0px\) \+ var\(--screen-margin\)\);/);
+  assert.match(styles, /--ui-safe-right:\s*calc\(env\(safe-area-inset-right, 0px\) \+ var\(--screen-margin\)\);/);
+  assert.match(styles, /--ui-safe-bottom:\s*calc\(env\(safe-area-inset-bottom, 0px\) \+ var\(--screen-margin\)\);/);
+  assert.match(styles, /--ui-safe-left:\s*calc\(env\(safe-area-inset-left, 0px\) \+ var\(--screen-margin\)\);/);
+  assert.match(styles, /\.ui-layer:not\(\.is-viewport-ready\)\s*\{[^}]*visibility:\s*hidden;/s);
+  assert.match(styles, /\.ui-layer\.is-viewport-ready\s*\{[^}]*visibility:\s*visible;/s);
 });
 
 test("collider diagnostics stay above the game render canvas", async () => {

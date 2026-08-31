@@ -15,6 +15,12 @@ The human edits level content on the existing layers. Do not create a blank map,
 
 ## Open a Level
 
+For `Level01`, use these repository files:
+
+- Tiled project: `public/levels/tiled/stealth-grid.tiled-project`
+- Level map: `public/levels/tiled/maps/Level01.tmj`
+- Terrain tileset: `public/levels/tiled/tilesets/Tilemap_color3.tsj`
+
 1. Ask the AI which level to edit. The AI will give you the exact `.tiled-project` and `.tmj` paths.
 2. Open Tiled.
 3. Select **File > Open File or Project** and open the `.tiled-project` path supplied by the AI.
@@ -30,6 +36,18 @@ Do not substitute another map or create a new map from Tiled's menus. If a new l
 3. Leave layer names, ordering, map dimensions, tilesets, and the editor-only origin marker unchanged.
 4. Press **Ctrl+S** or select **File > Save**.
 5. Tell the AI the path of the TMJ file you saved so it can inspect and validate the changes.
+
+## Inspect Terrain Collision
+
+Terrain collision is authored in `public/levels/tiled/tilesets/Tilemap_color3.tsj`, not in Babylon runtime configuration.
+
+1. Open `Tilemap_color3.tsj` in Tiled.
+2. Select a tile and switch the tileset view to **Tile Collision Editor**.
+3. Frames `41`, `42`, `43`, `44`, `50`, `51`, `52`, and `53` have full-cell rectangles.
+4. Frames `45` and `48` have triangular polygons.
+5. Tiles without a collision object are walkable.
+
+Ask the AI to change collider geometry so the TSJ, importer tests, and runtime behavior remain synchronized.
 
 ## Close Tiled
 
@@ -68,4 +86,31 @@ For another pass:
 4. Close Tiled.
 5. Start the game and play the updated map.
 
-The Tiled integration files are created as part of the `add-tiled-babylon-lite-plugin` change. Until that change is applied, ask the AI to complete the setup before attempting this workflow.
+## Related Folder Structure
+
+```text
+plugins/
++-- tiled-babylon-lite/
+    +-- index.js                 Reusable TMJ/TSJ validation and loading
+    +-- README.md                Supported-format and library-audit notes
+
+public/
++-- assets/
+|   +-- terrain/
+|       +-- tilesets/
+|           +-- Tilemap_color3.png   Tiny Swords terrain atlas
+|
++-- levels/
+    +-- tiled/
+        +-- stealth-grid.tiled-project
+        +-- maps/
+        |   +-- Level01.tmj      Editable source and runtime level
+        +-- tilesets/
+            +-- Tilemap_color3.tsj   Terrain frames and collision objects
+
+test/
++-- tiled-level.test.js          Level data, origin, and collision import
++-- tiled-terrain.test.js        Runtime collision conversion
+```
+
+The TMJ is both the authored file and the runtime file. Saving `Level01.tmj` updates what the game loads on its next start or browser refresh.

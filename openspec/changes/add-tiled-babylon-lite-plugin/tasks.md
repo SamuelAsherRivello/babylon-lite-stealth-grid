@@ -1,7 +1,7 @@
 ## 1. Plugin Contract and Test Fixtures
 
-- [ ] 1.1 Audit current Babylon Lite-compatible Tiled libraries for TMJ/TSJ coverage, maintenance, license, bundle size, tree-shaking, and browser/Node support; record candidates and verify the decision either selects a qualifying dependency behind the plugin API or justifies local implementation
-- [ ] 1.2 Create the `/plugins/tiled-babylon-lite/` package structure, stable public exports, and README around the selected dependency or local implementation, and verify Node can import its entry point without a browser or WebGPU
+- [x] 1.1 Audit current Babylon Lite-compatible Tiled libraries for TMJ/TSJ coverage, maintenance, license, bundle size, tree-shaking, and browser/Node support; record candidates and verify the decision either selects a qualifying dependency behind the plugin API or justifies local implementation
+- [x] 1.2 Create the `/plugins/tiled-babylon-lite/` package structure, stable public exports, and README around the selected dependency or local implementation, and verify Node can import its entry point without a browser or WebGPU
 - [ ] 1.3 Add minimal supported and invalid TMJ/TSJ fixtures plus failing contract tests for external tilesets, required layers, unsupported maps, direct-TMJ loading, and actionable errors, and verify the focused tests fail for the missing implementation
 - [ ] 1.4 Add failing grid-planning tests for exact and non-divisible screens, portrait and landscape layouts, incompatible tilesets, and the 576-by-1024 Tiny Swords 9-by-16 viewport, and verify failures identify missing decisions or implementation
 - [ ] 1.5 Add failing coordinate tests for origin-relative tile cells, points, rectangles, polygons, tile objects, negative coordinates, map bounds, and round trips, and verify each failure identifies the unimplemented conversion
@@ -31,7 +31,7 @@
 
 ## 5. Documentation and End-to-End Verification
 
-- [ ] 5.1 Document the exact content-only human workflow: open the AI-named project and map, edit existing layers and configured objects, save the TMJ, and identify it to the AI; document that all dimensions, origins, tilesets, layers, classes, properties, and runtime setup are AI-managed, and verify every documented path exists
+- [x] 5.1 Document the exact content-only human workflow: open the AI-named project and map, edit existing layers and configured objects, save the TMJ, and identify it to the AI; document that all dimensions, origins, tilesets, layers, classes, properties, and runtime setup are AI-managed, and verify every documented path exists
 - [ ] 5.2 Run focused plugin tests, the full `npm test`, and `npm run build`, and verify all commands complete successfully
 - [ ] 5.3 Open the built application in a real WebGPU-capable browser, verify the authored sample renders with correct ordering and collision diagnostics, and record the tested URL and observed level behavior
 - [ ] 5.4 Review the final diff for accidental Sprite Fusion support, new production dependencies, generated downloads, or unrelated edits, and verify the delivered integration remains exclusively Tiled and repository-local

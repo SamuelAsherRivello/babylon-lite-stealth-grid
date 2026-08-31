@@ -5,9 +5,11 @@ import {
   GOBLIN_ANIMATION_NAMES,
 } from "../src/enemies/goblin/goblin-animation-catalog.js";
 import {
+  GOBLIN_COLLIDER,
   createGoblin,
   loadGoblinAtlases,
 } from "../src/enemies/goblin/goblin.js";
+import { GAME_DEPTH } from "../src/render-depth.js";
 
 function createApi() {
   const calls = {
@@ -53,6 +55,12 @@ function createApi() {
   };
 }
 
+test("goblin collider matches the player's art-baseline offset", () => {
+  assert.equal(GOBLIN_COLLIDER.y, 123);
+  assert.equal(GOBLIN_COLLIDER.x, 96);
+  assert.equal(GOBLIN_COLLIDER.radius, 24);
+});
+
 test("goblin atlases load once as nearest 192 pixel grids", async () => {
   const api = createApi();
   const engine = {};
@@ -88,6 +96,11 @@ test("goblin starts idle, switches locomotion, and mirrors left", () => {
   assert.deepEqual(api.calls.added[0].options.positionPx, [200, 500]);
 
   goblin.playAnimation({});
+  assert.ok(
+    api.calls.layers.every(({ order }) => (
+      order >= GAME_DEPTH.npcs && order < GAME_DEPTH.player
+    )),
+  );
   assert.deepEqual(
     api.calls.played.map(({ from, to, loop, duration }) => ({
       from,
@@ -102,9 +115,13 @@ test("goblin starts idle, switches locomotion, and mirrors left", () => {
   const result = goblin.update(0.5);
   assert.equal(result.state, "walking");
   assert.deepEqual(result.position, { x: 150, y: 300 });
-  assert.equal(api.calls.played.at(-1).to, 5);
+  assert.equal(api.calls.played.at(-1).to, 4);
   assert.equal(api.calls.played.at(-1).loop, true);
-  assert.ok(api.calls.updated.every(({ options }) => options.flipX === true));
+  assert.ok(
+    api.calls.updated
+      .slice(-GOBLIN_ANIMATION_NAMES.length)
+      .every(({ options }) => options.flipX === true),
+  );
 });
 
 test("goblin attack is atomic and disposal removes every sprite", () => {
@@ -127,7 +144,7 @@ test("goblin attack is atomic and disposal removes every sprite", () => {
   const attack = api.calls.played.at(-1);
   assert.equal(attack.sprite.layer.atlas.name, "attack-right");
   assert.equal(attack.loop, false);
-  assert.equal(attack.to, 5);
+  assert.equal(attack.to, 4);
   const before = goblin.getPosition();
   assert.deepEqual(goblin.update(1).position, before);
 

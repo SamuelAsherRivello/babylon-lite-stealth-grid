@@ -71,7 +71,7 @@ The integration SHALL convert Tiled's top-left tile coordinates to the game's bo
 - **THEN** the original Tiled coordinate is recovered within the documented pixel precision
 
 ### Requirement: Declared game origin cell
-Every map SHALL contain exactly one editor-only origin marker tile whose cell is game tile `(0,0)`. That cell SHALL occupy the lower-left of the initial viewport, while authored cells left of or below it SHALL normalize to negative game coordinates and begin offscreen.
+Every map SHALL contain exactly one editor-only origin marker tile whose cell is game tile `(0,0)`. The level content at that coordinate SHALL render in the lower-left cell of the initial viewport, while authored cells left of or below it SHALL normalize to negative game coordinates and begin offscreen.
 
 #### Scenario: Map extends around the initial viewport
 - **WHEN** authored content exists left of or below the origin marker tile
@@ -80,6 +80,13 @@ Every map SHALL contain exactly one editor-only origin marker tile whose cell is
 #### Scenario: Origin marker is invalid
 - **WHEN** the map contains zero, multiple, off-grid, or render-enabled origin marker tiles
 - **THEN** validation reports an actionable error and does not infer an origin
+
+### Requirement: Level-coordinate diagnostics
+Every visible level cell SHALL have an optional diagnostic label derived from its origin-relative level column and row rather than its tileset frame number. The label SHALL use zero-padded `column,row` text, appear at the cell's upper-right, and use half the previous 14 px diagnostic font size.
+
+#### Scenario: Origin cell diagnostic is visible
+- **WHEN** coordinate diagnostics are enabled
+- **THEN** the rendered lower-left origin cell displays `00,00` at its upper-right in a 7 px font
 
 ### Requirement: Authored collision and terrain semantics
 The integration SHALL derive ordinary collision and terrain semantics from Tiled layer properties, tile properties, and tileset collision shapes, with designated override layers taking precedence over reusable tile defaults.

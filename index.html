@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:," />
     <title>Babylon Lite Stealth Grid</title>
     <link rel="stylesheet" href="./src/ui/style.css" />
@@ -23,11 +23,9 @@
           data-terrain-frame-count="54"
           aria-hidden="true"
         ></canvas>
+      </div>
+      <div id="uiLayer" class="ui-layer">
         <section id="gameUi" class="game-ui" aria-live="polite"></section>
-        <div class="coordinate-guide" aria-hidden="true">
-          <span class="axis-y">+Y</span>
-          <span class="axis-x">+X</span>
-        </div>
         <div id="coordinates-ui" class="coordinates-ui" aria-label="Archer coordinates">
           <output id="coordinates-ui-pixel">X 288 · Y 512</output>
           <output id="coordinates-ui-grid">C 3 · R 7</output>

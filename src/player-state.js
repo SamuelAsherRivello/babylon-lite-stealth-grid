@@ -8,6 +8,7 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
   let state = PlayerState.IDLE;
   let facing = 1;
   let shotReleased = false;
+  let shotDirection = { x: 1, y: 0 };
 
   function transition(nextState) {
     const changed = state !== nextState;
@@ -28,6 +29,9 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
     get facing() {
       return facing;
     },
+    get shotDirection() {
+      return { ...shotDirection };
+    },
     get movementLocked() {
       return state === PlayerState.SHOOTING;
     },
@@ -42,10 +46,11 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
           : PlayerState.IDLE,
       );
     },
-    startShooting() {
+    startShooting(direction = { x: facing, y: 0 }) {
       if (state === PlayerState.SHOOTING) {
         return { changed: false, state };
       }
+      shotDirection = { x: direction.x, y: direction.y };
       shotReleased = false;
       return transition(PlayerState.SHOOTING);
     },

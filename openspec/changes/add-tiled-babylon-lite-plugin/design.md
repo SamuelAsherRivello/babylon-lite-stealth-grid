@@ -41,7 +41,7 @@ Inspect each tileset's inherent tile width and height, then calculate initial vi
 
 ### Anchor game coordinates with an editor-only origin tile
 
-Use a required single-cell marker on a non-rendered metadata tile layer. Its cell normalizes to game tile `(0,0)` and aligns with the initial viewport's lower-left. Because the marker can sit inside a finite Tiled map, authored cells may normalize to negative game coordinates without adding infinite-map chunk support. Runtime bounds become minimum and maximum X/Y values relative to this marker rather than zero-based width and height.
+Use a required single-cell marker on a non-rendered metadata tile layer. Its cell normalizes to game tile `(0,0)`, and the level content at that coordinate renders in the initial viewport's lower-left cell. Because the marker can sit inside a finite Tiled map, authored cells may normalize to negative game coordinates without adding infinite-map chunk support. Runtime bounds become minimum and maximum X/Y values relative to this marker rather than zero-based width and height. Diagnostic labels display origin-relative `column,row` values at cell upper-rights rather than atlas-frame identifiers.
 
 ### Separate AI structural work from human content editing
 

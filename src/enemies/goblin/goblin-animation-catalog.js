@@ -7,9 +7,9 @@ const FRAME_DURATION_MS = 100;
 const PIVOT = Object.freeze([0.5, 0.84]);
 const EXPECTED = Object.freeze({
   idle: Object.freeze({ frameCount: 7, loop: true }),
-  walking: Object.freeze({ frameCount: 6, loop: true }),
-  "attack-right": Object.freeze({ frameCount: 6, loop: false }),
-  "attack-down": Object.freeze({ frameCount: 6, loop: false }),
+  walking: Object.freeze({ frameCount: 5, loop: true }),
+  "attack-right": Object.freeze({ frameCount: 5, loop: false }),
+  "attack-down": Object.freeze({ frameCount: 5, loop: false }),
   "attack-up": Object.freeze({ frameCount: 6, loop: false }),
 });
 
@@ -32,17 +32,17 @@ function createDescriptor(name, filename, frameCount, loop) {
 
 export const GOBLIN_ANIMATION_CATALOG = Object.freeze({
   idle: createDescriptor("Goblin Idle", "goblin-idle.png", 7, true),
-  walking: createDescriptor("Goblin Walk", "goblin-walk.png", 6, true),
+  walking: createDescriptor("Goblin Walk", "goblin-walk.png", 5, true),
   "attack-right": createDescriptor(
     "Goblin Attack Right",
     "goblin-attack-right.png",
-    6,
+    5,
     false,
   ),
   "attack-down": createDescriptor(
     "Goblin Attack Down",
     "goblin-attack-down.png",
-    6,
+    5,
     false,
   ),
   "attack-up": createDescriptor(

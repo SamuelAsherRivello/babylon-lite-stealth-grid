@@ -54,13 +54,13 @@ test("release metadata styling matches the proportional upper-left contract", as
 
   assert.match(styles, /--screen-margin:\s*30px/);
   assert.match(rule, /position:\s*absolute/);
-  assert.match(rule, /top:\s*var\(--screen-margin\)/);
-  assert.match(rule, /left:\s*var\(--screen-margin\)/);
-  assert.match(rule, /font-size:\s*2\.67cqw/);
-  assert.match(rule, /line-height:\s*5\.33cqw/);
+  assert.match(rule, /top:\s*var\(--ui-safe-top\)/);
+  assert.match(rule, /left:\s*var\(--ui-safe-left\)/);
+  assert.match(rule, /font-size:\s*clamp\(0\.75rem, 2\.67cqw, 1rem\)/);
+  assert.match(rule, /line-height:\s*1\.5/);
   assert.match(rule, /white-space:\s*nowrap/);
   assert.match(rule, /pointer-events:\s*none/);
-  assert.doesNotMatch(rule, /(?:^|[\s:(,+-])-?(?:\d*\.)?\d+(?:px|vw|vh)\b/);
+  assert.doesNotMatch(rule, /(?:^|[\s:(,+-])-?(?:\d*\.)?\d+(?:vw|vh)\b/);
 });
 
 test("startup loads and renders release metadata", async () => {

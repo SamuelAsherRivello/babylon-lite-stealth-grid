@@ -6,9 +6,10 @@ set and a deterministic mapping from movement and attack direction to art.
 ## ADDED Requirements
 
 ### Requirement: The first goblin uses verified Torch animations
-The goblin SHALL provide a seven-frame `idle` animation, a six-frame
-`walking` animation, and six-frame `attack-right`, `attack-down`, and
-`attack-up` animations at 100 milliseconds per frame.
+The goblin SHALL provide a seven-frame `idle` animation, five-frame `walking`,
+`attack-right`, and `attack-down` animations, and a six-frame `attack-up`
+animation at 100 milliseconds per frame. Runtime sheets SHALL omit fully
+transparent source frames.
 
 #### Scenario: Goblin is spawned
 - **WHEN** a goblin is created without an immediate movement or attack request
@@ -22,7 +23,7 @@ a leftward request.
 
 #### Scenario: Left attack
 - **WHEN** the goblin starts an attack whose dominant direction is left
-- **THEN** it plays the six-frame right-attack art mirrored horizontally once
+- **THEN** it plays the five-frame right-attack art mirrored horizontally once
 
 #### Scenario: Up attack
 - **WHEN** the goblin starts an attack whose dominant direction is up
@@ -30,7 +31,7 @@ a leftward request.
 
 #### Scenario: Down attack
 - **WHEN** the goblin starts an attack whose dominant direction is down
-- **THEN** it plays the six-frame down-attack animation once
+- **THEN** it plays the five-frame down-attack animation once
 
 ### Requirement: Runtime sheets are uniform and flattened
 The goblin runtime SHALL use one uniform single-row PNG sheet per animation;
