@@ -2,7 +2,7 @@
 
 Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game prototype.
 
-[Play the live demo](https://samuelasherivello.github.io/babylon-light-stealth-grid/)
+[Play the live demo](https://samuelasherrivello.github.io/babylon-light-stealth-grid/)
 
 The current demo displays all 54 Tiny Swords terrain atlas frames in a numbered review grid and places an animated archer below it. The archer loops its idle animation while stationary, runs while moving, and plays one complete shooting animation before releasing an arrow. Move with WASD, the arrow keys, or the on-screen controller; jump with C and shoot with V or the matching action buttons. The game uses quadrant-I world coordinates: positive X points right and positive Y points up.
 
