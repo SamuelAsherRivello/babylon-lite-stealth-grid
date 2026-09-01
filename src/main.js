@@ -26,6 +26,7 @@ import {
 } from "../plugins/tiled-babylon-lite/index.js";
 import { GRID } from "./systems/environment/grid-contract.js";
 import { getCharacterGridCell, getCharacterLayerOrder } from "./characters/character-spatial.js";
+import { getYSortedLayerOrder } from "./systems/environment/render-depth.js";
 import { createLevelTerrainTiles } from "../plugins/tiled-babylon-lite/index.js";
 import {
   PLAYER_FRAME,
@@ -422,7 +423,7 @@ async function start() {
   for (const spawner of level.goldPickupSpawners ?? []) {
     const position = { x: (spawner.gameCell.x + 0.5) * TILE_SIZE, y: (spawner.gameCell.y + 0.5) * TILE_SIZE };
     const pickup = pickupSystem.spawn(goldPickupDefinition, { start: position, cell: spawner.gameCell, destination: position });
-    console.log("Gold pickup spawned", { spawnerId: spawner.id, cell: spawner.gameCell, position, pickupId: pickup?.id });
+    console.log(`Gold pickup spawned: spawner=${spawner.id} tiledCell=(${spawner.tiledCell.x},${spawner.tiledCell.y}) gameCell=(${spawner.gameCell.x},${spawner.gameCell.y}) position=(${position.x},${position.y}) pickup=${pickup?.id}`);
     pickup?.update(0.35);
   }
   const goldStoneObjects = level.goldStones.map((object) => {
@@ -1047,6 +1048,10 @@ async function start() {
       decoration.setViewportScale(viewportScale);
     }
     for (const object of goldStoneObjects) object.layer.view.zoom = viewportScale;
+    for (const pickup of pickupSystem.pickups) {
+      pickup.layer.view.zoom = viewportScale;
+      pickup.layer.order = getYSortedLayerOrder(pickup.position.y, SCREEN_HEIGHT);
+    }
     for (const spawner of spawners) {
       for (const record of spawner.actors) {
         const ySortedOrder = getCharacterLayerOrder(
@@ -1418,7 +1423,7 @@ async function start() {
       character: record.character,
       reaction: record.reaction,
       expression: record.reaction ? (record.expression ?? getEnemyExpression("NONE")) : null,
-      expressionInstances: record.expressionInstances,
+      expressionInstances: record.expressionInstances ?? [],
     })).filter(({ combat }) => combat.isAlive).map((record) => ({
       combatCollider: record.combat.getCombatCollider(),
       movementCollider: record.movementCollider,
@@ -1604,6 +1609,18 @@ function drawDiagnostics(
     const iconOffsetY = ENEMY_EXPRESSION_ICON_OFFSET_Y_BY_CHARACTER[character.character]
       ?? ENEMY_EXPRESSION_ICON_OFFSET_Y_PIXELS;
     const iconY = SCREEN_HEIGHT - centerY + iconOffsetY + (character.expressionJumpOffset ?? 0);
+    if (character.character === SpawnerCharacter.MONK) {
+      const artPivotY = 1 - TILE_SIZE / 2 / MONK_FRAME.height;
+      const artCenterY = SCREEN_HEIGHT - centerY;
+      debugContext.strokeStyle = "#ffffff";
+      debugContext.lineWidth = 2;
+      debugContext.strokeRect(
+        centerX - MONK_FRAME.width / 2,
+        artCenterY - artPivotY * MONK_FRAME.height,
+        MONK_FRAME.width,
+        MONK_FRAME.height,
+      );
+    }
     debugContext.font = "700 28px system-ui, sans-serif";
     debugContext.textAlign = "center";
     debugContext.textBaseline = "middle";

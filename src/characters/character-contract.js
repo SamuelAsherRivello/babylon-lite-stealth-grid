@@ -1,7 +1,6 @@
 import { GRID } from "../systems/environment/grid-contract.js";
 
 const DEFAULT_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
-const DEFAULT_ART_PIVOT = Object.freeze({ x: 0.5, y: 1 });
 
 function finite(value, name) {
   if (!Number.isFinite(value)) {
@@ -22,7 +21,6 @@ export function createCharacterDefinition({
   displaySize = frame,
   movementCollider,
   artOffset = DEFAULT_ART_OFFSET,
-  artPivot = DEFAULT_ART_PIVOT,
   animations = null,
 }) {
   if (typeof id !== "string" || id.length === 0) {
@@ -32,13 +30,6 @@ export function createCharacterDefinition({
   const frameHeight = positive(frame?.height, "frame.height");
   const displayWidth = positive(displaySize?.width, "displaySize.width");
   const displayHeight = positive(displaySize?.height, "displaySize.height");
-  const pivot = {
-    x: finite(artPivot?.x, "artPivot.x"),
-    y: finite(artPivot?.y, "artPivot.y"),
-  };
-  if (pivot.x < 0 || pivot.x > 1 || pivot.y < 0 || pivot.y > 1) {
-    throw new RangeError("artPivot values must be between 0 and 1");
-  }
   const offset = {
     x: finite(artOffset?.x, "artOffset.x"),
     y: finite(artOffset?.y, "artOffset.y"),
@@ -68,7 +59,6 @@ export function createCharacterDefinition({
       radius: movementCollider.radius,
     }),
     artOffset: Object.freeze(offset),
-    artPivot: Object.freeze(pivot),
     animations,
   });
 }
@@ -112,12 +102,14 @@ export function getCharacterArtTransform(
   const x = finite(position?.x, "position.x");
   const y = finite(position?.y, "position.y");
   const height = positive(screenHeight, "screenHeight");
-  const cellBottom = height - (Math.floor(y / tileSize) + 1) * tileSize;
-  const pivot = definition.artPivot;
+  const pivot = {
+    x: 0.5,
+    y: 1 - tileSize / 2 / definition.frame.height,
+  };
   return {
     positionPx: [
       x + definition.artOffset.x - (0.5 - pivot.x) * size.width,
-      cellBottom + definition.artOffset.y - (1 - pivot.y) * size.height,
+      height - y + definition.artOffset.y,
     ],
     sizePx: [size.width, size.height],
     pivot: [pivot.x, pivot.y],

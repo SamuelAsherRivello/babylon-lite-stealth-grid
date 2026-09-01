@@ -31,8 +31,9 @@ test("combat collider is one grid cell centered on the logical position", () => 
 
 test("default art transform bottom-aligns artwork to the occupied cell", () => {
   const transform = getCharacterArtTransform({ x: 96, y: 96 }, definition, 1024);
-  assert.deepEqual(transform.positionPx, [96, 896]);
+  assert.deepEqual(transform.positionPx, [96, 928]);
   assert.deepEqual(transform.sizePx, [192, 192]);
+  assert.deepEqual(transform.pivot, [0.5, 5 / 6]);
 });
 
 test("art offset changes visuals without changing logical collider geometry", () => {
@@ -40,7 +41,7 @@ test("art offset changes visuals without changing logical collider geometry", ()
     id: "offset", frame: { width: 192, height: 192 },
     artOffset: { x: 4, y: -8 }, movementCollider: { radius: 18 },
   });
-  assert.deepEqual(getCharacterArtTransform({ x: 96, y: 96 }, offsetDefinition, 1024).positionPx, [100, 888]);
+  assert.deepEqual(getCharacterArtTransform({ x: 96, y: 96 }, offsetDefinition, 1024).positionPx, [100, 920]);
   assert.deepEqual(getCharacterMovementCollider({ x: 96, y: 96 }, offsetDefinition), { type: "circle", x: 96, y: 96, radius: 18 });
 });
 

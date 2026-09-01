@@ -161,7 +161,7 @@ export function normalizeTiledMap(map, externalTilesets) {
       if (className.toLowerCase() !== "goldpickupspawner") return [];
       const column = Math.floor(object.x / map.tilewidth);
       const row = Math.floor(object.y / map.tileheight) - (object.gid ? 1 : 0);
-      return [{ id: object.id, name: object.name ?? "", gameCell: { x: column - originColumn, y: originRow - row } }];
+      return [{ id: object.id, name: object.name ?? "", tiledCell: { x: column, y: row }, gameCell: { x: column - originColumn, y: originRow - row } }];
     }));
   const goals = map.layers.filter(({ type }) => type === "objectgroup")
     .flatMap((layer) => (layer.objects ?? []).flatMap((object) => {

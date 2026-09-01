@@ -57,7 +57,9 @@ export function createSharedCharacterActor({
     const layer = api.createSprite2DLayer(atlases[name], {
       capacity: 1,
       order: getCharacterLayerOrder(getCharacterMovementCollider(position, definition), bounds.height),
-      pivot: [...(descriptor.pivot ?? [definition.artPivot.x, definition.artPivot.y])],
+      // The definition owns placement. Animation descriptors may retain
+      // legacy atlas metadata, but must not move the runtime character.
+      pivot: [0.5, 1 - tileSize / 2 / definition.frame.height],
       visible: name === "idle",
     });
     layers[name] = layer;
