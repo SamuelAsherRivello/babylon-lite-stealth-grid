@@ -30,17 +30,18 @@ import {
 
 export const WARRIOR_FRAME = Object.freeze({ width: 192, height: 192 });
 export const WARRIOR_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
+export const WARRIOR_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
 export const WARRIOR_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 96,
-  y: 123,
+  y: WARRIOR_FRAME.height * WARRIOR_PIVOT.y,
   radius: 24,
 });
 export const WARRIOR_COMBAT_COLLIDER = Object.freeze({
-  x: 60,
-  y: WARRIOR_FRAME.height * WARRIOR_PIVOT.y - 112,
-  width: 72,
-  height: 112,
+  x: WARRIOR_FRAME.width * WARRIOR_PIVOT.x - 64 / 2,
+  y: WARRIOR_FRAME.height * WARRIOR_PIVOT.y + 64 / 2 - 64,
+  width: 64,
+  height: 64,
 });
 
 const DEFAULT_API = Object.freeze({
@@ -94,8 +95,10 @@ export function createWarrior({
   const defense = createWarriorDefenseConfig(defenseConfig);
   const attemptedProjectileIds = new Set();
   let position = { ...initialPosition };
+  let artYOffset = 0;
   let movementIntent = { x: 0, y: 0 };
   let facing = 1;
+  let heading = "right";
   let currentFlipX = false;
   let animationManager = null;
   let activeAnimation = null;
@@ -107,7 +110,8 @@ export function createWarrior({
 
   const layers = {};
   const sprites = {};
-  const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const getArtScreenPosition = (worldPosition) => worldToScreen({ x: worldPosition.x + WARRIOR_ART_OFFSET.x, y: worldPosition.y + WARRIOR_ART_OFFSET.y }, 1, bounds.height);
+  const initialScreenPosition = getArtScreenPosition(position);
   const initialOrder = getCharacterLayerOrder(
     getCharacterCollider(position, character.frame, character.pivot, character.collider),
     bounds.height,
@@ -129,7 +133,7 @@ export function createWarrior({
   }
 
   function updateSprites() {
-    const screenPosition = worldToScreen(position, 1, bounds.height);
+    const screenPosition = getArtScreenPosition(position);
     const order = getCharacterLayerOrder(
       getCharacterCollider(position, character.frame, character.pivot, character.collider),
       bounds.height,
@@ -139,7 +143,7 @@ export function createWarrior({
     }
     for (const sprite of Object.values(sprites)) {
       api.updateSprite2D(sprite, {
-        positionPx: [screenPosition.x, screenPosition.y],
+        positionPx: [screenPosition.x, screenPosition.y + artYOffset],
         flipX: currentFlipX,
       });
     }
@@ -195,7 +199,14 @@ export function createWarrior({
     if (alpha !== undefined) patch.alpha = alpha;
     if (rotation !== undefined) patch.rotation = rotation;
     if (color !== undefined) patch.color = color;
-    if (sizePx !== undefined) patch.sizePx = sizePx;
+    if (sizePx !== undefined) {
+      patch.sizePx = sizePx;
+      const screenPosition = getArtScreenPosition(position);
+      patch.positionPx = [
+        screenPosition.x + (0.5 - WARRIOR_PIVOT.x) * (WARRIOR_FRAME.width - sizePx[0]),
+        screenPosition.y + artYOffset + (0.5 - WARRIOR_PIVOT.y) * (WARRIOR_FRAME.height - sizePx[1]),
+      ];
+    }
     for (const sprite of Object.values(sprites)) {
       api.updateSprite2D(sprite, patch);
     }
@@ -282,6 +293,9 @@ export function createWarrior({
     getGridPosition(tileSize) {
       return getCharacterGridCell(this.getMovementCollider(), tileSize);
     },
+    getHeading() {
+      return heading;
+    },
     getPosition() {
       return { ...position };
     },
@@ -290,8 +304,14 @@ export function createWarrior({
       playStateAnimation(WarriorState.IDLE);
     },
     setVisualTransform,
+    setArtYOffset(value) { artYOffset = Number.isFinite(value) ? value : 0; updateSprites(); },
     setMovementIntent(movement) {
       movementIntent = normalizeMovement(movement);
+      if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
+        heading = movementIntent.y < 0 ? "up" : "down";
+      } else if (movementIntent.x !== 0) {
+        heading = movementIntent.x < 0 ? "left" : "right";
+      }
     },
     update(deltaSeconds, dynamicColliders = [], projectiles = []) {
       if (disposed) {

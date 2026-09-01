@@ -34,11 +34,17 @@
                 "y": 513.3879925945516
             }
         },
+        "tilesets/Bridge_All.tsj": {
+            "scaleInDock": 1
+        },
         "tilesets/GoldStoneObjects.tsj": {
             "scaleInDock": 1
         },
         "tilesets/SpawnerTypes.tsj": {
             "dynamicWrapping": false,
+            "scaleInDock": 1
+        },
+        "tilesets/Tilemap_Elevation.tsj": {
             "scaleInDock": 1
         },
         "tilesets/Tilemap_color1.tsj": {

@@ -1,8 +1,8 @@
 import {
-  AUDIO_SETTING_KEYS,
-  DEBUG_SETTING_KEYS,
-  settingsStore,
-} from "../settings/settings-store.js";
+  RUNTIME_AUDIO_SETTING_KEYS,
+  RUNTIME_DEBUG_SETTING_KEYS,
+  runtimeSettingsStore,
+} from "../runtime-settings/runtime-settings-store.js";
 import { applyFullscreenPreference } from "./fullscreen-settings.js";
 import { GameWindow } from "./game-window.js";
 
@@ -53,8 +53,8 @@ export function syncDebugPreviewControls(
   particleFxCheckbox,
   animatedTileCheckbox,
 ) {
-  particleFxCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showParticleFxPreview);
-  animatedTileCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview);
+  particleFxCheckbox.checked = store.get(RUNTIME_DEBUG_SETTING_KEYS.showParticleFxPreview);
+  animatedTileCheckbox.checked = store.get(RUNTIME_DEBUG_SETTING_KEYS.showAnimatedTilePreview);
 }
 
 function createFullscreenControl(documentRef, applyFullscreen) {
@@ -84,7 +84,7 @@ function createFullscreenControl(documentRef, applyFullscreen) {
 export function createSettingsUi({
   host,
   pauseController,
-  store = settingsStore,
+  store = runtimeSettingsStore,
   documentRef = globalThis.document,
   applyFullscreen = applyFullscreenPreference,
 }) {
@@ -109,10 +109,10 @@ export function createSettingsUi({
     const content = documentRef.createElement("div");
     content.className = "settings-controls";
     const musicControl = createVolumeControl(
-      documentRef, store, "Music", AUDIO_SETTING_KEYS.music,
+      documentRef, store, "Music", RUNTIME_AUDIO_SETTING_KEYS.music,
     );
     const sfxControl = createVolumeControl(
-      documentRef, store, "SFX", AUDIO_SETTING_KEYS.sfx,
+      documentRef, store, "SFX", RUNTIME_AUDIO_SETTING_KEYS.sfx,
     );
     const developerTitle = documentRef.createElement("h2");
     developerTitle.className = "settings-section-title";
@@ -121,19 +121,19 @@ export function createSettingsUi({
       documentRef,
       store,
       "Collider?",
-      DEBUG_SETTING_KEYS.showColliders,
+      RUNTIME_DEBUG_SETTING_KEYS.showColliders,
     );
     const particleFxControl = createDebugControl(
       documentRef,
       store,
       "Particle FX (Preview)?",
-      DEBUG_SETTING_KEYS.showParticleFxPreview,
+      RUNTIME_DEBUG_SETTING_KEYS.showParticleFxPreview,
     );
     const animatedTileControl = createDebugControl(
       documentRef,
       store,
       "Animated Tile (Preview)",
-      DEBUG_SETTING_KEYS.showAnimatedTilePreview,
+      RUNTIME_DEBUG_SETTING_KEYS.showAnimatedTilePreview,
     );
     const fullscreenControl = createFullscreenControl(documentRef, applyFullscreen);
     const musicSlider = musicControl.slider;
@@ -147,9 +147,9 @@ export function createSettingsUi({
     resetButton.textContent = "Reset";
     resetButton.addEventListener("click", () => {
       store.reset();
-      musicSlider.value = String(store.get(AUDIO_SETTING_KEYS.music));
-      sfxSlider.value = String(store.get(AUDIO_SETTING_KEYS.sfx));
-      colliderCheckbox.checked = store.get(DEBUG_SETTING_KEYS.showColliders);
+      musicSlider.value = String(store.get(RUNTIME_AUDIO_SETTING_KEYS.music));
+      sfxSlider.value = String(store.get(RUNTIME_AUDIO_SETTING_KEYS.sfx));
+      colliderCheckbox.checked = store.get(RUNTIME_DEBUG_SETTING_KEYS.showColliders);
       syncDebugPreviewControls(store, particleFxCheckbox, animatedTileCheckbox);
     });
     content.append(

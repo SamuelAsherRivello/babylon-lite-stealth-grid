@@ -32,12 +32,13 @@ Do not substitute another map or create a new map from Tiled's menus. If a new l
 
 ## Place Spawners
 
-Select the `Spawners` object layer, then choose one of the three items in the
+Select the `Spawners` object layer, then choose one of the four items in the
 `Spawner Types` palette:
 
 - `Player Spawner` uses `type: PLAYER`;
 - `Sheep Spawner` uses `type: SHEEP`;
 - `Enemy Spawner` defaults to `type: GOBLIN`.
+- `Goal Spawner` places the runtime goal the player must reach to finish the level.
 
 Each placement has only one gameplay custom property: `type`. To make an Enemy
 Spawner create a Warrior, override that property on the placed object with
@@ -45,7 +46,7 @@ Spawner create a Warrior, override that property on the placed object with
 and initial-spawn behavior for all four supported values. Do not add those
 settings as Tiled custom properties.
 
-Every level must contain exactly one Player Spawner. Sheep and Enemy spawners
+Every level must contain exactly one Player Spawner and exactly one Goal Spawner. Sheep and Enemy spawners
 are optional, and a level may contain multiple non-player spawners. A missing or
 duplicate Player Spawner stops loading with:
 

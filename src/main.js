@@ -18,6 +18,7 @@ import {
   getLogicalViewportScale,
   collidersOverlap,
 } from "./gameplay/game-logic.js";
+import { createGameStateMachine, GameState } from "./gameplay/game-state.js";
 import {
   collectTiledLayerTiles,
   formatLevelCellLabel,
@@ -53,6 +54,10 @@ import {
 import {
   createWarriorDemoController,
 } from "./characters/enemies/warrior/warrior-demo-controller.js";
+import { LANCER_FRAME, LANCER_MOVEMENT_COLLIDER, LANCER_PIVOT, createLancer, loadLancerAtlases } from "./characters/enemies/lancer/lancer.js";
+import {
+  MONK_FRAME, MONK_MOVEMENT_COLLIDER, MONK_PIVOT, createMonk, loadMonkAtlases,
+} from "./characters/enemies/monk/monk.js";
 import {
   SHEEP_FRAME_SIZE,
   SHEEP_MOVEMENT_COLLIDER,
@@ -62,6 +67,9 @@ import {
 } from "./characters/npc/sheep/sheep.js";
 import { CharacterType } from "./characters/npc/sheep/sheep-state.js";
 import { createSheepContactCoordinator } from "./characters/npc/sheep/sheep-flock.js";
+import { createCharacterPerception } from "./systems/perception/character-perception.js";
+import { createEnemyPerceptionReaction } from "./systems/perception/enemy-perception-reaction.js";
+import { getDebugExpressionState, getEnemyExpression } from "./systems/perception/enemy-expression.js";
 import { EnemyState } from "./characters/enemies/enemy-state.js";
 import {
   createProjectileRenderer,
@@ -72,18 +80,20 @@ import { createPauseController } from "./ui/pause-controller.js";
 import {
   applyAnimatedTilePreviewSetting,
   applyParticleFxPreviewSetting,
-} from "./settings/preview-settings.js";
+} from "./runtime-settings/runtime-preview-settings.js";
 import { Fire03ParticleEffect, PARTICLE_FX_CLASS_BY_KEY } from "./particle-fx/index.js";
 import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
-import { loadReleaseMetadata } from "./release/release-metadata.js";
+import { loadEditorConfig } from "./editor-config/editor-config.js";
 import { createCoordinatesUi } from "./ui/coordinates-ui.js";
 import { createReleaseMetadataUi } from "./ui/release-metadata-ui.js";
 import { createSettingsUi } from "./ui/settings-ui.js";
+import { createLevelCompleteUi } from "./ui/level-complete-ui.js";
+import { createGoal } from "./systems/goals/goal.js";
 import { createViewportSafeArea } from "./ui/viewport-safe-area.js";
 import {
-  DEBUG_SETTING_KEYS,
-  settingsStore,
-} from "./settings/settings-store.js";
+  RUNTIME_DEBUG_SETTING_KEYS,
+  runtimeSettingsStore,
+} from "./runtime-settings/runtime-settings-store.js";
 import {
   GAME_DEPTH,
   TILE_MAP_SUB_Z,
@@ -102,7 +112,13 @@ import {
   createReactiveDecoration,
   getCenteredEffectPosition,
 } from "./systems/environment/decorations/reactive-decoration.js";
-import { createCharacterColliderDrawCommands } from "./ui/collider-diagnostics.js";
+import {
+  createCharacterCenterDrawCommands,
+  createCharacterColliderDrawCommands,
+  createActivePerceptionMarkerCommands,
+  createPerceptionDrawCommands,
+  TERRAIN_COLLIDER_STYLE,
+} from "./ui/collider-diagnostics.js";
 
 const SCREEN_WIDTH = GRID.widthPx;
 const SCREEN_HEIGHT = GRID.heightPx;
@@ -117,6 +133,18 @@ const DEATH_ROTATION_DEGREES = 20;
 const MAX_HEALTH = 100;
 const KNOCKBACK_DURATION_SECONDS = 0.2;
 const KNOCKBACK_SPEED_PIXELS_PER_SECOND = 17.28;
+const ENEMY_EXPRESSION_FADE_SECONDS = 0.25;
+const ENEMY_EXPRESSION_INSTANCE_FADE_SECONDS = ENEMY_EXPRESSION_FADE_SECONDS / 2;
+const EMOTIONAL_JUMP_DURATION_SECONDS = 0.096;
+const EMOTIONAL_JUMP_HEIGHT_PIXELS = 8;
+const ENEMY_EXPRESSION_ICON_OFFSET_Y_PIXELS = -90;
+const ENEMY_EXPRESSION_ICON_OFFSET_Y_BY_CHARACTER = Object.freeze({
+  [SpawnerCharacter.GOBLIN]: -80,
+  [SpawnerCharacter.ARCHER]: -80,
+  [SpawnerCharacter.WARRIOR]: -80,
+});
+const ENEMY_EXPRESSION_MIN_SCALE = 0.3;
+const ENEMY_EXPRESSION_GRID_OFFSET = TILE_SIZE;
 const DEGREES_TO_RADIANS = Math.PI / 180;
 const EMPTY_TERRAIN_FRAMES = new Set([
   4, 13, 22, 31, 37, 38, 40, 46, 47, 49,
@@ -317,10 +345,6 @@ async function start() {
   }
 
   const engine = await createEngine(canvas);
-  // Temporary deterministic setup for hands-on bush-burning QA.
-  const temporaryBushQaMode = true;
-  const verifyBushBurning = temporaryBushQaMode
-    || new URLSearchParams(globalThis.location.search).has("verifyBushBurning");
   const animationManager = createSpriteAnimationManager();
   const level = await loadTiledMap(`${import.meta.env.BASE_URL}levels/tiled/maps/Level01.tmj`);
   const terrainImages = new Set(collectTiledLayerTiles(level).map(({ image }) => image));
@@ -333,6 +357,8 @@ async function start() {
     sheepAtlases,
     goblinAtlases,
     warriorAtlases,
+    lancerAtlases,
+    monkAtlases,
     releaseMetadata,
   ] = await Promise.all([
     Promise.all([...terrainImages].map(async (image) => [
@@ -352,7 +378,9 @@ async function start() {
     loadSheepAtlases(engine),
     loadGoblinAtlases(engine),
     loadWarriorAtlases(engine),
-    loadReleaseMetadata(import.meta.env.BASE_URL),
+    loadLancerAtlases(engine),
+    loadMonkAtlases(engine),
+    loadEditorConfig(import.meta.env.BASE_URL),
   ]);
   const terrainAtlasByImage = new Map(terrainAtlasEntries);
 
@@ -377,8 +405,8 @@ async function start() {
   ));
   const goldStoneImages = new Set(level.goldStones.flatMap(({ goldStone }) => goldStone.variantImages ?? [goldStone.image]));
   const goldPickupImages = [
-    `${import.meta.env.BASE_URL}assets/terrain/resources/gold/Gold-Stone-1.png`,
-    `${import.meta.env.BASE_URL}assets/terrain/resources/gold/Gold-Stone-2.png`,
+    `${import.meta.env.BASE_URL}assets/terrain/resources/gold/gold-pickup-1.png`,
+    `${import.meta.env.BASE_URL}assets/terrain/resources/gold/gold-pickup-2.png`,
   ];
   const goldStoneAtlases = new Map(await Promise.all([...goldStoneImages].map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
   const goldPickupAtlases = new Map(await Promise.all(goldPickupImages.map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
@@ -391,6 +419,12 @@ async function start() {
       return pickup;
     },
   };
+  for (const spawner of level.goldPickupSpawners ?? []) {
+    const position = { x: (spawner.gameCell.x + 0.5) * TILE_SIZE, y: (spawner.gameCell.y + 0.5) * TILE_SIZE };
+    const pickup = pickupSystem.spawn(goldPickupDefinition, { start: position, cell: spawner.gameCell, destination: position });
+    console.log("Gold pickup spawned", { spawnerId: spawner.id, cell: spawner.gameCell, position, pickupId: pickup?.id });
+    pickup?.update(0.35);
+  }
   const goldStoneObjects = level.goldStones.map((object) => {
     const image = object.goldStone.variantImages[Math.floor(Math.random() * object.goldStone.variantImages.length)];
     return createGoldStone({ object: { ...object, goldStone: { ...object.goldStone, image } }, atlas: goldStoneAtlases.get(image), animationManager, screenHeight: SCREEN_HEIGHT, onDeathComplete: (position) => {
@@ -459,6 +493,7 @@ async function start() {
   let renderer = null;
   let nextActorId = 1;
   const sheepContactCoordinator = createSheepContactCoordinator();
+  const characterPerception = createCharacterPerception();
 
   function attachActor(record) {
     if (renderer) {
@@ -467,13 +502,48 @@ async function start() {
       }
       record.actor.playAnimation(animationManager);
     }
+    if (!record.expressionInstances) {
+      record.expressionInstances = [];
+    }
+    if (record.expressionState === undefined) {
+      record.expressionState = "NONE";
+    }
+    if (record.expressionJumpOffset === undefined) {
+      record.expressionJumpOffset = 0;
+    }
+    if (record.expression === undefined) {
+      record.expression = getEnemyExpression("NONE");
+    }
     // Initial actors are attached before the renderer is created. Spawn state
     // must still begin there, so every actor gets the same reveal animation.
     record.combat.beginSpawn();
+    if (record.type === SpawnerType.ENEMY && !record.reaction) {
+      record.reaction = createEnemyPerceptionReaction({
+        onFace: () => record.actor.setMovementIntent?.({ x: 0, y: 0 }),
+        onMoveTo: (cell) => {
+          const current = record.actor.getGridPosition(TILE_SIZE);
+          const dx = cell.x - current.x;
+          const dy = cell.y - current.y;
+          record.actor.setMovementIntent?.(Math.abs(dx) >= Math.abs(dy)
+            ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
+        },
+      });
+    }
+    if ([SpawnerType.PLAYER, SpawnerType.ENEMY].includes(record.type)) {
+      characterPerception.register({
+        id: record.combat.label,
+        type: record.type === SpawnerType.PLAYER ? "player" : "enemy",
+        isAlive: record.combat.isAlive,
+        cell: record.actor.getGridPosition(TILE_SIZE),
+        facing: record.actor.getFacing?.() ?? "right",
+        onDetection: (event) => record.reaction?.acceptDetection(event),
+      });
+    }
     return record;
   }
 
   function disposeActorRecord(record) {
+    characterPerception.unregister(record.combat.label);
     if (renderer) {
       for (const layer of record.actor.layers) {
         removeSpriteRendererLayer(renderer, layer);
@@ -556,8 +626,9 @@ async function start() {
   }
 
   function createArcherRecord(position) {
-    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, onShoot: (spawnPosition, target) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, { x: dx / length, y: dy / length }); } });
-    const combat = createCombatActorState({ label: `archer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
+    const ownerId = `archer-${nextActorId++}`;
+    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, onShoot: (spawnPosition, target, options) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
+    const combat = createCombatActorState({ label: ownerId, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
     return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: { update() {} } });
   }
 
@@ -600,11 +671,11 @@ async function start() {
       grid: GRID,
       spawnCell: getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE),
       isWalkable,
-      bushChance: verifyBushBurning ? 1 : 0.25,
-      idleRange: verifyBushBurning ? [0, 0] : [3, 5],
-      prioritizeBushes: verifyBushBurning,
+      bushChance: 0.25,
+      idleRange: [3, 5],
+      prioritizeBushes: false,
       getWorld: () => ({
-        characters: verifyBushBurning ? [] : [
+        characters: [
           ...getRecordsByType(SpawnerType.PLAYER),
           ...getRecordsByType(SpawnerType.SHEEP),
         ].filter(({ combat: targetCombat }) => targetCombat.isAlive).map((target) => ({
@@ -655,6 +726,18 @@ async function start() {
     });
   }
 
+  function createLancerRecord(position) {
+    const actor = createLancer({ atlases: lancerAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
+    const combat = createCombatActorState({ label: `lancer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, LANCER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [LANCER_FRAME.width * value, LANCER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: (direction, options) => actor.applyKnockback(direction, options) });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.LANCER, actor, combat, controller: { update() {} } });
+  }
+
+  function createMonkRecord(position) {
+    const actor = createMonk({ atlases: monkAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
+    const combat = createCombatActorState({ label: `monk-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, MONK_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [MONK_FRAME.width * value, MONK_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, actor, combat, controller: { update() {} } });
+  }
+
   const spawnerConfigs = createInitialSpawnerConfigs({
     screenWidth: SCREEN_WIDTH,
     screenHeight: SCREEN_HEIGHT,
@@ -679,6 +762,8 @@ async function start() {
       frameSize: WARRIOR_FRAME,
     },
     [SpawnerCharacter.ARCHER]: { atlas: archerEnemyAtlases.idle, frameSize: ARCHER_FRAME },
+    [SpawnerCharacter.LANCER]: { atlas: lancerAtlases.idle, frameSize: LANCER_FRAME },
+    [SpawnerCharacter.MONK]: { atlas: monkAtlases.idle, frameSize: MONK_FRAME },
   };
   const actorFactories = {
     [SpawnerCharacter.PLAYER]: createPlayerRecord,
@@ -686,6 +771,8 @@ async function start() {
     [SpawnerCharacter.GOBLIN]: createGoblinRecord,
     [SpawnerCharacter.WARRIOR]: createWarriorRecord,
     [SpawnerCharacter.ARCHER]: createArcherRecord,
+    [SpawnerCharacter.LANCER]: createLancerRecord,
+    [SpawnerCharacter.MONK]: createMonkRecord,
   };
   const spawnCharacterShapes = {
     [SpawnerCharacter.PLAYER]: {
@@ -709,6 +796,8 @@ async function start() {
       collider: WARRIOR_MOVEMENT_COLLIDER,
     },
     [SpawnerCharacter.ARCHER]: { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER },
+    [SpawnerCharacter.LANCER]: { frame: LANCER_FRAME, pivot: LANCER_PIVOT, collider: LANCER_MOVEMENT_COLLIDER },
+    [SpawnerCharacter.MONK]: { frame: MONK_FRAME, pivot: MONK_PIVOT, collider: MONK_MOVEMENT_COLLIDER },
   };
   const spawnWalkability = Object.fromEntries(Object.entries(spawnCharacterShapes)
     .map(([character, shape]) => [character, createGridWalkability({
@@ -725,8 +814,10 @@ async function start() {
   }));
   const spawners = spawnerConfigs.map((config) => createSpawner({
     ...config,
+    minimumCount: config.character === SpawnerCharacter.SHEEP ? 1 : config.minimumCount,
+    maximumCount: config.character === SpawnerCharacter.SHEEP ? 1 : config.maximumCount,
     tileSize: TILE_SIZE,
-    spawnMaxDistance: [SpawnerCharacter.GOBLIN, SpawnerCharacter.WARRIOR, SpawnerCharacter.ARCHER]
+    spawnMaxDistance: [SpawnerCharacter.PLAYER, SpawnerCharacter.SHEEP, SpawnerCharacter.GOBLIN, SpawnerCharacter.WARRIOR, SpawnerCharacter.ARCHER, SpawnerCharacter.MONK]
       .includes(config.character) ? 0 : 1,
     isWalkable: (_position, cell) => spawnWalkability[config.character](cell,
       spawners.flatMap((otherSpawner) => otherSpawner.actors
@@ -745,6 +836,22 @@ async function start() {
   const getRecordsByType = (type) => spawners
     .filter((spawner) => spawner.config.type === type)
     .flatMap((spawner) => spawner.actors);
+  globalThis.characterPerceptionDebug = Object.freeze({ snapshot: () => characterPerception.getSnapshot() });
+  const handlePerceptionDebugKey = (event) => {
+    const state = getDebugExpressionState(event.key);
+    if (!state) return;
+    for (const record of getRecordsByType(SpawnerType.ENEMY)) {
+      if (record.combat.isAlive) {
+        record.reaction?.forceState(state);
+        record.expressionFlashRemaining = state === "SUSPICIOUS" ? 0.25
+          : state === "INVESTIGATING" ? 0.25 : state === "ALERT" ? 0.25 : 0;
+        record.expressionFlashColor = state === "SUSPICIOUS" ? [1.8, 1.8, 1.8, 1]
+          : state === "INVESTIGATING" ? [1.8, 1.8, 0.3, 1]
+          : state === "ALERT" ? [1.8, 0.3, 0.3, 1] : null;
+      }
+    }
+  };
+  window.addEventListener("keydown", handlePerceptionDebugKey);
   const getBushBurningSnapshot = () => ({
       bushes: reactiveDecorations.map((decoration) => ({
         id: decoration.id,
@@ -822,6 +929,21 @@ async function start() {
   registerSpriteRenderer(renderer);
   pickupSystem.setRenderer({ add: (layer) => addSpriteRendererLayer(renderer, layer), remove: (layer) => removeSpriteRendererLayer(renderer, layer) });
 
+  const handleGoldPickupClick = (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = (event.clientX - rect.left) * SCREEN_WIDTH / rect.width;
+    const y = SCREEN_HEIGHT - (event.clientY - rect.top) * SCREEN_HEIGHT / rect.height;
+    for (const pickup of pickupSystem.pickups) {
+      const collider = pickup.getCombatCollider();
+      if (collider && x >= collider.x && x <= collider.x + collider.width
+        && y >= collider.y && y <= collider.y + collider.height) {
+        pickup.collect();
+        break;
+      }
+    }
+  };
+  canvas.addEventListener("pointerup", handleGoldPickupClick);
+
   for (const spawner of spawners) {
     for (const record of spawner.actors) {
       record.actor.playAnimation(animationManager);
@@ -853,17 +975,17 @@ async function start() {
     );
   };
   setParticleFxPreview(
-    settingsStore.get(DEBUG_SETTING_KEYS.showParticleFxPreview),
+    runtimeSettingsStore.get(RUNTIME_DEBUG_SETTING_KEYS.showParticleFxPreview),
   );
   setAnimatedTilePreview(
-    settingsStore.get(DEBUG_SETTING_KEYS.showAnimatedTilePreview),
+    runtimeSettingsStore.get(RUNTIME_DEBUG_SETTING_KEYS.showAnimatedTilePreview),
   );
-  const unsubscribeParticleFxPreview = settingsStore.subscribe(
-    DEBUG_SETTING_KEYS.showParticleFxPreview,
+  const unsubscribeParticleFxPreview = runtimeSettingsStore.subscribe(
+    RUNTIME_DEBUG_SETTING_KEYS.showParticleFxPreview,
     setParticleFxPreview,
   );
-  const unsubscribeAnimatedTilePreview = settingsStore.subscribe(
-    DEBUG_SETTING_KEYS.showAnimatedTilePreview,
+  const unsubscribeAnimatedTilePreview = runtimeSettingsStore.subscribe(
+    RUNTIME_DEBUG_SETTING_KEYS.showAnimatedTilePreview,
     setAnimatedTilePreview,
   );
   globalThis.particleFxPreview = Object.freeze({
@@ -871,13 +993,13 @@ async function start() {
   });
 
   let previousTime = performance.now();
-  let showColliders = settingsStore.get(DEBUG_SETTING_KEYS.showColliders);
+  let showColliders = runtimeSettingsStore.get(RUNTIME_DEBUG_SETTING_KEYS.showColliders);
   coordinatesUi.setVisible(showColliders);
   for (const marker of spawnerMarkers) {
     marker.setVisible(showColliders);
   }
-  const unsubscribeColliders = settingsStore.subscribe(
-    DEBUG_SETTING_KEYS.showColliders,
+  const unsubscribeColliders = runtimeSettingsStore.subscribe(
+    RUNTIME_DEBUG_SETTING_KEYS.showColliders,
     (value) => {
       showColliders = value;
       coordinatesUi.setVisible(value);
@@ -900,11 +1022,17 @@ async function start() {
   });
   createSettingsUi({ host: gameUi, pauseController });
   createReleaseMetadataUi({ host: gameUi, metadata: releaseMetadata });
+  const goal = createGoal({ host: gameUi, artworkUrl: "./assets/goals/Goal.png", position: { x: (level.goals[0].gameCell.x + 0.5) * TILE_SIZE, y: (level.goals[0].gameCell.y + 0.5) * TILE_SIZE }, screenWidth: SCREEN_WIDTH, screenHeight: SCREEN_HEIGHT });
+  const levelCompleteUi = createLevelCompleteUi({ host: gameUi, onContinue: () => window.location.reload() });
+  const gameStateMachine = createGameStateMachine();
 
   function update(currentTime) {
     const deltaSeconds = Math.min((currentTime - previousTime) / 1000, 0.05);
     previousTime = currentTime;
     const activeDelta = pauseController.getDelta(deltaSeconds);
+    if (gameStateMachine.state === GameState.LEVEL_START) {
+      gameStateMachine.assetsLoaded();
+    }
 
     const viewportScale = getLogicalViewportScale(
       canvas.width,
@@ -996,6 +1124,14 @@ async function start() {
             cell: playerRecord.actor.getGridPosition(TILE_SIZE),
           }
         : null;
+      for (const record of [playerRecord, ...enemyRecords]) {
+        if (record) characterPerception.updateActor(record.combat.label, {
+          isAlive: record.combat.isAlive,
+          cell: record.actor.getGridPosition(TILE_SIZE),
+          heading: record.actor.getHeading?.() ?? "right",
+        });
+      }
+      for (const record of enemyRecords) record.reaction?.update(activeDelta);
       const sheepDynamicColliders = playerMovementCollider
         ? [{ type: CharacterType.PLAYER, collider: playerMovementCollider }]
         : [];
@@ -1056,6 +1192,90 @@ async function start() {
             .map(({ collider }) => ({ type: "npc", collider })),
         ], record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot);
       }
+      characterPerception.update(activeDelta);
+      for (const record of enemyRecords) {
+        record.reaction?.update(activeDelta);
+        if (!record.expressionInstances) {
+          record.expressionInstances = [];
+        }
+        const reactionSnapshot = record.reaction?.getSnapshot();
+        const nextState = reactionSnapshot?.state ?? "NONE";
+        const nextExpression = getEnemyExpression(nextState);
+        if (record.expressionState !== nextState) {
+          for (const instance of record.expressionInstances) {
+            if (instance.phase !== "out") {
+              instance.phase = "out";
+            }
+          }
+          if (nextExpression.icon) {
+            record.expressionInstances.push({
+              icon: nextExpression.icon,
+              flash: nextExpression.flash,
+              opacity: 0,
+              phase: "in",
+            });
+          }
+          if (nextExpression.flash) {
+            record.expressionFlashRemaining = ENEMY_EXPRESSION_FADE_SECONDS;
+            record.expressionFlashColor = nextExpression.flash === "white" ? [1.8, 1.8, 1.8, 1]
+              : nextExpression.flash === "yellow" ? [1.8, 1.8, 0.3, 1]
+              : [1.8, 0.6, 0.6, 1];
+          }
+          record.expressionState = nextState;
+        }
+
+        const step = activeDelta / ENEMY_EXPRESSION_INSTANCE_FADE_SECONDS;
+        for (const instance of record.expressionInstances) {
+          if (instance.phase === "in") {
+            instance.opacity = Math.min(1, instance.opacity + step);
+            if (instance.opacity >= 1 - 1e-6) {
+              instance.phase = "steady";
+              instance.opacity = 1;
+            }
+          } else if (instance.phase === "out") {
+            instance.opacity = Math.max(0, instance.opacity - step);
+          }
+        }
+
+        record.expressionInstances = record.expressionInstances.filter((instance) => {
+          if (instance.phase !== "out" || instance.opacity > 0.0001) {
+            return true;
+          }
+          return false;
+        });
+        const visible = record.expressionInstances.find((instance) => instance.opacity > 0);
+        record.expression = visible
+          ? {
+              ...getEnemyExpression(record.expressionState),
+              icon: visible.icon,
+              flash: visible.flash,
+              opacity: visible.opacity,
+            }
+          : getEnemyExpression("NONE");
+        if (record.expressionFlashRemaining > 0) {
+          const expressionElapsedSeconds = ENEMY_EXPRESSION_FADE_SECONDS - record.expressionFlashRemaining;
+          const jumpElapsedSeconds = Math.min(expressionElapsedSeconds, EMOTIONAL_JUMP_DURATION_SECONDS);
+          const jumpProgress = jumpElapsedSeconds / EMOTIONAL_JUMP_DURATION_SECONDS;
+          if (jumpElapsedSeconds >= EMOTIONAL_JUMP_DURATION_SECONDS) {
+            record.actor.setArtYOffset?.(0);
+            record.expressionJumpOffset = 0;
+          } else {
+            const bounceProgress = jumpProgress < 0.5 ? jumpProgress * 2 : (1 - jumpProgress) * 2;
+            const jumpOffset = -EMOTIONAL_JUMP_HEIGHT_PIXELS * (1 - ((1 - bounceProgress) ** 2));
+            record.actor.setArtYOffset?.(jumpOffset);
+            record.expressionJumpOffset = jumpOffset;
+          }
+          record.actor.setVisualTransform({ color: record.expressionFlashColor });
+          record.expressionFlashRemaining = Math.max(0, record.expressionFlashRemaining - activeDelta);
+          if (record.expressionFlashRemaining === 0) {
+            record.actor.setVisualTransform({ color: [1, 1, 1, 1] });
+            record.actor.setArtYOffset?.(0);
+            record.expressionJumpOffset = 0;
+          }
+        } else {
+          record.expressionJumpOffset = 0;
+        }
+      }
 
       const reactiveCharacters = [
         ...(playerMovementCollider
@@ -1084,10 +1304,10 @@ async function start() {
 
       projectiles.update(activeDelta);
       const projectilesToRemove = [];
-      for (const { id, collider, direction } of projectiles.getColliders()) {
+      for (const { id, collider, direction, ownerId } of projectiles.getColliders()) {
         let hit = false;
         for (const target of [...sheepCombatColliders, ...enemyCombatColliders, ...goldStoneObjects.map((object) => ({ record: { type: "object", combat: object }, collider: object.getCombatCollider() }))]) {
-          if (!target.record.combat.isAlive || !target.collider) {
+          if (!target.record.combat.isAlive || !target.collider || target.record.combat.label === ownerId) {
             continue;
           }
           if (collidersOverlap(collider, target.collider)) {
@@ -1178,21 +1398,41 @@ async function start() {
       activeTouchPairs = nextTouchPairs;
       if (playerSnapshot) {
         coordinatesUi.update(playerSnapshot.position, playerSnapshot.cell);
+        if (gameStateMachine.state === GameState.LEVEL_PLAYING && playerRecord.combat.isAlive
+          && playerCombatCollider && collidersOverlap(playerCombatCollider, goal.combatCollider)) {
+          gameStateMachine.goalReached();
+          playerRecord.actor.setInputEnabled(false);
+          pauseController.pause();
+          levelCompleteUi.show();
+        }
       }
     }
     const diagnosticCharacters = [
       ...spawnerByType.get(SpawnerType.PLAYER).actors,
       ...getRecordsByType(SpawnerType.SHEEP),
-      ...getRecordsByType(SpawnerType.ENEMY),
-    ].filter(({ combat }) => combat.isAlive).map(({ actor, combat }) => ({
-      combatCollider: combat.getCombatCollider(),
-      movementCollider: actor.getMovementCollider(),
+    ...getRecordsByType(SpawnerType.ENEMY),
+    ].filter(({ combat }) => combat.isAlive).map((record) => ({
+      actor: record.actor,
+      combat: record.combat,
+      movementCollider: record.actor.getMovementCollider(),
+      character: record.character,
+      reaction: record.reaction,
+      expression: record.reaction ? (record.expression ?? getEnemyExpression("NONE")) : null,
+      expressionInstances: record.expressionInstances,
+    })).filter(({ combat }) => combat.isAlive).map((record) => ({
+      combatCollider: record.combat.getCombatCollider(),
+      movementCollider: record.movementCollider,
+      character: record.character,
+      expressionJumpOffset: record.expressionJumpOffset,
+      expression: record.expression,
+      expressionInstances: record.expressionInstances,
+      perception: record.actor.getPerceptionSnapshot?.() ?? null,
     }));
     diagnosticCharacters.push(...reactiveDecorations
       .filter((decoration) => !decoration.isDead)
       .map((decoration) => ({
         combatCollider: decoration.getCombatCollider(),
-        movementCollider: decoration.sensor,
+        movementCollider: decoration.getMovementCollider(),
       })));
     diagnosticCharacters.push(...goldStoneObjects
       .filter((object) => !object.isDead)
@@ -1205,6 +1445,7 @@ async function start() {
       diagnosticCharacters,
       projectiles.getColliders(),
       showColliders,
+      characterPerception.getSnapshot(),
     );
     canvas.dataset.bushDebug = JSON.stringify(getBushBurningSnapshot());
 
@@ -1213,6 +1454,8 @@ async function start() {
 
   requestAnimationFrame(update);
   window.addEventListener("pagehide", () => {
+    canvas.removeEventListener("pointerup", handleGoldPickupClick);
+    window.removeEventListener("keydown", handlePerceptionDebugKey);
     viewportSafeArea.dispose();
     unsubscribeColliders();
     unsubscribeParticleFxPreview();
@@ -1230,6 +1473,8 @@ async function start() {
       decoration.dispose();
     }
     for (const object of goldStoneObjects) object.dispose();
+    goal.dispose();
+    levelCompleteUi.dispose();
     pickupSystem.dispose();
     projectiles.dispose();
   }, { once: true });
@@ -1245,7 +1490,7 @@ function worldAabbToScreen(aabb) {
   };
 }
 
-function drawAabb(aabb, fillStyle, strokeStyle) {
+function drawAabb(aabb, fillStyle, strokeStyle, lineWidth = 2) {
   const screenAabb = worldAabbToScreen(aabb);
   debugContext.fillStyle = fillStyle;
   debugContext.fillRect(
@@ -1255,7 +1500,7 @@ function drawAabb(aabb, fillStyle, strokeStyle) {
     screenAabb.height,
   );
   debugContext.strokeStyle = strokeStyle;
-  debugContext.lineWidth = 2;
+  debugContext.lineWidth = lineWidth;
   debugContext.strokeRect(
     screenAabb.x + 1,
     screenAabb.y + 1,
@@ -1264,7 +1509,7 @@ function drawAabb(aabb, fillStyle, strokeStyle) {
   );
 }
 
-function drawPolygon(polygon, fillStyle, strokeStyle) {
+function drawPolygon(polygon, fillStyle, strokeStyle, lineWidth = 2) {
   const screenPoints = polygon.points.map((point) => ({
     x: point.x,
     y: SCREEN_HEIGHT - point.y,
@@ -1278,17 +1523,17 @@ function drawPolygon(polygon, fillStyle, strokeStyle) {
   debugContext.fillStyle = fillStyle;
   debugContext.fill();
   debugContext.strokeStyle = strokeStyle;
-  debugContext.lineWidth = 2;
+  debugContext.lineWidth = lineWidth;
   debugContext.stroke();
 }
 
 function drawTerrainCollider(collider) {
   if (collider.type === "polygon") {
-    drawPolygon(collider, "rgb(255 44 72 / 24%)", "#ff2c48");
+    drawPolygon(collider, TERRAIN_COLLIDER_STYLE.fillStyle, TERRAIN_COLLIDER_STYLE.strokeStyle, TERRAIN_COLLIDER_STYLE.lineWidth);
     return;
   }
 
-  drawAabb(collider, "rgb(255 44 72 / 24%)", "#ff2c48");
+  drawAabb(collider, TERRAIN_COLLIDER_STYLE.fillStyle, TERRAIN_COLLIDER_STYLE.strokeStyle, TERRAIN_COLLIDER_STYLE.lineWidth);
 }
 
 function drawCircle(circle, fillStyle, strokeStyle) {
@@ -1343,14 +1588,65 @@ function drawDiagnostics(
   diagnosticCharacters,
   projectileColliders,
   enabled,
+  perceptionSnapshot = [],
 ) {
   debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  for (const character of diagnosticCharacters) {
+    if (!character.movementCollider || !Array.isArray(character.expressionInstances)) continue;
+    const collider = character.movementCollider;
+    const centerX = collider.type === "circle"
+      ? collider.x
+      : (collider.x ?? 0) + (collider.width ?? 0) / 2;
+    const centerY = collider.type === "circle"
+      ? collider.y
+      : (collider.y ?? 0) + (collider.height ?? 0) / 2;
+    const iconX = centerX;
+    const iconOffsetY = ENEMY_EXPRESSION_ICON_OFFSET_Y_BY_CHARACTER[character.character]
+      ?? ENEMY_EXPRESSION_ICON_OFFSET_Y_PIXELS;
+    const iconY = SCREEN_HEIGHT - centerY + iconOffsetY + (character.expressionJumpOffset ?? 0);
+    debugContext.font = "700 28px system-ui, sans-serif";
+    debugContext.textAlign = "center";
+    debugContext.textBaseline = "middle";
+    for (const instance of character.expressionInstances) {
+      if (!instance.icon) {
+        continue;
+      }
+      const iconOpacity = Math.max(0, Math.min(1, instance.opacity ?? 0));
+      if (iconOpacity <= 0) {
+        continue;
+      }
+      debugContext.globalAlpha = iconOpacity;
+      const iconScale = ENEMY_EXPRESSION_MIN_SCALE + (1 - ENEMY_EXPRESSION_MIN_SCALE) * iconOpacity;
+      debugContext.save();
+      debugContext.translate(iconX, iconY);
+      debugContext.scale(iconScale, iconScale);
+      debugContext.translate(-iconX, -iconY);
+      debugContext.shadowColor = "rgb(0 0 0 / 70%)";
+      debugContext.shadowBlur = 4;
+      debugContext.shadowOffsetY = 2;
+      debugContext.fillStyle = "#a8a8a8";
+      debugContext.beginPath();
+      debugContext.arc(iconX, iconY, 18, 0, Math.PI * 2);
+      debugContext.fill();
+      debugContext.strokeStyle = "#4a4a4a";
+      debugContext.lineWidth = 2;
+      debugContext.stroke();
+      debugContext.fillStyle = instance.flash === "red" ? "#ff6b6b"
+        : instance.flash === "yellow" ? "#ffe066" : "#ffffff";
+      debugContext.fillText(instance.icon, iconX, iconY + 1);
+      debugContext.shadowColor = "transparent";
+      debugContext.shadowBlur = 0;
+      debugContext.shadowOffsetY = 0;
+      debugContext.restore();
+      debugContext.globalAlpha = 1;
+    }
+  }
   if (!enabled) {
     return;
   }
   drawGridLines();
   debugContext.font = "700 7px system-ui, sans-serif";
-  debugContext.textBaseline = "top";
+  debugContext.textBaseline = "middle";
 
   for (const tile of terrainTiles) {
     for (const collider of tile.colliders) {
@@ -1360,18 +1656,19 @@ function drawDiagnostics(
     const label = formatLevelCellLabel(tile.gameCell);
     const labelWidth = debugContext.measureText(label).width + 5;
     const labelX = tile.screenPosition.x + TILE_SIZE - labelWidth - 3;
+    const labelY = tile.screenPosition.y + 8;
     debugContext.fillStyle = "rgb(5 10 18 / 78%)";
     debugContext.fillRect(
       labelX,
-      tile.screenPosition.y + 3,
+      labelY - 6,
       labelWidth,
-      11,
+      12,
     );
     debugContext.fillStyle = tile.valid ? "#ffffff" : "#8f969f";
     debugContext.fillText(
       label,
       labelX + 2.5,
-      tile.screenPosition.y + 4,
+      labelY,
     );
   }
 
@@ -1384,12 +1681,69 @@ function drawDiagnostics(
       style.strokeStyle,
     );
   }
+  for (const center of createCharacterCenterDrawCommands(diagnosticCharacters)) {
+    drawCharacterCenterMarker(center);
+  }
+  for (const command of createPerceptionDrawCommands(perceptionSnapshot, TILE_SIZE, performance.now())) {
+    debugContext.beginPath();
+    const points = command.points.map((point) => ({ x: point.x, y: SCREEN_HEIGHT - point.y }));
+    debugContext.moveTo(points[0].x, points[0].y);
+    for (const point of points.slice(1)) debugContext.lineTo(point.x, point.y);
+    debugContext.closePath();
+    debugContext.fillStyle = command.active && command.blinking
+      ? command.style.blinkFillStyle
+      : command.style.fillStyle;
+    debugContext.fill();
+  }
+  for (const marker of createActivePerceptionMarkerCommands(perceptionSnapshot, TILE_SIZE)) {
+    const screenY = SCREEN_HEIGHT - marker.y;
+    const halfSize = marker.style.size / 2;
+    debugContext.beginPath();
+    debugContext.moveTo(marker.x - halfSize, screenY - halfSize);
+    debugContext.lineTo(marker.x + halfSize, screenY + halfSize);
+    debugContext.moveTo(marker.x + halfSize, screenY - halfSize);
+    debugContext.lineTo(marker.x - halfSize, screenY + halfSize);
+    debugContext.strokeStyle = marker.style.strokeStyle;
+    debugContext.lineWidth = marker.style.lineWidth;
+    debugContext.stroke();
+  }
   for (const { collider } of projectileColliders) {
     drawAabb(collider, "rgb(255 220 64 / 38%)", "#ffe066");
   }
 }
 
+function drawCharacterCenterMarker(center) {
+  const screenY = SCREEN_HEIGHT - center.y;
+  const size = 2.5;
+  debugContext.beginPath();
+  debugContext.moveTo(center.x - size, screenY - size);
+  debugContext.lineTo(center.x + size, screenY + size);
+  debugContext.moveTo(center.x + size, screenY - size);
+  debugContext.lineTo(center.x - size, screenY + size);
+  debugContext.strokeStyle = "#000000";
+  debugContext.lineWidth = 2;
+  debugContext.stroke();
+}
+
+function formatStartupError(error) {
+  const detail = error instanceof Error ? error.message : String(error);
+
+  if (/source image could not be decoded|decode/i.test(detail)) {
+    return [
+      "The game could not load one of its image assets because its image URL may be broken or the file is not a valid image.",
+      "Refresh the page. If the problem continues, make sure the app is running through Vite and check the browser console for the broken URL or failed asset path.",
+      `Details: ${detail}`,
+    ].join(" ");
+  }
+
+  if (/WebGPU enabled/i.test(detail)) {
+    return `${detail} Enable WebGPU in a supported browser, then refresh the page.`;
+  }
+
+  return `The game could not start. Refresh the page and check the browser console for more details. Details: ${detail}`;
+}
+
 start().catch((error) => {
   console.error(error);
-  errorOutput.textContent = error instanceof Error ? error.message : String(error);
+  errorOutput.textContent = formatStartupError(error);
 });

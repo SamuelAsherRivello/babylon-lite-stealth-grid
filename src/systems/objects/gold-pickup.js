@@ -1,4 +1,5 @@
 import { addSprite2D, createSprite2DLayer, removeSprite2D, updateSprite2D } from "@babylonjs/lite";
+import { getYSortedLayerOrder } from "../environment/render-depth.js";
 
 const DEFAULT_API = { addSprite2D, createSprite2DLayer, removeSprite2D, updateSprite2D };
 const SPAWN_SECONDS = 0.35;
@@ -15,14 +16,25 @@ export function chooseNineGridDestinations(origin, count, isValid = () => true, 
 }
 
 export function createPickup({ type = "pickup", id = "pickup", object = { id }, atlas = null, startPosition, destination, screenHeight = 1024, api = DEFAULT_API }) {
-  const layer = api.createSprite2DLayer(atlas, { capacity: 1, pivot: [0.5, 0.5] });
-  const sprite = api.addSprite2D(layer, { positionPx: [startPosition.x, screenHeight - startPosition.y], sizePx: [32, 32], frame: 0, alpha: 0, scaleX: 0.1, scaleY: 0.1 });
+  const layer = api.createSprite2DLayer(atlas, {
+    capacity: 1,
+    order: getYSortedLayerOrder(startPosition.y, screenHeight),
+    pivot: [0.5, 0.5],
+  });
+  const sprite = api.addSprite2D(layer, { positionPx: [startPosition.x, screenHeight - startPosition.y], sizePx: [64, 64], frame: 0, alpha: 0, scaleX: 0.1, scaleY: 0.1 });
   let elapsed = 0; let state = "spawning";
   const start = { ...startPosition }; const end = { x: destination.x, y: destination.y };
   return {
     layer, sprite, type, id: `${type}-${object.id}`,
     get isAlive() { return state !== "dead"; }, get isSpawning() { return state === "spawning"; }, get isDying() { return state === "dying"; }, get isDead() { return state === "dead"; },
-    getCollider() { return this.isAlive ? { x: this.position.x - 16, y: this.position.y - 16, width: 32, height: 32 } : null; },
+    getCombatCollider() {
+      return this.isAlive
+        ? { x: this.position.x - 24, y: this.position.y - 24, width: 48, height: 48 }
+        : null;
+    },
+    // Collection uses the non-blocking combat collider; pickups have no
+    // movement collider and therefore never obstruct player movement.
+    getCollider() { return this.getCombatCollider(); },
     position: { ...start },
     collect() { if (!this.isAlive) return false; state = "dying"; elapsed = 0; return true; },
     update(deltaSeconds = 0) {

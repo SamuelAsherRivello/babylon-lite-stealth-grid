@@ -11,6 +11,8 @@ export const SpawnerCharacter = Object.freeze({
   GOBLIN: "goblin",
   WARRIOR: "warrior",
   ARCHER: "archer",
+  LANCER: "lancer",
+  MONK: "monk",
 });
 
 export const SpawnMode = Object.freeze({
@@ -64,7 +66,23 @@ const SPAWNER_DEFAULTS = Object.freeze({
     spawnMode: SpawnMode.NEARBY,
     spawnMaxDistance: 0,
   }),
+  MONK: Object.freeze({
+    type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, minimumCount: 1,
+    maximumCount: 1, guaranteeInitialPopulation: true, spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 0,
+  }),
+  LANCER: Object.freeze({
+    type: SpawnerType.ENEMY,
+    character: SpawnerCharacter.LANCER,
+    minimumCount: 1,
+    maximumCount: 1,
+    guaranteeInitialPopulation: true,
+    spawnMode: SpawnMode.NEARBY,
+    spawnMaxDistance: 0,
+  }),
 });
+
+const PLAYER_SPAWN_BOTTOM_OFFSET_Y = 192 * (1 - 0.78);
 
 function requirePositive(name, value) {
   if (!Number.isFinite(value) || value <= 0) {
@@ -87,11 +105,15 @@ export function createInitialSpawnerConfigs({
     if (!defaults) {
       throw new Error(`Unsupported spawner type: ${spawner.type}`);
     }
+    const cellCenterPosition = {
+      x: (spawner.gameCell.x + 0.5) * tileSize,
+      y: (spawner.gameCell.y + 0.5) * tileSize,
+    };
     return {
       ...defaults,
       position: {
-        x: (spawner.gameCell.x + 0.5) * tileSize,
-        y: (spawner.gameCell.y + 0.5) * tileSize,
+        x: cellCenterPosition.x,
+        y: cellCenterPosition.y,
       },
       gameCell: { ...spawner.gameCell },
       ...(spawner.spawnMode ? { spawnMode: spawner.spawnMode } : {}),

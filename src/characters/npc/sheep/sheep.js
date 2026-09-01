@@ -28,18 +28,18 @@ import { getCharacterGridCell, getCharacterLayerOrder } from "../../character-sp
 
 export const SHEEP_FRAME_SIZE = 128;
 export const SHEEP_PIVOT = { x: 0.5, y: 0.84 };
-const SHEEP_RENDER_OFFSET_Y = 12;
+export const SHEEP_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
 export const SHEEP_MOVEMENT_COLLIDER = {
   type: "circle",
   x: 64,
-  y: 61,
+  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y,
   radius: 26,
 };
 export const SHEEP_COMBAT_COLLIDER = {
-  x: 24,
-  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y - 56,
-  width: 80,
-  height: 56,
+  x: SHEEP_FRAME_SIZE * SHEEP_PIVOT.x - 64 / 2,
+  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y + 64 / 2 - 64,
+  width: 64,
+  height: 64,
 };
 
 const FRAME_DURATION_MS = 100;
@@ -120,7 +120,8 @@ export function createSheep({
 
   const layers = {};
   const sprites = {};
-  const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const getArtScreenPosition = (worldPosition) => worldToScreen({ x: worldPosition.x + SHEEP_ART_OFFSET.x, y: worldPosition.y + SHEEP_ART_OFFSET.y }, 1, bounds.height);
+  const initialScreenPosition = getArtScreenPosition(position);
   const initialOrder = getCharacterLayerOrder(
     getCharacterCollider(position, character.frame, character.pivot, character.collider),
     bounds.height,
@@ -134,7 +135,7 @@ export function createSheep({
     });
     layers[animationName] = layer;
     sprites[animationName] = api.addSprite2D(layer, {
-      positionPx: [initialScreenPosition.x, initialScreenPosition.y - SHEEP_RENDER_OFFSET_Y],
+      positionPx: [initialScreenPosition.x, initialScreenPosition.y],
       sizePx: [SHEEP_FRAME_SIZE, SHEEP_FRAME_SIZE],
       frame: 0,
     });
@@ -158,7 +159,7 @@ export function createSheep({
   }
 
   function updateSprites() {
-    const screenPosition = worldToScreen(position, 1, bounds.height);
+    const screenPosition = getArtScreenPosition(position);
     const order = getCharacterLayerOrder(
       getCharacterCollider(position, character.frame, character.pivot, character.collider),
       bounds.height,
@@ -168,7 +169,7 @@ export function createSheep({
     }
     for (const sprite of Object.values(sprites)) {
       api.updateSprite2D(sprite, {
-        positionPx: [screenPosition.x, screenPosition.y - SHEEP_RENDER_OFFSET_Y],
+        positionPx: [screenPosition.x, screenPosition.y],
         flipX: facing < 0,
       });
     }
@@ -318,10 +319,10 @@ export function createSheep({
     }
     if (sizePx !== undefined) {
       patch.sizePx = sizePx;
-      const screenPosition = worldToScreen(position, 1, bounds.height);
+      const screenPosition = getArtScreenPosition(position);
       patch.positionPx = [
         screenPosition.x + (0.5 - SHEEP_PIVOT.x) * (SHEEP_FRAME_SIZE - sizePx[0]),
-        screenPosition.y - SHEEP_RENDER_OFFSET_Y
+        screenPosition.y
           + (0.5 - SHEEP_PIVOT.y) * (SHEEP_FRAME_SIZE - sizePx[1]),
       ];
     }

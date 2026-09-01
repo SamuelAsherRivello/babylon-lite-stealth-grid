@@ -1,0 +1,14 @@
+{
+  "columns": 3,
+  "image": "../../../assets/terrain/tilesets/Bridge_All.png",
+  "imageheight": 256,
+  "imagewidth": 192,
+  "margin": 0,
+  "name": "Bridge_All",
+  "spacing": 0,
+  "tilecount": 12,
+  "tileheight": 64,
+  "tilewidth": 64,
+  "type": "tileset",
+  "version": "1.11"
+}

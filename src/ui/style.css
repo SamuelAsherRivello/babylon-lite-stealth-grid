@@ -23,21 +23,26 @@
 
 html,
 body {
+  width: 100%;
   min-height: 100%;
+  min-width: 0;
   margin: 0;
 }
 
 body {
   min-height: 100vh;
   min-height: 100dvh;
+  min-width: 0;
   overflow: hidden;
 }
 
 .stage {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
+  width: 100%;
   min-height: 100vh;
   min-height: 100dvh;
+  min-width: 0;
   place-items: center;
   overflow: hidden;
 }
@@ -49,6 +54,7 @@ body {
   width: 56.25dvh;
   height: 100vh;
   height: 100dvh;
+  min-width: 0;
   aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #72a94f;
@@ -63,6 +69,7 @@ body {
   width: 100vw;
   height: 100vh;
   height: 100dvh;
+  min-width: 0;
   overflow: hidden;
   container-type: inline-size;
   pointer-events: none;
@@ -79,6 +86,7 @@ body {
 #renderCanvas,
 #debugCanvas {
   display: block;
+  min-width: 0;
   width: 100%;
   height: 100%;
   image-rendering: pixelated;
@@ -126,6 +134,14 @@ body {
   z-index: 10;
   pointer-events: none;
 }
+.runtime-goal-marker { position:absolute; width:max-content; height:max-content; transform:translate(-50%,-50%); pointer-events:none; }
+.runtime-goal-marker img { display:block; width:32px; height:32px; image-rendering:pixelated; }
+.level-complete-backdrop { position:absolute; inset:0; z-index:2500; display:grid; place-items:center; padding:24px; background:rgb(0 0 0 / 62%); pointer-events:auto; }
+.level-complete-backdrop[hidden] { display:none; }
+.level-complete-panel { width:min(86%,360px); padding:34px 28px 28px; border:2px solid rgb(255 255 255 / 75%); border-radius:22px; background:linear-gradient(155deg,#17213b,#0b1020); box-shadow:0 20px 60px rgb(0 0 0 / 60%); text-align:center; color:#eef6ff; }
+.level-complete-panel h2 { margin:0 0 12px; font:800 2rem/1.1 system-ui,sans-serif; }
+.level-complete-panel p { margin:0 0 26px; font:500 1.1rem/1.4 system-ui,sans-serif; color:#cbd5e1; }
+.level-complete-continue { padding:12px 28px; border:0; border-radius:999px; background:#facc15; color:#422006; font:800 1rem system-ui,sans-serif; cursor:pointer; }
 
 .release-metadata {
   position: absolute;

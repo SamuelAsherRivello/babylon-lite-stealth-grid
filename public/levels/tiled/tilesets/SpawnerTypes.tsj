@@ -3,9 +3,21 @@
   "grid": { "height": 1, "orientation": "orthogonal", "width": 1 },
   "name": "Spawner Types",
   "objectalignment": "bottom",
-  "tilecount": 3,
+  "tilecount": 5,
   "tileheight": 64,
   "tiles": [
+    {
+      "class": "Spawner",
+      "id": 4,
+      "image": "../icons/enemy-spawner.svg",
+      "imageheight": 64,
+      "imagewidth": 64,
+      "name": "Monk Spawner",
+      "properties": [{ "name": "type", "type": "string", "value": "MONK" }, { "name": "spawnMode", "type": "string", "value": "nearby" }, { "name": "spawnMaxDistance", "type": "int", "value": 0 }]
+    },
+    {
+      "class": "GoalSpawner", "id": 3, "image": "../icons/goal-spawner.svg", "imageheight": 64, "imagewidth": 64, "name": "Goal Spawner"
+    },
     {
       "class": "Spawner",
       "id": 0,

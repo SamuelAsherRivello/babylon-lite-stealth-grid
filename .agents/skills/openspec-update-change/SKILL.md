@@ -12,6 +12,11 @@ metadata:
 
 Revise a change's existing planning artifacts and keep them coherent. Never edit code.
 
+**Canonical identity:** Accept either a change name or `C###` ID, while using
+the readable name as the preferred interface. Preserve the change ID and all
+existing `C###-T###` task IDs. Newly added tasks receive the next unused task
+ID for the parent change; reordering or editing never changes an existing ID.
+
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `schemas`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
 **Input**: Optionally specify a change name. If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

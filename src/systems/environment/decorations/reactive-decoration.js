@@ -11,6 +11,10 @@ import { collidersOverlap } from "../../../gameplay/game-logic.js";
 import { getColliderCenter } from "../../../characters/character-spatial.js";
 import { getYSortedLayerOrder } from "../render-depth.js";
 
+export const REACTIVE_DECORATION_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
+// Keep artwork independently offset from the shared collider anchor.
+export const REACTIVE_DECORATION_ART_OFFSET = Object.freeze({ x: -3, y: -40 });
+
 const DEFAULT_API = {
   addSprite2D,
   collidersOverlap,
@@ -46,10 +50,13 @@ export function createReactiveDecoration({
   const layer = api.createSprite2DLayer(atlas, {
     capacity: 1,
     order: getYSortedLayerOrder(object.position.y, screenHeight),
-    pivot: [0.5, 1],
+    pivot: [REACTIVE_DECORATION_PIVOT.x, REACTIVE_DECORATION_PIVOT.y],
   });
   const sprite = api.addSprite2D(layer, {
-    positionPx: [object.position.x, screenHeight - object.position.y],
+    positionPx: [
+      object.position.x + REACTIVE_DECORATION_ART_OFFSET.x,
+      screenHeight - (object.position.y + REACTIVE_DECORATION_ART_OFFSET.y),
+    ],
     sizePx: [descriptor.frameSize.width, descriptor.frameSize.height],
     frame: descriptor.idleFrame,
   });
@@ -97,6 +104,7 @@ export function createReactiveDecoration({
     layer,
     sprite,
     sensor: descriptor.sensor,
+    getMovementCollider() { return descriptor.sensor; },
     get armed() { return armed; },
     get playing() { return playing; },
     get occupantCount() { return occupants.size; },

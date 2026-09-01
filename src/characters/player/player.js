@@ -42,17 +42,20 @@ export function getLoadoutCycleType(event) {
 
 export const PLAYER_FRAME = PLAYER_PAWN_FRAME;
 export const PLAYER_PIVOT = { x: 0.5, y: 0.78 };
+// Artwork offset within the character's grid cell. Colliders stay anchored
+// to the gameplay position so this can be tuned independently later.
+export const PLAYER_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
 export const PLAYER_MOVEMENT_COLLIDER = {
   type: "circle",
-  x: 93,
-  y: 126,
+  x: PLAYER_FRAME.width * PLAYER_PIVOT.x,
+  y: PLAYER_FRAME.height * PLAYER_PIVOT.y,
   radius: 18.2,
 };
 export const PLAYER_COMBAT_COLLIDER = {
-  x: 64,
-  y: PLAYER_FRAME.height * PLAYER_PIVOT.y - 80,
-  width: 64,
-  height: 80,
+  x: PLAYER_FRAME.width * PLAYER_PIVOT.x - GRID.tileSizePx / 2,
+  y: PLAYER_FRAME.height * PLAYER_PIVOT.y + GRID.tileSizePx / 2 - GRID.tileSizePx,
+  width: GRID.tileSizePx,
+  height: GRID.tileSizePx,
 };
 const PLAYER_CHARACTER = {
   frame: PLAYER_FRAME,
@@ -121,7 +124,11 @@ export function createPlayer({
   onDropItem = () => {},
 }) {
   let position = { ...initialPosition };
-  const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const getArtScreenPosition = (worldPosition) => worldToScreen({
+    x: worldPosition.x + PLAYER_ART_OFFSET.x,
+    y: worldPosition.y + PLAYER_ART_OFFSET.y,
+  }, 1, bounds.height);
+  const initialScreenPosition = getArtScreenPosition(position);
   const initialOrder = getCharacterLayerOrder(
     getCharacterCollider(position, PLAYER_FRAME, PLAYER_PIVOT, PLAYER_MOVEMENT_COLLIDER),
     bounds.height,
@@ -263,7 +270,7 @@ export function createPlayer({
     }
     if (sizePx !== undefined) {
       patch.sizePx = sizePx;
-      const screenPosition = worldToScreen(position, 1, bounds.height);
+      const screenPosition = getArtScreenPosition(position);
       patch.positionPx = [
         screenPosition.x + (0.5 - PLAYER_PIVOT.x) * (PLAYER_FRAME.width - sizePx[0]),
         screenPosition.y + (0.5 - PLAYER_PIVOT.y) * (PLAYER_FRAME.height - sizePx[1]),
@@ -428,6 +435,9 @@ export function createPlayer({
     getGridPosition(tileSize) {
       return getCharacterGridCell(this.getMovementCollider(), tileSize);
     },
+    getHeading() {
+      return stateMachine.heading;
+    },
     resetInput,
     setInputEnabled(enabled) {
       inputEnabled = Boolean(enabled);
@@ -512,7 +522,7 @@ export function createPlayer({
         );
       }
 
-      const screenPosition = worldToScreen(position, 1, bounds.height);
+      const screenPosition = getArtScreenPosition(position);
       const order = getCharacterLayerOrder(this.getMovementCollider(), bounds.height);
       for (const layer of Object.values(layers)) {
         layer.order = order;

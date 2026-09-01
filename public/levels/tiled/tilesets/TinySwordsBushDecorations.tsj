@@ -18,24 +18,25 @@
       "name": "Sensor",
       "objects": [{
         "class": "Sensor",
-        "height": 32,
+        "ellipse": true,
+        "height": 48,
         "id": 1,
         "name": "Character Sensor",
         "rotation": 0,
         "visible": true,
         "width": 48,
         "x": 40,
-        "y": 88
+        "y": 93
       }, {
         "class": "CombatCollider",
-        "height": 72,
+        "height": 64,
         "id": 2,
         "name": "Bush Combat Collider",
         "rotation": 0,
         "visible": true,
-        "width": 72,
+        "width": 64,
         "x": 28,
-        "y": 48
+        "y": 85
       }],
       "opacity": 1,
       "type": "objectgroup",

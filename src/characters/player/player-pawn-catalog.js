@@ -47,10 +47,10 @@ function createLoadoutAnimations(kind, value) {
   const suffix = value ? ` ${value[0].toUpperCase()}${value.slice(1)}` : "";
   const fileSuffix = value ? ` ${value[0].toUpperCase()}${value.slice(1)}` : "";
   return {
-    idle: descriptor(`Pawn Idle${suffix}`, `Pawn_Idle${fileSuffix}.png`, frameCounts.idle, true),
-    run: descriptor(`Pawn Run${suffix}`, `Pawn_Run${fileSuffix}.png`, frameCounts.run, true),
+    idle: descriptor(`Player Idle${suffix}`, `Pawn_Idle${fileSuffix}.png`, frameCounts.idle, true),
+    run: descriptor(`Player Run${suffix}`, `Pawn_Run${fileSuffix}.png`, frameCounts.run, true),
     ...(kind === "weapon" && value ? {
-      attack: descriptor(`Pawn ${value} Attack`, `Pawn_Interact ${value[0].toUpperCase()}${value.slice(1)}.png`,
+      attack: descriptor(`Player ${value} Attack`, `Pawn_Interact ${value[0].toUpperCase()}${value.slice(1)}.png`,
         value === "hammer" ? 3 : value === "knife" ? 4 : 6, false),
     } : {}),
   };
@@ -75,7 +75,7 @@ export function cycleLoadout(current, values) {
 export function validatePlayerPawnCatalog(catalog = PLAYER_PAWN_ANIMATION_CATALOG) {
   for (const animation of Object.values(catalog.empty)) {
     if (animation.gridSize[0] !== FRAME_SIZE || animation.gridSize[1] !== FRAME_SIZE) {
-      throw new TypeError("Pawn animations must use 192x192 cells.");
+      throw new TypeError("Player animations must use 192x192 cells.");
     }
   }
   return catalog;

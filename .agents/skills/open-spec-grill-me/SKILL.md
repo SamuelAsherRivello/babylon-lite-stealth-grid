@@ -10,6 +10,11 @@ decision-by-decision interview, then incorporate the confirmed conclusions into
 the relevant planning artifacts. This is a planning workflow only; never edit
 implementation code.
 
+**Canonical identity:** Resolve a change by either its preferred human-readable
+name or its `C###` ID, and display both. Treat `C###` and `C###-T###` as
+stable identity; never identify a change or task solely by mutable name or
+wording.
+
 ## Establish Context
 
 1. Determine whether the user supplied a plan, named a change, is already

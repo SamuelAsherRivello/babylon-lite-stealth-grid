@@ -126,6 +126,14 @@
         {
          "firstgid":1,
          "source":"..\/tilesets\/Tilemap_color3.tsj"
+        }, 
+        {
+         "firstgid":55,
+         "source":"..\/tilesets\/Tilemap_Elevation.tsj"
+        }, 
+        {
+         "firstgid":87,
+         "source":"..\/tilesets\/Bridge_All.tsj"
         }],
  "tilewidth":64,
  "type":"map",

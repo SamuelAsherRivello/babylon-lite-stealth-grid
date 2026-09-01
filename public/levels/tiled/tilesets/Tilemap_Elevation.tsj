@@ -1,0 +1,14 @@
+{
+  "columns": 4,
+  "image": "../../../assets/terrain/tilesets/Tilemap_Elevation.png",
+  "imageheight": 512,
+  "imagewidth": 256,
+  "margin": 0,
+  "name": "Tilemap_Elevation",
+  "spacing": 0,
+  "tilecount": 32,
+  "tileheight": 64,
+  "tilewidth": 64,
+  "type": "tileset",
+  "version": "1.11"
+}

@@ -29,7 +29,7 @@ export function createPickupSystem({ createPickup = createGoldPickup, renderer =
     update(deltaSeconds, playerCollider = null) {
       for (const pickup of pickups) {
         pickup.update(deltaSeconds);
-        const collider = pickup.getCollider();
+        const collider = pickup.getCombatCollider();
         if (playerCollider && collider && collidersOverlap(playerCollider, collider)) pickup.collect();
       }
       for (let i = pickups.length - 1; i >= 0; i -= 1) {

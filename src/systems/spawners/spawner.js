@@ -144,7 +144,10 @@ export function createSpawner({
   function spawn(count) {
     let created = 0;
     for (let index = 0; index < count; index += 1) {
-      const candidates = tileSize === null
+      const exactInitialSpawn = actors.length === 0 && spawnMaxDistance === 0;
+      const candidates = exactInitialSpawn
+        ? [{ ...config.position }]
+        : tileSize === null
         ? [{ ...config.position }]
         : config.spawnMode === SPAWN_MODE_ANYWHERE_WALKABLE
           ? getAnywhereSpawnPositions().filter((candidate) => isWalkable(
@@ -155,10 +158,10 @@ export function createSpawner({
       if (candidates.length === 0) {
         break;
       }
-      const centerIndex = actors.length === 0
+      const centerIndex = actors.length === 0 && !exactInitialSpawn
         ? candidates.findIndex(({ x, y }) => x === config.position.x && y === config.position.y)
         : -1;
-      const selectedIndex = tileSize === null || centerIndex >= 0
+      const selectedIndex = exactInitialSpawn || tileSize === null || centerIndex >= 0
         ? Math.max(0, centerIndex)
         : Math.min(Math.floor(random() * candidates.length), candidates.length - 1);
       const actor = createActor(candidates[selectedIndex]);

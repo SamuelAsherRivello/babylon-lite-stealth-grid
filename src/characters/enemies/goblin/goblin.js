@@ -26,17 +26,18 @@ import { selectGoblinAttackAnimation } from "./goblin-state.js";
 
 export const GOBLIN_FRAME = Object.freeze({ width: 192, height: 192 });
 export const GOBLIN_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
+export const GOBLIN_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
 export const GOBLIN_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 96,
-  y: 123,
+  y: GOBLIN_FRAME.height * GOBLIN_PIVOT.y,
   radius: 24,
 });
 export const GOBLIN_COMBAT_COLLIDER = Object.freeze({
-  x: 64,
-  y: GOBLIN_FRAME.height * GOBLIN_PIVOT.y - 96,
+  x: GOBLIN_FRAME.width * GOBLIN_PIVOT.x - 64 / 2,
+  y: GOBLIN_FRAME.height * GOBLIN_PIVOT.y + 64 / 2 - 64,
   width: 64,
-  height: 96,
+  height: 64,
 });
 
 const DEFAULT_API = Object.freeze({
@@ -91,8 +92,10 @@ export function createGoblin({
   };
   const stateMachine = createEnemyStateMachine();
   let position = { ...initialPosition };
+  let artYOffset = 0;
   let movementIntent = { x: 0, y: 0 };
   let facing = 1;
+  let heading = "right";
   let currentFlipX = false;
   let animationManager = null;
   let activeAnimation = null;
@@ -103,7 +106,8 @@ export function createGoblin({
 
   const layers = {};
   const sprites = {};
-  const initialScreenPosition = worldToScreen(position, 1, bounds.height);
+  const getArtScreenPosition = (worldPosition) => worldToScreen({ x: worldPosition.x + GOBLIN_ART_OFFSET.x, y: worldPosition.y + GOBLIN_ART_OFFSET.y }, 1, bounds.height);
+  const initialScreenPosition = getArtScreenPosition(position);
   const initialOrder = getCharacterLayerOrder(
     getCharacterCollider(position, character.frame, character.pivot, character.collider),
     bounds.height,
@@ -125,7 +129,7 @@ export function createGoblin({
   }
 
   function updateSprites() {
-    const screenPosition = worldToScreen(position, 1, bounds.height);
+    const screenPosition = getArtScreenPosition(position);
     const order = getCharacterLayerOrder(
       getCharacterCollider(position, character.frame, character.pivot, character.collider),
       bounds.height,
@@ -135,7 +139,7 @@ export function createGoblin({
     }
     for (const sprite of Object.values(sprites)) {
       api.updateSprite2D(sprite, {
-        positionPx: [screenPosition.x, screenPosition.y],
+        positionPx: [screenPosition.x, screenPosition.y + artYOffset],
         flipX: currentFlipX,
       });
     }
@@ -203,7 +207,7 @@ export function createGoblin({
     }
     if (sizePx !== undefined) {
       patch.sizePx = sizePx;
-      const screenPosition = worldToScreen(position, 1, bounds.height);
+      const screenPosition = getArtScreenPosition(position);
       patch.positionPx = [
         screenPosition.x + (0.5 - 0.5) * (GOBLIN_FRAME.width - sizePx[0]),
         screenPosition.y + (0.5 - 0.84) * (GOBLIN_FRAME.height - sizePx[1]),
@@ -293,6 +297,9 @@ export function createGoblin({
     getGridPosition(tileSize) {
       return getCharacterGridCell(this.getMovementCollider(), tileSize);
     },
+    getHeading() {
+      return heading;
+    },
     getPosition() {
       return { ...position };
     },
@@ -301,8 +308,14 @@ export function createGoblin({
       playStateAnimation("idle");
     },
     setVisualTransform,
+    setArtYOffset(value) { artYOffset = Number.isFinite(value) ? value : 0; updateSprites(); },
     setMovementIntent(movement) {
       movementIntent = normalizeMovement(movement);
+      if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
+        heading = movementIntent.y < 0 ? "up" : "down";
+      } else if (movementIntent.x !== 0) {
+        heading = movementIntent.x < 0 ? "left" : "right";
+      }
     },
     update(deltaSeconds, dynamicColliders = []) {
       if (disposed) {

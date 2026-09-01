@@ -8,6 +8,7 @@ export const PlayerState = Object.freeze({
 export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
   let state = PlayerState.IDLE;
   let facing = 1;
+  let heading = "right";
   let shotReleased = false;
   let shotDirection = { x: 1, y: 0 };
   let attackWeapon = null;
@@ -18,8 +19,13 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
     return { changed, state };
   }
 
-  function updateFacing(movement) {
-    if (movement.x !== 0) {
+  function updateFacing(movement, preserveHorizontalFacing = false) {
+    if (Math.abs(movement.y) > Math.abs(movement.x) && movement.y !== 0) {
+      heading = movement.y < 0 ? "up" : "down";
+    } else if (movement.x !== 0) {
+      heading = movement.x < 0 ? "left" : "right";
+    }
+    if (movement.x !== 0 && !preserveHorizontalFacing) {
       facing = movement.x < 0 ? -1 : 1;
     }
   }
@@ -31,6 +37,9 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
     get facing() {
       return facing;
     },
+    get heading() {
+      return heading;
+    },
     get shotDirection() {
       return { ...shotDirection };
     },
@@ -38,8 +47,11 @@ export function createPlayerStateMachine({ releaseFrame = 5 } = {}) {
       return false;
     },
     updateLocomotion(movement) {
-      if (state === PlayerState.ATTACKING) return { changed: false, state };
-      updateFacing(movement);
+      const wasAttacking = state === PlayerState.ATTACKING;
+      updateFacing(movement, wasAttacking);
+      if (wasAttacking) {
+        return { changed: false, state };
+      }
       return transition(
         movement.x !== 0 || movement.y !== 0
           ? PlayerState.RUNNING

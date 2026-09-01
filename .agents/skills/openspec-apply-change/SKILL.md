@@ -12,6 +12,12 @@ metadata:
 
 Implement tasks from an OpenSpec change.
 
+**Canonical identity:** Accept either a human-readable change name or its
+`C###` ID. Names are preferred in user-facing output; when an ID is supplied,
+resolve it through `openspec-list-changes` metadata and display both ID and
+current name. Task progress is tracked by stable `C###-T###` IDs in
+`tasks.md`; never use task wording or position as task identity.
+
 **Store selection:** If the user names a store (a store is a standalone OpenSpec repo registered on this machine) or the work lives in one, run `openspec store list --json` to discover registered store ids, then pass `--store <id>` on the commands that read or write specs and changes (`new change`, `status`, `instructions`, `list`, `show`, `validate`, `archive`, `doctor`, `context`, `schemas`, `view`). Once selected, treat `--store <id>` as sticky for the rest of the workflow. Every unscoped example of those commands below is shorthand: before running it, append the flag. For example, run `openspec status --change "<name>" --json --store "<id>"`, not the unscoped form shown below. Other commands do not take the flag. Hints printed by commands already carry the flag; keep it on follow-ups. Without a store, commands act on the nearest local `openspec/` root.
 
 **Input**: Optionally specify a change name (e.g., `$openspec-apply-change (Codex) or /openspec-apply-change (other agents) add-auth`). If omitted, check if it can be inferred from conversation context. If vague or ambiguous you MUST prompt for available changes.

@@ -44,13 +44,13 @@ export function createViewportSafeArea({
   documentRef = document,
   ResizeObserverRef = globalThis.ResizeObserver,
 }) {
-  const update = () => applyVisibleViewport(
-    element,
-    intersectViewportWithGameFrame(
-      readVisibleViewport(windowRef),
-      frameElement.getBoundingClientRect(),
-    ),
-  );
+  const update = () => {
+    const viewport = readVisibleViewport(windowRef);
+    const frameRect = frameElement.getBoundingClientRect();
+    const visibleRect = intersectViewportWithGameFrame(viewport, frameRect);
+
+    applyVisibleViewport(element, visibleRect);
+  };
   const visualViewport = windowRef.visualViewport;
   const subscriptions = [
     [windowRef, "resize"],

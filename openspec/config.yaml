@@ -1,5 +1,33 @@
 schema: spec-driven
 
+context: |
+  This repository uses permanent OpenSpec canonical IDs. Every change has an
+  ID in .openspec.yaml using C### (for example C001). Every task has an ID in
+  tasks.md using C###-T### (for example C001-T001). Names remain the preferred
+  human-facing interface, but skills accept either names or IDs and resolve IDs
+  to the current change name before invoking the OpenSpec CLI. IDs are stable
+  across renames, task edits, task reordering, and archiving. Dependency
+  declaration and concurrent scheduling are not yet defined.
+
+rules:
+  proposal:
+    - Describe canonical change IDs as C### and task IDs as C###-T###.
+    - Preserve names as readable labels, not canonical identity.
+  tasks:
+    - Every new task must include its permanent C###-T### ID.
+    - Never change an existing task ID when editing or reordering tasks.
+  specs:
+    - Use canonical IDs when referring to changes or tasks as identity.
+
+operations:
+  apply:
+    guidance:
+      - Accept either a change name or canonical C### ID and display both.
+      - Resolve IDs to the current CLI change name before OpenSpec commands.
+  archive:
+    guidance:
+      - Preserve the change ID and all task IDs while archiving.
+
 # Project context (optional)
 # This is shown to AI when creating artifacts.
 # Add your tech stack, conventions, style guides, domain knowledge, etc.

@@ -33,6 +33,9 @@ const DEFAULT_API = Object.freeze({
 });
 
 export function getProjectileRotation(direction) {
+  if (direction.x !== 0 && direction.y !== 0) {
+    return Math.atan2(direction.y, direction.x);
+  }
   if (direction.y > 0) {
     return -Math.PI / 2;
   }
@@ -65,22 +68,23 @@ export function createProjectileRenderer({ atlas, bounds, obstacles, api = DEFAU
 
   return {
     layer,
-    shoot(position, direction) {
+    shoot(position, direction, ownerId = null, options = {}) {
       if (active.length >= ARROW_CAPACITY) {
         return false;
       }
 
-      const projectile = createProjectile(position, direction);
+      const projectile = createProjectile(position, direction, options);
       const screen = worldToScreen(projectile.position, 1, bounds.height);
       const sprite = api.addSprite2D(layer, {
         positionPx: [screen.x, screen.y],
         sizePx: [ARROW_RENDER_SIZE, ARROW_RENDER_SIZE],
         frame: 0,
-        rotation: getProjectileRotation(projectile.direction),
+        rotation: options.initialRotation ?? getProjectileRotation(projectile.direction),
       });
       active.push({
         id: nextProjectileId,
         projectile,
+        ownerId,
         sprite,
         hit: false,
         deflection: null,
@@ -114,9 +118,10 @@ export function createProjectileRenderer({ atlas, bounds, obstacles, api = DEFAU
     },
     getColliders() {
       return active
-        .filter(({ hit, deflection }) => !hit && !deflection)
-        .map(({ id, projectile }) => ({
+        .filter(({ hit, deflection, projectile }) => !hit && !deflection && projectile.collisionEnabled)
+        .map(({ id, projectile, ownerId }) => ({
           id,
+          ownerId,
           type: "projectile",
           direction: projectile.direction,
           collider: getProjectileCollider(projectile),
@@ -170,7 +175,13 @@ export function createProjectileRenderer({ atlas, bounds, obstacles, api = DEFAU
         }
 
         const screen = worldToScreen(record.projectile.position, 1, bounds.height);
-        api.updateSprite2D(record.sprite, { positionPx: [screen.x, screen.y] });
+        const patch = {
+          positionPx: [screen.x, screen.y - (record.projectile.height ?? 0)],
+        };
+        if (record.projectile.rotationEnabled) {
+          patch.rotation = getProjectileRotation(record.projectile.arc ? record.projectile.flightVelocity : record.projectile.direction);
+        }
+        api.updateSprite2D(record.sprite, patch);
       }
     },
     dispose() {

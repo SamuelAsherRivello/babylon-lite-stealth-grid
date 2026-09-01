@@ -152,11 +152,34 @@ export function normalizeTiledMap(map, externalTilesets) {
       }];
     }));
   validateSpawners(spawners);
+  const goldPickupSpawners = map.layers.filter(({ type }) => type === "objectgroup")
+    .flatMap((layer) => (layer.objects ?? []).flatMap((object) => {
+      const gid = object.gid ? object.gid & ~FLIP_FLAGS : 0;
+      const source = gid ? resolveTileset(tilesets, gid) : null;
+      const tile = source?.tileset?.tiles?.find(({ id }) => id === gid - source.firstgid);
+      const className = object.class || object.type || tile?.class || tile?.type || "";
+      if (className.toLowerCase() !== "goldpickupspawner") return [];
+      const column = Math.floor(object.x / map.tilewidth);
+      const row = Math.floor(object.y / map.tileheight) - (object.gid ? 1 : 0);
+      return [{ id: object.id, name: object.name ?? "", gameCell: { x: column - originColumn, y: originRow - row } }];
+    }));
+  const goals = map.layers.filter(({ type }) => type === "objectgroup")
+    .flatMap((layer) => (layer.objects ?? []).flatMap((object) => {
+      const gid = object.gid ? object.gid & ~FLIP_FLAGS : 0;
+      const source = gid ? resolveTileset(tilesets, gid) : null;
+      const tile = source?.tileset?.tiles?.find(({ id }) => id === gid - source.firstgid);
+      const className = object.class || object.type || tile?.class || tile?.type || "";
+      if (className.toLowerCase() !== "goalspawner") return [];
+      const column = Math.floor(object.x / map.tilewidth);
+      const row = Math.floor(object.y / map.tileheight) - (object.gid ? 1 : 0);
+      return [{ id: object.id, name: object.name ?? "", gameCell: { x: column - originColumn, y: originRow - row } }];
+    }));
+  if (goals.length !== 1) throw new Error("Invalid Level Format: Must contain 1 Goal Spawner");
   return {
     width: map.width, height: map.height,
     tileWidth: map.tilewidth, tileHeight: map.tileheight,
     origin: { x: originColumn, y: map.height - originRow - 1 },
-    layers, objects, spawners,
+    layers, objects, spawners, goldPickupSpawners, goals,
     reactiveDecorations: objects.filter(({ decoration }) => decoration?.frameCount > 1 && decoration.triggerMode),
     goldStones: objects.filter(({ class: className }) => className === "GoldObject"),
   };
@@ -331,7 +354,7 @@ function validateSpawners(spawners) {
   if (playerCount !== 1) {
     throw new Error("Invalid Level Format: Must contain 1 Player Spawner");
   }
-  const supportedTypes = new Set(["PLAYER", "SHEEP", "GOBLIN", "WARRIOR", "ARCHER"]);
+  const supportedTypes = new Set(["PLAYER", "SHEEP", "GOBLIN", "WARRIOR", "ARCHER", "MONK", "LANCER"]);
   for (const spawner of spawners) {
     if (!supportedTypes.has(spawner.type)) {
       const name = spawner.name ? ` ("${spawner.name}")` : "";

@@ -12,6 +12,11 @@ metadata:
 
 Propose a new change - create the change and generate all artifacts in one step.
 
+**Canonical identity:** New changes must receive the next unique `C###` ID
+when scaffolded, and every generated task must receive `C###-T###`. Accept
+an existing change name or ID when checking for conflicts, but keep names as
+the preferred user-facing label.
+
 **Planning boundary**: This workflow creates planning artifacts only. The user request that selected or triggered this workflow authorizes planning only, even if it asks to build or fix something. Do not edit project code. After the planning artifacts are complete, stop. Do not start implementation in the same response, even if the initial request asks for it. Wait for a new user request after the artifacts are presented; then start the apply workflow.
 
 I'll create a change with the artifacts your schema defines. With the default spec-driven schema that is:
