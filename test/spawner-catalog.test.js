@@ -51,9 +51,9 @@ test("spawner catalog derives Babylon defaults from authored types and cells", (
       gameCell: { x: 2, y: 5 },
       minimumCount: 1,
       maximumCount: 1,
-      guaranteeInitialPopulation: false,
+      guaranteeInitialPopulation: true,
       spawnMode: SpawnMode.NEARBY,
-      spawnMaxDistance: 3,
+      spawnMaxDistance: 0,
     },
     {
       type: SpawnerType.ENEMY,
@@ -64,7 +64,7 @@ test("spawner catalog derives Babylon defaults from authored types and cells", (
       maximumCount: 1,
       guaranteeInitialPopulation: true,
       spawnMode: SpawnMode.NEARBY,
-      spawnMaxDistance: 3,
+      spawnMaxDistance: 0,
     },
   ]);
   assert.equal("checkIntervalSeconds" in configs[0], false);
@@ -88,6 +88,30 @@ test("optional non-player types can be omitted without fallback placements", () 
     spawnMode: SpawnMode.NEARBY,
     spawnMaxDistance: 0,
   }]);
+});
+
+test("goblin, warrior, and archer spawners start immediately on their authored cell", () => {
+  const configs = createInitialSpawnerConfigs({
+    screenWidth: 576,
+    screenHeight: 1024,
+    tileSize: 64,
+    authoredSpawners: [
+      { type: "GOBLIN", gameCell: { x: 1, y: 2 } },
+      { type: "WARRIOR", gameCell: { x: 3, y: 4 } },
+      { type: "ARCHER", gameCell: { x: 5, y: 6 } },
+    ],
+  });
+
+  assert.deepEqual(configs.map(({ character, position, guaranteeInitialPopulation, spawnMaxDistance }) => ({
+    character,
+    position,
+    guaranteeInitialPopulation,
+    spawnMaxDistance,
+  })), [
+    { character: SpawnerCharacter.GOBLIN, position: { x: 96, y: 160 }, guaranteeInitialPopulation: true, spawnMaxDistance: 0 },
+    { character: SpawnerCharacter.WARRIOR, position: { x: 224, y: 288 }, guaranteeInitialPopulation: true, spawnMaxDistance: 0 },
+    { character: SpawnerCharacter.ARCHER, position: { x: 352, y: 416 }, guaranteeInitialPopulation: true, spawnMaxDistance: 0 },
+  ]);
 });
 
 test("catalog rejects invalid dimensions", () => {

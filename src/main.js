@@ -556,7 +556,7 @@ async function start() {
   }
 
   function createArcherRecord(position) {
-    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } });
+    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, onShoot: (spawnPosition, target) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, { x: dx / length, y: dy / length }); } });
     const combat = createCombatActorState({ label: `archer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
     return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: { update() {} } });
   }
@@ -1054,7 +1054,7 @@ async function start() {
             : []),
           ...sheepMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: "npc", collider })),
-        ], record.character === SpawnerCharacter.WARRIOR ? projectileState : []);
+        ], record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot);
       }
 
       const reactiveCharacters = [

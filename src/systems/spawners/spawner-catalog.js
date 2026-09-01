@@ -42,9 +42,9 @@ const SPAWNER_DEFAULTS = Object.freeze({
     character: SpawnerCharacter.GOBLIN,
     minimumCount: 1,
     maximumCount: 1,
-    guaranteeInitialPopulation: false,
+    guaranteeInitialPopulation: true,
     spawnMode: SpawnMode.NEARBY,
-    spawnMaxDistance: 3,
+    spawnMaxDistance: 0,
   }),
   WARRIOR: Object.freeze({
     type: SpawnerType.ENEMY,
@@ -53,7 +53,7 @@ const SPAWNER_DEFAULTS = Object.freeze({
     maximumCount: 1,
     guaranteeInitialPopulation: true,
     spawnMode: SpawnMode.NEARBY,
-    spawnMaxDistance: 3,
+    spawnMaxDistance: 0,
   }),
   ARCHER: Object.freeze({
     type: SpawnerType.ENEMY,
@@ -62,7 +62,7 @@ const SPAWNER_DEFAULTS = Object.freeze({
     maximumCount: 1,
     guaranteeInitialPopulation: true,
     spawnMode: SpawnMode.NEARBY,
-    spawnMaxDistance: 3,
+    spawnMaxDistance: 0,
   }),
 });
 
