@@ -192,28 +192,6 @@ body {
   pointer-events: none;
 }
 
-.coordinates-ui {
-  position: absolute;
-  right: var(--ui-safe-right);
-  margin: 0;
-  border: 1px solid rgb(255 255 255 / 20%);
-  border-radius: 999px;
-  background: rgb(10 24 18 / 72%);
-  color: #f7ffe9;
-  font: 600 0.68rem/1 system-ui, sans-serif;
-  letter-spacing: 0.03em;
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-  z-index: var(--z-coordinates);
-}
-
-.coordinates-ui {
-  top: max(18cqw, var(--ui-safe-top));
-  padding: 0.48rem 0.65rem;
-  line-height: 1.45;
-  text-align: center;
-}
-
 .game-ui {
   position: absolute;
   inset: 0;
@@ -266,7 +244,8 @@ body {
   pointer-events: none;
 }
 
-.gold-counter {
+.gold-counter,
+.coordinates-ui {
   position: absolute;
   top: calc(var(--ui-safe-top) + 1.5em);
   left: var(--ui-safe-left);
@@ -281,6 +260,10 @@ body {
   -webkit-text-stroke: clamp(1px, 0.44cqw, 2px) #261b17;
   paint-order: stroke fill;
   pointer-events: none;
+}
+
+.coordinates-ui {
+  top: calc(var(--ui-safe-top) + 3em);
 }
 
 .settings-gear {
@@ -593,10 +576,7 @@ body {
 
 .coordinates-ui output {
   display: block;
-}
-
-.coordinates-ui output {
-  display: block;
+  white-space: pre;
 }
 
 .error {

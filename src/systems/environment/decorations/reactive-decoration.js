@@ -10,6 +10,8 @@ import {
 import { collidersOverlap } from "../../../gameplay/game-logic.js";
 import { getColliderCenter } from "../../../characters/character-spatial.js";
 import { getYSortedLayerOrder } from "../render-depth.js";
+import { GridSpot } from "../grid-spot.js";
+import { createBushLeaves } from "../../../particle-fx/bush-leaves.js";
 
 export const REACTIVE_DECORATION_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
 // Keep artwork independently offset from the shared collider anchor.
@@ -44,6 +46,7 @@ export function createReactiveDecoration({
   screenHeight,
   tileSize = 64,
   fireEffect = null,
+  leafAtlas = null,
   onCharacterEnter = () => {},
   api = DEFAULT_API,
 }) {
@@ -62,6 +65,15 @@ export function createReactiveDecoration({
     frame: descriptor.idleFrame,
   });
   let occupants = new Set();
+  const leafEffect = leafAtlas ? createBushLeaves({
+    atlas: leafAtlas,
+    position: [
+      object.position.x + REACTIVE_DECORATION_ART_OFFSET.x + (0.5 - REACTIVE_DECORATION_PIVOT.x) * descriptor.frameSize.width,
+      screenHeight - (object.position.y + REACTIVE_DECORATION_ART_OFFSET.y) + (0.5 - REACTIVE_DECORATION_PIVOT.y) * descriptor.frameSize.height,
+    ],
+    order: layer.order + 0.1,
+    api,
+  }) : null;
   let armed = true;
   let playing = false;
   let animation = null;
@@ -75,11 +87,13 @@ export function createReactiveDecoration({
   const deathRotation = (Math.random() < 0.5 ? -1 : 1) * 20 * Math.PI / 180;
   const acceptedTypes = new Set(descriptor.acceptedCharacterTypes);
   const interactionPosition = getColliderCenter(descriptor.combatCollider);
+  const gridSpot = new GridSpot(interactionPosition, { width: tileSize, height: tileSize });
 
   function startAnimation() {
     if (!armed || playing || disposed) return false;
     armed = false;
     playing = true;
+    leafEffect?.burst();
     animation = api.playSprite2DAnimation(
       animationManager,
       sprite,
@@ -103,6 +117,7 @@ export function createReactiveDecoration({
 
   return {
     layer,
+    layers: [layer, ...(leafEffect ? [leafEffect.layer] : [])],
     sprite,
     sensor: descriptor.sensor,
     getMovementCollider() { return descriptor.sensor; },
@@ -116,12 +131,10 @@ export function createReactiveDecoration({
     get firePlaying() { return firePlaying; },
     get id() { return `bush-${object.id}`; },
     get position() { return { ...object.position }; },
+    getGridSpot() { return gridSpot; },
     get interactionPosition() { return { ...interactionPosition }; },
     get cell() {
-      return {
-        x: Math.floor(interactionPosition.x / tileSize),
-        y: Math.floor(interactionPosition.y / tileSize),
-      };
+      return { ...gridSpot.cell };
     },
     getCombatCollider() {
       return isAlive ? descriptor.combatCollider : null;
@@ -159,10 +172,12 @@ export function createReactiveDecoration({
     },
     setViewportScale(scale) {
       layer.view.zoom = scale;
+      if (leafEffect) leafEffect.layer.view.zoom = scale;
       if (fireEffect) fireEffect.layer.view.zoom = scale;
     },
     update(characters, deltaSeconds = 0) {
       if (disposed) return;
+      leafEffect?.update(deltaSeconds);
       if (isDying) {
         deathElapsed += Math.max(0, deltaSeconds);
         const progress = Math.min(1, deathElapsed / 0.25);
@@ -198,6 +213,7 @@ export function createReactiveDecoration({
     dispose() {
       if (disposed) return;
       disposed = true;
+      leafEffect?.dispose();
       if (animation) api.stopSpriteAnimation(animation);
       api.removeSprite2D(sprite);
       if (fireEffect) fireEffect.dispose();

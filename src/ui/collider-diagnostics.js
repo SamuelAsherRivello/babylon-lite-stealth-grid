@@ -16,6 +16,8 @@ export const TERRAIN_COLLIDER_STYLE = Object.freeze({
 export const VISUAL_PERCEPTION_STYLE = Object.freeze({ fillStyle: "rgb(160 80 255 / 40%)", blinkFillStyle: "rgb(160 80 255 / 100%)" });
 export const AUDIO_PERCEPTION_STYLE = Object.freeze({ fillStyle: "rgb(160 80 255 / 40%)", blinkFillStyle: "rgb(160 80 255 / 100%)" });
 export const ACTIVE_PERCEPTION_MARKER_STYLE = Object.freeze({ strokeStyle: "#ff3030", lineWidth: 3, size: 20 });
+export const GRID_SPOT_MARKER_STYLE = Object.freeze({ strokeStyle: "#ffffff", lineWidth: 1, size: 2.5 });
+export const PLAYER_CENTER_MARKER_STYLE = Object.freeze({ strokeStyle: "#000000", lineWidth: 1, size: 3.5 });
 const activeStartByKey = new Map();
 
 function hasValidVisualGeometry(actor) {
@@ -147,5 +149,33 @@ export function createCharacterCenterDrawCommands(characters) {
         y: collider.type === "circle" ? collider.y : collider.y + collider.height / 2,
       };
     });
+}
+
+export function createGridSpotMarkerCommands(entities) {
+  return entities
+    .filter(({ active = true, gridSpot }) => active && gridSpot)
+    .map(({ gridSpot }) => ({
+      ...gridSpot.getMarkerCommand(),
+      style: GRID_SPOT_MARKER_STYLE,
+    }));
+}
+
+export function createPlayerCenterMarkerCommands(entities) {
+  return createCharacterCenterDrawCommands(entities.filter(({ isPlayer }) => isPlayer))
+    .map((center) => ({ ...center, style: PLAYER_CENTER_MARKER_STYLE }));
+}
+
+export function drawGridSpotMarker(context, marker, screenHeight) {
+  if (!context || !marker || !Number.isFinite(screenHeight)) return;
+  const screenY = screenHeight - marker.y;
+  const size = marker.style?.size ?? GRID_SPOT_MARKER_STYLE.size;
+  context.beginPath();
+  context.moveTo(marker.x - size, screenY - size);
+  context.lineTo(marker.x + size, screenY + size);
+  context.moveTo(marker.x + size, screenY - size);
+  context.lineTo(marker.x - size, screenY + size);
+  context.strokeStyle = marker.style?.strokeStyle ?? GRID_SPOT_MARKER_STYLE.strokeStyle;
+  context.lineWidth = marker.style?.lineWidth ?? GRID_SPOT_MARKER_STYLE.lineWidth;
+  context.stroke();
 }
 import { getAudioCells, getVisualCells, getVisualStrength } from "../systems/perception/character-perception.js";

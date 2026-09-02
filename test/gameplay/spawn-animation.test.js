@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
 test("characters use a quarter-second scale and opacity spawn animation", async () => {
-  const source = await readFile(new URL("../../src/main.js", import.meta.url), "utf8");
+  const source = await readFile(new URL("../../src/main.js", import.meta.url), "utf8") + await readFile(new URL("../../src/gameplay/combat-actor.js", import.meta.url), "utf8");
 
   assert.match(source, /const SPAWN_ANIMATION_DURATION_SECONDS = 0\.25;/);
   assert.match(source, /spawnElapsedSeconds/);

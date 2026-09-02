@@ -1,3 +1,5 @@
+import { createAttackImpactQueue } from "../../../gameplay/attack-impact.js";
+import { updatePlayerAttackPreparation, cancelPlayerAttackPreparation } from '../player-attack-preparation.js';
 import {
   addSprite2D,
   createSprite2DLayer,
@@ -107,6 +109,7 @@ export function createWarrior({
   let activeAnimation = null;
   let disposed = false;
   let knockback = { x: 0, y: 0 };
+  const attackImpacts = createAttackImpactQueue();
   let knockbackTimer = 0;
   let knockbackDuration = 0;
   let defenseRemainingSeconds = 0;
@@ -177,6 +180,7 @@ export function createWarrior({
               if (disposed) {
                 return;
               }
+              attackImpacts.advance(Infinity);
               const transition = stateMachine.completeAttack(movementIntent);
               currentFlipX = facing < 0;
               if (transition.changed) {
@@ -237,6 +241,7 @@ export function createWarrior({
 
   return {
     layers: Object.values(layers),
+    drainAttackImpacts() { return attackImpacts.drain(); },
     isMovementLocked() { return stateMachine.movementLocked || knockbackTimer > 0; },
     get state() {
       return stateMachine.state;
@@ -256,6 +261,8 @@ export function createWarrior({
       facing = selection.facing;
       currentFlipX = selection.flipX;
       playStateAnimation(selection.name);
+      const impactAnimation = WARRIOR_ANIMATION_CATALOG[selection.name];
+      attackImpacts.start(direction, impactAnimation.frameCount * impactAnimation.frameDurationMs / 1000);
       onAttack();
       return true;
     },
@@ -270,6 +277,7 @@ export function createWarrior({
       return transition.changed;
     },
     dispose() {
+      cancelPlayerAttackPreparation(this);
       if (disposed) return;
       disposed = true;
       if (activeAnimation) {
@@ -304,13 +312,20 @@ export function createWarrior({
     getPosition() {
       return { ...position };
     },
-    setPosition(next) { position = { ...next }; updateSprites(); },
+    setPosition(next) { cancelPlayerAttackPreparation(this); position = { ...next }; updateSprites(); },
     playAnimation(manager) {
       animationManager = manager;
       playStateAnimation(WarriorState.IDLE);
     },
     setVisualTransform,
     setArtYOffset(value) { artYOffset = Number.isFinite(value) ? value : 0; updateSprites(); },
+    faceDirection(direction) {
+      if (disposed || this.isMovementLocked()) return;
+      if (direction.x !== 0) { facing = Math.sign(direction.x); currentFlipX = facing < 0; }
+      if (Math.abs(direction.y) > Math.abs(direction.x)) heading = direction.y < 0 ? "up" : "down";
+      else if (direction.x !== 0) heading = direction.x < 0 ? "left" : "right";
+      updateSprites();
+    },
     setMovementIntent(movement) {
       movementIntent = normalizeMovement(movement);
       if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
@@ -320,6 +335,7 @@ export function createWarrior({
       }
     },
     update(deltaSeconds, dynamicColliders = [], projectiles = []) {
+      attackImpacts.advance(deltaSeconds);
       if (disposed) {
         return { position: { ...position }, state: stateMachine.state };
       }
@@ -334,11 +350,13 @@ export function createWarrior({
         if (incoming) {
           currentFlipX = facing < 0;
           defenseRemainingSeconds = defense.defenseDurationSeconds;
+          attackImpacts.cancel();
           stateMachine.startDefense();
           playStateAnimation(WarriorState.GUARD);
         }
       }
       if (defenseRemainingSeconds > 0) {
+        cancelPlayerAttackPreparation(this);
         defenseRemainingSeconds = Math.max(
           0,
           defenseRemainingSeconds - Math.max(0, deltaSeconds),
@@ -351,6 +369,7 @@ export function createWarrior({
         updateSprites();
         return { position: { ...position }, state: stateMachine.state };
       }
+      if (this.isMovementLocked()) cancelPlayerAttackPreparation(this);
       const knockbackMovement = getKnockbackMovement(deltaSeconds);
       if (knockbackMovement) {
         gridMovement.reset();
@@ -365,6 +384,10 @@ export function createWarrior({
         updateSprites();
         return { position: { ...position }, state: stateMachine.state };
       }
+      const preparing = updatePlayerAttackPreparation(this, deltaSeconds, center => {
+        position = gridMovement.moveTo(position, center, movementSpeed * Math.max(0, deltaSeconds), bounds,
+          [...obstacles, ...dynamicColliders.map(({ collider }) => collider)]);
+      });
       if (!stateMachine.movementLocked) {
         if (movementIntent.x !== 0) facing = movementIntent.x < 0 ? -1 : 1;
         currentFlipX = facing < 0;
@@ -374,7 +397,7 @@ export function createWarrior({
       const movement = stateMachine.movementLocked
         ? { x: 0, y: 0 }
         : movementIntent;
-      position = gridMovement.move(
+      if (!preparing) position = gridMovement.move(
         position,
         movement,
         movementSpeed * Math.max(0, deltaSeconds),

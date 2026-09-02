@@ -14,6 +14,16 @@ class FakeElement extends EventTarget {
 
 const documentRef = { createElement: () => new FakeElement() };
 
+test('loss prompt has restart copy and cannot be dismissed by backdrop', () => {
+  const host = new FakeElement();
+  const ui = createLevelCompleteUi({host, onContinue:()=>{}, documentRef, outcome:'loss'});
+  ui.show();
+  assert.equal(ui.panel.children[0].textContent, 'You Lost');
+  assert.equal(ui.panel.children[1].textContent, 'Try again!');
+  ui.backdrop.dispatchEvent(new Event('click'));
+  assert.equal(host.children.length, 1);
+});
+
 test("level complete closes only when the backdrop itself is clicked", () => {
   const host = new FakeElement();
   let continued = 0;

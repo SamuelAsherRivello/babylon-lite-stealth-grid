@@ -2,6 +2,8 @@ import { createMovementRecovery, reachableRoutes, chooseRoute, cardinalIntent } 
 import { gridCellCenter } from "../../npc/sheep/sheep-navigation.js";
 import { collidersOverlap } from "../../../gameplay/game-logic.js";
 import { getCharacterGridCell, getColliderCenter } from "../../character-spatial.js";
+import { requestPlayerAttack, hasPlayerAttackPreparation } from '../player-attack-preparation.js';
+import { canEnemyTargetPlayer } from '../../../systems/perception/player-hidden.js';
 
 const NEIGHBORS = Object.freeze([
   { x: 1, y: 0 }, { x: -1, y: 0 },
@@ -126,18 +128,25 @@ export function createGoblinBehaviorController(goblin, {
       grid.tileSizePx,
     );
   }
-  function startAttack(target, type) {
+  function startAttack(target, type, attackDirection = null, prepared = false, preparation = null) {
+    if (!prepared && type === 'character' && (preparation || target.character === 'player')) {
+      route = []; bushTargetId = null; recovery.cancel();
+      return requestPlayerAttack(goblin, { grid,
+        getTarget: preparation?.getTarget ?? (() => getWorld().characters.find(value => value.id === target.id)),
+        eligible: preparation?.eligible ?? (value => cardinalDistance(currentCell(), value.cell) <= meleeDistance),
+        commit: (value, direction) => startAttack(value, type, direction, true) });
+    }
     if (type === "bush" && !canStartBushAttack(target)) {
       stop();
       return false;
     }
     const from = goblin.getPosition();
-    const direction = type === "bush"
+    const direction = attackDirection ?? (type === "bush"
       ? {
           x: target.cell.x - currentCell().x,
           y: target.cell.y - currentCell().y,
         }
-      : { x: target.position.x - from.x, y: target.position.y - from.y };
+      : { x: target.position.x - from.x, y: target.position.y - from.y });
     stop();
     if (goblin.attack(direction)) {
       recovery.cancel();
@@ -159,6 +168,7 @@ export function createGoblinBehaviorController(goblin, {
   }
   function nearbyCharacter(world) {
     const nearby = world.characters
+      .filter(target => target.character !== 'player' || canEnemyTargetPlayer(target))
       .filter(({ isAlive, cell }) => (
         isAlive && cardinalDistance(currentCell(), cell) <= meleeDistance
       ));
@@ -236,11 +246,41 @@ export function createGoblinBehaviorController(goblin, {
   return {
     get mode() { return mode; },
     cancel() { stop(); route = []; recovery.cancel(); mode = "idle"; },
+    cancelNavigation() {
+      stop(); route = []; recovery.cancel(); bushTargetId = null; characterTargetId = null;
+      idleRemaining = idleRange[0] + (idleRange[1] - idleRange[0]) * random();
+      if (mode !== "recovering") mode = "idle";
+    },
+    updateAdjacentPlayerAttack(delta, player, direction, preparation = null) {
+      if (goblin.isMovementLocked?.() || delta <= 0) return 'recovering';
+      if (mode === "recovering") {
+        recoveryRemaining = Math.max(0, recoveryRemaining - delta);
+        if (recoveryRemaining > 0) return 'recovering';
+        mode = "idle";
+      }
+      // A previous swing at this player must not suppress a fresh adjacent attack.
+      return startAttack(player, "character", direction, false, preparation ?? {
+        getTarget: () => player,
+        eligible: value => cardinalDistance(currentCell(), value.cell) === 1,
+      });
+    },
+    updateCombat(delta) {
+      if (hasPlayerAttackPreparation(goblin)) return true;
+      if (goblin.isMovementLocked?.() || delta <= 0) return true;
+      if (mode === "recovering") {
+        recoveryRemaining = Math.max(0, recoveryRemaining - delta);
+        if (recoveryRemaining > 0) return true;
+        mode = "idle";
+      }
+      const character = nearbyCharacter(getWorld());
+      return character ? startAttack(character, "character") : false;
+    },
     getNavigationSnapshot() { return { ...recovery.snapshot(), mode, intent: { ...intent },
       position: getColliderCenter(goblin.getMovementCollider()), cell: currentCell(),
       waypoint: route[0] ? gridCellCenter(route[0], grid.tileSizePx) : null }; },
     update(deltaSeconds) {
       const delta = Math.max(0, deltaSeconds);
+      if (hasPlayerAttackPreparation(goblin)) return;
       if (goblin.isMovementLocked?.() || delta <= 0) { recovery.suspend(); return; }
       if (mode === "waiting") {
         const target = nearbyCharacter(getWorld());

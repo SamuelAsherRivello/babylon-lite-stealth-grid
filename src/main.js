@@ -1,4 +1,7 @@
+import { resolveEnemyArrowPlayerHit, resolveMeleeImpacts } from "./gameplay/player-damage.js";
+import { createCombatActorState } from "./gameplay/combat-actor.js";
 import { getColliderCenter } from "./characters/character-spatial.js";
+import { GridSpot, getQuantizedGridCell } from "./systems/environment/grid-spot.js";
 import { playSfx, playPerceptionSfx } from "./audio/sfx.js";
 import {
   addSpriteRendererLayer,
@@ -72,10 +75,9 @@ import {
 import { CharacterType } from "./characters/npc/sheep/sheep-state.js";
 import { createSheepContactCoordinator } from "./characters/npc/sheep/sheep-flock.js";
 import { createCharacterPerception, PerceptionTargetState } from "./systems/perception/character-perception.js";
-import { createEnemyPerceptionReaction } from "./systems/perception/enemy-perception-reaction.js";
+import { createEnemyAwarenessController } from "./characters/enemies/enemy-awareness-controller.js";
 import { getEnemyExpression } from "./systems/perception/enemy-expression.js";
-import { getPlayerHidingBush, isPlayerHidden, stepHiddenOpacity } from "./systems/perception/player-hidden.js";
-import { EnemyState } from "./characters/enemies/enemy-state.js";
+import { getPlayerHidingBush, isPlayerHidden, stepHiddenOpacity, canEnemyTargetPlayer, getOccupiedBushBlockers } from "./systems/perception/player-hidden.js";
 import {
   createProjectileRenderer,
   loadArrowAtlas,
@@ -122,6 +124,9 @@ import {
 } from "./systems/environment/decorations/reactive-decoration.js";
 import {
   createCharacterCenterDrawCommands,
+  createPlayerCenterMarkerCommands,
+  createGridSpotMarkerCommands,
+  drawGridSpotMarker,
   createCharacterColliderDrawCommands,
   createActivePerceptionMarkerCommands,
   createPerceptionDrawCommands,
@@ -141,13 +146,6 @@ const TEMPORARILY_DISABLE_ENEMY_UPDATES = false;
 const WATER_FOAM_FRAME_SIZE = 192;
 const WATER_FOAM_FRAME_COUNT = 16;
 const WATER_FOAM_FRAME_DURATION_MS = 100;
-const SPAWN_ANIMATION_DURATION_SECONDS = 0.25;
-const DEATH_ANIMATION_DURATION_SECONDS = 0.25;
-const DAMAGE_FLASH_DURATION_SECONDS = 0.6;
-const DEATH_ROTATION_DEGREES = 20;
-const MAX_HEALTH = 100;
-const KNOCKBACK_DURATION_SECONDS = 0.2;
-const KNOCKBACK_SPEED_PIXELS_PER_SECOND = 17.28;
 const PLAYER_HIDDEN_FADE_SECONDS = 0.2;
 const ENEMY_EXPRESSION_FADE_SECONDS = 0.25;
 const ENEMY_EXPRESSION_INSTANCE_FADE_SECONDS = ENEMY_EXPRESSION_FADE_SECONDS / 2;
@@ -156,7 +154,6 @@ const EMOTIONAL_JUMP_HEIGHT_PIXELS = 8;
 const ENEMY_EXPRESSION_ICON_OFFSET = Object.freeze({ x: 0, y: -64 });
 const ENEMY_EXPRESSION_MIN_SCALE = 0.3;
 const ENEMY_EXPRESSION_GRID_OFFSET = TILE_SIZE;
-const DEGREES_TO_RADIANS = Math.PI / 180;
 const EMPTY_TERRAIN_FRAMES = new Set([
   4, 13, 22, 31, 37, 38, 40, 46, 47, 49,
 ]);
@@ -198,161 +195,6 @@ const viewportResizeObserver = new ResizeObserver(refreshGameViewportDiagnostics
 viewportResizeObserver.observe(gameFrame);
 window.addEventListener("resize", refreshGameViewportDiagnostics);
 
-function createCombatActorState({
-  label,
-  getCombatCollider,
-  setVisualTransform,
-  onDeathStart,
-  onDeathProgress,
-  onSpawnProgress,
-  onHitFlashStart,
-  onKnockback,
-}) {
-  let health = MAX_HEALTH;
-  let isDying = false;
-  let isDead = false;
-  // A sprite must have a valid visible transform before its first renderer
-  // update.  Initializing at zero size/opacity can leave Lite's saved sprite
-  // size at zero, making the actor permanently invisible.
-  let spawnElapsedSeconds = SPAWN_ANIMATION_DURATION_SECONDS;
-  let deathElapsedSeconds = 0;
-  let deathRotation = 0;
-  let hitFlashRemainingSeconds = 0;
-
-  if (onSpawnProgress) {
-    onSpawnProgress(1);
-  }
-
-  function startDeath() {
-    if (isDying || isDead) {
-      return;
-    }
-    isDying = true;
-    deathElapsedSeconds = 0;
-    deathRotation = (Math.random() < 0.5 ? -1 : 1) * DEATH_ROTATION_DEGREES;
-    if (onDeathStart) {
-      onDeathStart();
-    }
-  }
-
-  function startHitFlash() {
-    hitFlashRemainingSeconds = DAMAGE_FLASH_DURATION_SECONDS;
-  }
-
-  function getActiveCombatCollider() {
-    if (!isDying && !isDead) {
-      return getCombatCollider();
-    }
-    return null;
-  }
-
-  return {
-    label,
-    get health() {
-      return health;
-    },
-    get isAlive() {
-      return !isDying && !isDead;
-    },
-    get isDying() {
-      return isDying;
-    },
-    get isDead() {
-      return isDead;
-    },
-    getCombatCollider: getActiveCombatCollider,
-    setVisualTransform,
-    beginSpawn() {
-      spawnElapsedSeconds = 0;
-      if (onSpawnProgress) {
-        onSpawnProgress(0);
-      }
-    },
-    updateSpawn(deltaSeconds) {
-      if (spawnElapsedSeconds >= SPAWN_ANIMATION_DURATION_SECONDS) {
-        return;
-      }
-
-      spawnElapsedSeconds = Math.min(
-        SPAWN_ANIMATION_DURATION_SECONDS,
-        spawnElapsedSeconds + Math.max(0, deltaSeconds),
-      );
-      const progress = spawnElapsedSeconds / SPAWN_ANIMATION_DURATION_SECONDS;
-      if (onSpawnProgress) {
-        onSpawnProgress(progress);
-      }
-    },
-    applyDamage(amount, hitDirection = { x: 1, y: 0 }) {
-      if (!this.isAlive || amount <= 0) {
-        return;
-      }
-
-      health -= amount;
-      if (onKnockback && hitDirection) {
-        onKnockback(hitDirection, {
-          duration: KNOCKBACK_DURATION_SECONDS,
-          speed: KNOCKBACK_SPEED_PIXELS_PER_SECOND,
-        });
-      }
-      if (health <= 0) {
-        startDeath();
-        return;
-      }
-      if (onHitFlashStart) {
-        onHitFlashStart();
-      }
-      startHitFlash();
-    },
-    updateDamageFlash(deltaSeconds) {
-      if (hitFlashRemainingSeconds <= 0) {
-        return;
-      }
-
-      const progress = Math.max(
-        0,
-        hitFlashRemainingSeconds / DAMAGE_FLASH_DURATION_SECONDS,
-      );
-      const whiteBoost = 0.6 * progress;
-      hitFlashRemainingSeconds -= Math.max(0, deltaSeconds);
-      setVisualTransform({
-        color: [1 + whiteBoost, 1 + whiteBoost, 1 + whiteBoost, 1],
-      });
-      if (hitFlashRemainingSeconds <= 0) {
-        setVisualTransform({
-          color: [1, 1, 1, 1],
-        });
-      }
-    },
-    updateDeath(deltaSeconds) {
-      if (!isDying) {
-        this.updateDamageFlash(deltaSeconds);
-        return;
-      }
-
-      deathElapsedSeconds += Math.max(0, deltaSeconds);
-      const progress = Math.min(
-        1,
-        deathElapsedSeconds / DEATH_ANIMATION_DURATION_SECONDS,
-      );
-      const value = 1 - progress;
-      if (onDeathProgress) {
-        onDeathProgress(value);
-      }
-      const rotation = (deathRotation * DEGREES_TO_RADIANS) * progress;
-      setVisualTransform({
-        scaleX: value,
-        scaleY: value,
-        alpha: value,
-        rotation,
-      });
-
-      if (progress >= 1) {
-        isDying = false;
-        isDead = true;
-      }
-    },
-  };
-}
 
 function setCharacterSpawnProgress(actor, size, progress) {
   actor.setVisualTransform({
@@ -482,7 +324,7 @@ export async function start({ showStartPrompt = true } = {}) {
   const goldStoneObjects = level.goldStones.map((object) => {
     const image = object.goldStone.variantImages[Math.floor(Math.random() * object.goldStone.variantImages.length)];
     return createGoldStone({ object: { ...object, goldStone: { ...object.goldStone, image } }, atlas: goldStoneAtlases.get(image), animationManager, screenHeight: SCREEN_HEIGHT, onDeathComplete: (position) => {
-      const origin = { x: Math.floor(position.x / TILE_SIZE), y: Math.floor(position.y / TILE_SIZE) };
+      const origin = getQuantizedGridCell(position, { width: TILE_SIZE, height: TILE_SIZE });
       const destinations = chooseNineGridDestinations(origin, Math.random() < 0.5 ? 2 : 3, (cell) => cell.x >= 0 && cell.x < GRID.columns && cell.y >= 0 && cell.y < GRID.rows && !pickupSystem.pickups.some((pickup) => pickup.destination?.x === cell.x && pickup.destination?.y === cell.y));
       for (const cell of destinations) {
         pickupSystem.spawn(goldPickupDefinition, { start: position, cell, destination: { x: (cell.x + 0.5) * TILE_SIZE, y: (cell.y + 0.5) * TILE_SIZE } });
@@ -506,6 +348,9 @@ export async function start({ showStartPrompt = true } = {}) {
       visible: false,
     })
   )));
+  const bushLeafAtlas = await loadSpriteAtlas(engine, `${import.meta.env.BASE_URL}assets/particles/bush-particle.png`, {
+    gridSize: [16, 14], sampling: "nearest",
+  });
   const reactiveDecorations = level.reactiveDecorations.map((object, index) => (
     createReactiveDecoration({
       object,
@@ -514,6 +359,7 @@ export async function start({ showStartPrompt = true } = {}) {
       screenHeight: SCREEN_HEIGHT,
       tileSize: TILE_SIZE,
       fireEffect: bushFireEffects[index],
+      leafAtlas: bushLeafAtlas,
       onCharacterEnter: (character) => {
         if (character.type === CharacterType.PLAYER) playSfx("bush");
       },
@@ -575,6 +421,7 @@ export async function start({ showStartPrompt = true } = {}) {
     atlas: arrowAtlas,
     bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
     obstacles: obstacleColliders,
+    onPickup: () => playSfx("bush"),
   });
   let renderer = null;
   let nextActorId = 1;
@@ -619,17 +466,29 @@ export async function start({ showStartPrompt = true } = {}) {
     // must still begin there, so every actor gets the same reveal animation.
     record.combat.beginSpawn();
     if (record.type === SpawnerType.ENEMY && !record.reaction) {
-      record.reaction = createEnemyPerceptionReaction({
-        onStateChange: (state) => playPerceptionSfx(state),
-        onFace: () => record.actor.setMovementIntent?.({ x: 0, y: 0 }),
-        onMoveTo: (cell) => {
-          const current = record.actor.getGridPosition(TILE_SIZE);
-          const dx = cell.x - current.x;
-          const dy = cell.y - current.y;
-          record.actor.setMovementIntent?.(Math.abs(dx) >= Math.abs(dy)
-            ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
+      const geometry = {
+        [SpawnerCharacter.ARCHER]: { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER },
+        [SpawnerCharacter.GOBLIN]: { frame: GOBLIN_FRAME, pivot: GOBLIN_PIVOT, collider: GOBLIN_MOVEMENT_COLLIDER },
+        [SpawnerCharacter.WARRIOR]: { frame: WARRIOR_FRAME, pivot: WARRIOR_PIVOT, collider: WARRIOR_MOVEMENT_COLLIDER },
+        [SpawnerCharacter.LANCER]: { frame: LANCER_FRAME, pivot: LANCER_PIVOT, collider: LANCER_MOVEMENT_COLLIDER },
+        [SpawnerCharacter.MONK]: { frame: MONK_FRAME, pivot: MONK_PIVOT, collider: MONK_MOVEMENT_COLLIDER },
+      }[record.character];
+      record.awareness = createEnemyAwarenessController({
+        actor: record.actor, controller: record.controller, grid: GRID,
+        character: record.character,
+        getPlayer: () => {
+          const player = getRecordsByType(SpawnerType.PLAYER).find(({ combat }) => combat.isAlive);
+          return player ? {
+            id: player.combat.label, isAlive: true,
+            hidden: isPlayerHidden(player.combat.getCombatCollider(), reactiveDecorations),
+            position: player.actor.getPosition(), cell: player.actor.getGridPosition(TILE_SIZE),
+          } : null;
         },
+        isWalkable: createActorWalkability(record.actor, geometry),
+        isAlive: () => record.combat.isAlive,
+        onStateChange: (state) => playPerceptionSfx(state),
       });
+      record.reaction = record.awareness.reaction;
     }
     if ([SpawnerType.PLAYER, SpawnerType.ENEMY].includes(record.type)) {
       characterPerception.register({
@@ -646,6 +505,7 @@ export async function start({ showStartPrompt = true } = {}) {
   }
 
   function disposeActorRecord(record) {
+    record.awareness?.dispose();
     characterPerception.unregister(record.combat.label);
     if (renderer) {
       for (const layer of record.actor.layers) {
@@ -693,7 +553,8 @@ export async function start({ showStartPrompt = true } = {}) {
       }),
       onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }),
       onKnockback: (direction, options) => actor.applyKnockback(direction, options),
-      onDeathStart: () => { actor.setInputEnabled(false); playSfx("lose"); },
+      onDeathStart: () => { actor.setInputEnabled(false); gameStateMachine.playerDefeated(); playSfx("lose"); },
+      onDeathComplete: () => { gameStateMachine.deathCompleted(); pauseController.pause(); levelLostUi.show(); },
     });
     return attachActor({ type: SpawnerType.PLAYER, actor, combat });
   }
@@ -729,10 +590,15 @@ export async function start({ showStartPrompt = true } = {}) {
   }
 
   function getNavigationColliders(actor) {
+    const enemy = getRecordsByType(SpawnerType.ENEMY).find(record => record.actor === actor);
+    const player = getRecordsByType(SpawnerType.PLAYER).find(record => record.combat.isAlive);
+    const bushBlockers = enemy ? getOccupiedBushBlockers(player?.combat.getCombatCollider(),
+      reactiveDecorations, TILE_SIZE, enemy.reaction?.canTrackHiddenPlayer()) : [];
     return [SpawnerType.PLAYER, SpawnerType.SHEEP, SpawnerType.ENEMY]
       .flatMap(type => getRecordsByType(type))
       .filter(record => record.combat.isAlive && record.actor !== actor)
-      .map(record => ({ id: record.combat.label, collider: record.actor.getMovementCollider() }));
+      .map(record => ({ id: record.combat.label, collider: record.actor.getMovementCollider() }))
+      .concat(bushBlockers);
   }
 
   function createActorWalkability(actor, character) {
@@ -765,7 +631,12 @@ export async function start({ showStartPrompt = true } = {}) {
 
   function createArcherRecord(position) {
     const ownerId = `archer-${nextActorId++}`;
-    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders, onShoot: (spawnPosition, target, options) => { playSfx("archer"); const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
+    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders, onShoot: (spawnPosition, target, options) => {
+      playSfx("archer");
+      const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y;
+      const length = Math.hypot(dx, dy) || 1;
+      return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, collisionEnabled: true, rotationEnabled: true, ...options });
+    } });
     const combat = createCombatActorState({ label: ownerId, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
     return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER }) }) });
   }
@@ -816,7 +687,12 @@ export async function start({ showStartPrompt = true } = {}) {
           ...getRecordsByType(SpawnerType.SHEEP),
         ].filter(({ combat: targetCombat }) => targetCombat.isAlive).map((target) => ({
           id: target.combat.label,
+          character: target.type === SpawnerType.PLAYER ? 'player' : 'sheep',
           isAlive: target.combat.isAlive,
+          targetable: target.type !== SpawnerType.PLAYER || canEnemyTargetPlayer({
+            isAlive: target.combat.isAlive,
+            hidden: isPlayerHidden(target.combat.getCombatCollider(), reactiveDecorations),
+          }, record.reaction),
           position: target.actor.getPosition(),
           cell: getCharacterGridCell(target.actor.getMovementCollider(), TILE_SIZE),
         })),
@@ -954,10 +830,12 @@ export async function start({ showStartPrompt = true } = {}) {
     minimumCount: config.character === SpawnerCharacter.SHEEP ? 1 : config.minimumCount,
     maximumCount: config.character === SpawnerCharacter.SHEEP ? 1 : config.maximumCount,
     tileSize: TILE_SIZE,
+    validateSpawnPosition: config.type !== SpawnerType.PLAYER,
     spawnMaxDistance: [SpawnerCharacter.PLAYER, SpawnerCharacter.SHEEP, SpawnerCharacter.GOBLIN, SpawnerCharacter.WARRIOR, SpawnerCharacter.ARCHER, SpawnerCharacter.MONK]
       .includes(config.character) ? 0 : 1,
     isWalkable: (_position, cell) => spawnWalkability[config.character](cell,
       spawners.flatMap((otherSpawner) => otherSpawner.actors
+        .filter((record) => record.combat.isAlive)
         .map((record) => ({ collider: record.actor.getMovementCollider() }))),
     ),
     getWalkableCells: () => Array.from({ length: GRID.rows }, (_, y) => y)
@@ -1036,7 +914,7 @@ export async function start({ showStartPrompt = true } = {}) {
     layers: [
       ...terrainLayers,
       visionShadowLayer,
-      ...reactiveDecorations.map((decoration) => decoration.layer),
+      ...reactiveDecorations.flatMap((decoration) => decoration.layers),
       ...goldStoneObjects.map((object) => object.layer),
       ...pickupSystem.pickups.map((pickup) => pickup.layer),
       ...bushFireEffects.map((effect) => effect.layer),
@@ -1167,6 +1045,7 @@ export async function start({ showStartPrompt = true } = {}) {
   const goal = createGoal({ host: gameUi, artworkUrl: "./assets/goals/Goal.png", position: { x: (level.goals[0].gameCell.x + 0.5) * TILE_SIZE, y: (level.goals[0].gameCell.y + 0.5) * TILE_SIZE }, screenWidth: SCREEN_WIDTH, screenHeight: SCREEN_HEIGHT });
   const levelCompleteUi = createLevelCompleteUi({ host: domBody, onContinue: () => window.location.reload() });
   const gameStateMachine = createGameStateMachine();
+  const levelLostUi = createLevelCompleteUi({ host: domBody, outcome: "loss", onContinue: () => window.location.reload() });
   const startGamePrompt = shouldShowStartGamePrompt({ showStartPrompt })
     ? createStartGamePrompt({
       host: domBody,
@@ -1184,7 +1063,7 @@ export async function start({ showStartPrompt = true } = {}) {
   function update(currentTime) {
     const deltaSeconds = Math.min((currentTime - previousTime) / 1000, 0.05);
     previousTime = currentTime;
-    const activeDelta = pauseController.getDelta(deltaSeconds);
+    let activeDelta = [GameState.LEVEL_LOST, GameState.LEVEL_COMPLETE].includes(gameStateMachine.state) ? 0 : pauseController.getDelta(deltaSeconds);
     if (gameStateMachine.state === GameState.LEVEL_START) {
       gameStateMachine.assetsLoaded();
     }
@@ -1195,7 +1074,12 @@ export async function start({ showStartPrompt = true } = {}) {
       for (const spawner of spawners) {
         for (const record of spawner.actors) {
           record.combat.updateSpawn(activeDelta);
+          if (record.type === SpawnerType.PLAYER && record.combat.isDying) {
+            record.actor.update(activeDelta, [...getRecordsByType(SpawnerType.ENEMY), ...getRecordsByType(SpawnerType.SHEEP)]
+              .filter(other => other.combat.isAlive).map(other => ({ collider: other.actor.getMovementCollider() })));
+          }
           record.combat.updateDeath(activeDelta);
+          if (gameStateMachine.state === GameState.LEVEL_LOST) activeDelta = 0;
           if (record.combat.isDead) {
             spawner.remove(record);
           }
@@ -1216,10 +1100,10 @@ export async function start({ showStartPrompt = true } = {}) {
       if (!TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS) {
         separateOverlappingCharacterColliders(characterRecords, 0.01, 8, obstacleColliders);
       }
-      const playerMovementCollider = playerRecord?.combat.isAlive
+      let playerMovementCollider = playerRecord?.combat.isAlive
         ? playerRecord.actor.getMovementCollider()
         : null;
-      const playerCombatCollider = playerRecord?.combat.getCombatCollider() ?? null;
+      let playerCombatCollider = playerRecord?.combat.getCombatCollider() ?? null;
       const sheepMovementColliders = sheepRecords.map((record) => ({
         record,
         collider: record.combat.isAlive ? record.actor.getMovementCollider() : null,
@@ -1246,11 +1130,17 @@ export async function start({ showStartPrompt = true } = {}) {
             .map(({ collider }) => ({ type: CharacterType.ENEMY, collider })),
         ];
         playerMovement = playerRecord.actor.update(activeDelta, dynamicColliders).movement;
+        playerMovementCollider = playerRecord.actor.getMovementCollider();
+        playerCombatCollider = playerRecord.combat.getCombatCollider();
+        playerRecord.actor.observeHidingBushes(reactiveDecorations.filter(bush =>
+          bush.isAlive && collidersOverlap(playerCombatCollider, bush.getCombatCollider())));
       }
 
       const playerSnapshot = playerRecord
         ? {
             type: CharacterType.PLAYER,
+            isAlive: playerRecord.combat.isAlive,
+            hidden: isPlayerHidden(playerCombatCollider, reactiveDecorations),
             position: playerRecord.actor.getPosition(),
             cell: playerRecord.actor.getGridPosition(TILE_SIZE),
             detectedBy: characterPerception.getSnapshot().detections
@@ -1318,6 +1208,7 @@ export async function start({ showStartPrompt = true } = {}) {
 
       for (const record of enemyRecords) {
         if (!record.combat.isAlive) {
+          record.awareness?.dispose();
           record.controller.cancel?.();
           continue;
         }
@@ -1327,10 +1218,13 @@ export async function start({ showStartPrompt = true } = {}) {
         if (TEMPORARILY_FREEZE_ENEMY_AI) {
           record.actor.setMovementIntent?.({ x: 0, y: 0 });
         } else {
-          record.controller.update(activeDelta);
+          record.awareness.update(activeDelta);
         }
         record.actor.update(activeDelta, getNavigationColliders(record.actor), record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot
-          ? { ...playerSnapshot, detected: playerSnapshot.detectedBy.includes(record.combat.label) }
+          ? { ...playerSnapshot, targetable: canEnemyTargetPlayer(playerSnapshot, record.reaction),
+            detected: canEnemyTargetPlayer(playerSnapshot, record.reaction)
+              && (playerSnapshot.detectedBy.includes(record.combat.label)
+                || (playerSnapshot.hidden && record.reaction.canTrackHiddenPlayer())) }
           : null);
       }
       characterPerception.update(activeDelta);
@@ -1477,9 +1371,15 @@ export async function start({ showStartPrompt = true } = {}) {
       for (const object of goldStoneObjects) object.update(activeDelta);
       pickupSystem.update(activeDelta, playerCombatCollider);
 
-      projectiles.update(activeDelta);
+      resolveMeleeImpacts(enemyRecords, playerRecord);
+      projectiles.update(activeDelta, [], (arrow) => resolveEnemyArrowPlayerHit(arrow, playerRecord));
+      projectiles.collectGroundedArrows(enemyRecords
+        .filter(({ character, combat }) => character === SpawnerCharacter.ARCHER && combat.isAlive)
+        .map(({ combat }) => ({ id: combat.label, collider: combat.getCombatCollider() })));
       const projectilesToRemove = [];
       for (const { id, collider, direction, ownerId } of projectiles.getColliders()) {
+        // Owned archer arrows hit only the player through the flight-step check above.
+        if (ownerId != null) continue;
         let hit = false;
         for (const target of [...sheepCombatColliders, ...enemyCombatColliders, ...goldStoneObjects.map((object) => ({ record: { type: "object", combat: object }, collider: object.getCombatCollider() }))]) {
           if (!target.record.combat.isAlive || !target.collider || target.record.combat.label === ownerId) {
@@ -1512,22 +1412,6 @@ export async function start({ showStartPrompt = true } = {}) {
             continue;
           }
           const touching = collidersOverlap(playerCombatCollider, collider);
-          if (
-            touching
-            && (
-              record.actor.state === EnemyState.ATTACKING
-              || record.actor.isAttacking
-            )
-          ) {
-            const pair = makeTouchKey(record.combat.label, playerRecord.combat.label);
-            nextTouchPairs.add(pair);
-            if (!activeTouchPairs.has(pair)) {
-              playerRecord.combat.applyDamage(
-                25,
-                makeDirection(record.actor.getPosition(), playerRecord.actor.getPosition()),
-              );
-            }
-          }
           if (touching && (playerMovement.x !== 0 || playerMovement.y !== 0)) {
             const pair = makeTouchKey(playerRecord.combat.label, record.combat.label);
             nextTouchPairs.add(pair);
@@ -1591,6 +1475,7 @@ export async function start({ showStartPrompt = true } = {}) {
     ].filter(({ combat }) => combat.isAlive).map((record) => ({
       actor: record.actor,
       combat: record.combat,
+      type: record.type,
       movementCollider: record.actor.getMovementCollider(),
       character: record.character,
       reaction: record.reaction,
@@ -1606,6 +1491,11 @@ export async function start({ showStartPrompt = true } = {}) {
       expression: record.expression,
       expressionInstances: record.expressionInstances,
       perception: record.actor.getPerceptionSnapshot?.() ?? null,
+      isPlayer: record.type === SpawnerType.PLAYER,
+      gridSpot: record.actor.getGridSpot?.() ?? new GridSpot(
+        getColliderCenter(record.actor.getMovementCollider()),
+        { width: TILE_SIZE, height: TILE_SIZE },
+      ),
     }));
     diagnosticCharacters.push(...reactiveDecorations
       .filter((decoration) => !decoration.isDead)
@@ -1614,18 +1504,12 @@ export async function start({ showStartPrompt = true } = {}) {
         if (!combatCollider) return null;
         const centerX = combatCollider.x + combatCollider.width / 2;
         const centerY = combatCollider.y + combatCollider.height / 2;
-        const gridCollider = {
-          x: Math.floor(centerX / TILE_SIZE) * TILE_SIZE,
-          y: Math.floor(centerY / TILE_SIZE) * TILE_SIZE,
-          width: TILE_SIZE,
-          height: TILE_SIZE,
-        };
         return {
-        combatCollider: gridCollider,
-        centerCollider: gridCollider,
+        combatCollider,
         // The bush sensor is a non-blocking trigger, not a walkability
         // collider. Keep it out of the green movement-collider diagnostics.
         movementCollider: null,
+        gridSpot: decoration.getGridSpot?.() ?? new GridSpot({ x: centerX, y: centerY }, { width: TILE_SIZE, height: TILE_SIZE }),
         };
       }).filter(Boolean));
     diagnosticCharacters.push(...goldStoneObjects
@@ -1633,14 +1517,27 @@ export async function start({ showStartPrompt = true } = {}) {
       .map((object) => ({
         combatCollider: object.getCombatCollider(),
         movementCollider: null,
+        gridSpot: new GridSpot(getColliderCenter(object.getCombatCollider()), { width: TILE_SIZE, height: TILE_SIZE }),
       })));
     diagnosticCharacters.push(...pickupSystem.pickups
       .filter((pickup) => !pickup.isDead)
       .map((pickup) => ({
         combatCollider: pickup.getCombatCollider(),
-        centerCollider: pickup.getCombatCollider(),
         movementCollider: null,
+        gridSpot: new GridSpot(pickup.position, { width: TILE_SIZE, height: TILE_SIZE }),
       })));
+    diagnosticCharacters.push(...[...projectiles.getColliders(), ...projectiles.getPickupColliders()].map(({ collider, gridSpot }) => ({
+      gridSpot: gridSpot ?? new GridSpot(getColliderCenter(collider), { width: TILE_SIZE, height: TILE_SIZE }),
+      movementCollider: null,
+      combatCollider: collider,
+    })));
+    if (goal?.combatCollider) {
+      diagnosticCharacters.push({
+        gridSpot: goal.getGridSpot?.() ?? new GridSpot(getColliderCenter(goal.combatCollider), { width: TILE_SIZE, height: TILE_SIZE }),
+        combatCollider: goal.combatCollider,
+        movementCollider: null,
+      });
+    }
     drawDiagnostics(
       terrainTiles,
       diagnosticCharacters,
@@ -1688,6 +1585,7 @@ export async function start({ showStartPrompt = true } = {}) {
     for (const object of goldStoneObjects) object.dispose();
     goal.dispose();
     levelCompleteUi.dispose();
+    levelLostUi.dispose();
     startGamePrompt?.close();
     pickupSystem.dispose();
     projectiles.dispose();
@@ -1905,8 +1803,13 @@ function drawDiagnostics(
       style.strokeStyle,
     );
   }
-  for (const center of createCharacterCenterDrawCommands(diagnosticCharacters)) {
-    drawCharacterCenterMarker(center);
+  // Draw the black live-center marker first so the white logical marker
+  // remains visually closer to the camera when both occupy the same area.
+  for (const marker of createPlayerCenterMarkerCommands(diagnosticCharacters)) {
+    drawGridSpotMarker(debugContext, marker, SCREEN_HEIGHT);
+  }
+  for (const marker of createGridSpotMarkerCommands(diagnosticCharacters)) {
+    drawGridSpotMarker(debugContext, marker, SCREEN_HEIGHT);
   }
   for (const command of createPerceptionDrawCommands(perceptionSnapshot, TILE_SIZE, performance.now())) {
     debugContext.beginPath();

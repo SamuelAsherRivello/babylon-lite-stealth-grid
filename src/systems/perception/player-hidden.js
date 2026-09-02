@@ -2,6 +2,21 @@ import { collidersOverlap } from "../../gameplay/game-logic.js";
 
 const HIDDEN_OPACITY = 0.6;
 
+export function canEnemyTargetPlayer(player, reaction = null) {
+  return Boolean(player && player.isAlive !== false && player.targetable !== false
+    && (!player.hidden || player.targetable === true || reaction?.canTrackHiddenPlayer?.()));
+}
+
+// The whole occupied bush cell blocks movement, even at partial player overlap.
+export function getOccupiedBushBlockers(playerCombatCollider, bushes, tileSize, canTrack = false) {
+  if (canTrack || !playerCombatCollider) return [];
+  return bushes.filter(bush => bush?.isAlive !== false && bush?.cell
+    && bush.getCombatCollider?.() && collidersOverlap(playerCombatCollider, bush.getCombatCollider()))
+    .map(bush => ({ id: bush.id, type: 'bush', cell: { ...bush.cell }, collider: {
+      x: bush.cell.x * tileSize, y: bush.cell.y * tileSize, width: tileSize, height: tileSize,
+    } }));
+}
+
 export function isPlayerHidden(playerCombatCollider, bushes) {
   return getPlayerHidingBush(playerCombatCollider, bushes) !== null;
 }

@@ -152,7 +152,11 @@ export function normalizeTiledMap(map, externalTilesets) {
         ...propertiesToObject(object.properties),
       };
       const column = Math.floor(object.x / map.tilewidth);
-      const row = Math.floor(object.y / map.tileheight) - (object.gid ? 1 : 0);
+      // Tile objects anchor at their bottom edge. Only an exact grid boundary
+      // belongs to the preceding row; off-grid anchors stay in their own row.
+      const row = object.gid
+        ? Math.ceil(object.y / map.tileheight) - 1
+        : Math.floor(object.y / map.tileheight);
       return [{
         id: object.id,
         name: object.name ?? "",

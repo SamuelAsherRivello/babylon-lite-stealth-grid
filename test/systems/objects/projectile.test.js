@@ -8,6 +8,38 @@ import {
   getProjectileCollider,
 } from "../../../src/systems/objects/projectile.js";
 
+for (const facing of [-1, 1]) for (const squares of [1, 2, 3, 4]) {
+  test(`arc travels ${squares} squares facing ${facing} and freezes at release height`, () => {
+    const start = { x: 400, y: 300 };
+    const arrow = createProjectile(start, { x: facing, y: 0 }, {
+      target: { x: start.x + facing * squares * 64, y: 900 },
+      initialVelocityDirection: { x: facing, y: 0.85 },
+      collisionEnabled: false,
+    });
+    const bounds = { width: 1024, height: 1024 };
+    advanceProjectile(arrow, arrow.flightSeconds / 2, bounds, []);
+    assert.equal(arrow.position.x, start.x + facing * squares * 32);
+    assert.equal(arrow.position.y, start.y);
+    assert.ok(arrow.height > 0);
+    advanceProjectile(arrow, 10, bounds, []);
+    assert.deepEqual(arrow.position, { x: start.x + facing * squares * 64, y: start.y });
+    assert.equal(arrow.height, 0);
+    assert.equal(arrow.active, false);
+    assert.equal(arrow.state, "landed");
+    const frozen = structuredClone(arrow);
+    advanceProjectile(arrow, 10, bounds, []);
+    assert.deepEqual(arrow, frozen);
+  });
+}
+
+test("arc range is rounded to whole squares and capped at four", () => {
+  for (const [distance, squares] of [[0, 1], [90, 1], [110, 2], [200, 3], [10000, 4]]) {
+    const arrow = createProjectile({ x: 0, y: 0 }, { x: 1, y: 0 }, { target: { x: distance, y: 0 } });
+    advanceProjectile(arrow, 100, { width: 20000, height: 1024 }, []);
+    assert.equal(arrow.position.x, squares * 64);
+  }
+});
+
 test("the arrow renders and collides at 200 percent of its prior size", () => {
   assert.deepEqual(ARROW_SIZE, { width: 72, height: 20 });
 });

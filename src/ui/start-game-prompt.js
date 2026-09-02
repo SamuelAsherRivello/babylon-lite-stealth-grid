@@ -1,4 +1,4 @@
-const START_PROMPT_BODY = "Reach the flag to win. Avoid audio/visual detection of enemies. Currently pointless gameplay is: gold, attack, items. tap 1/2 keys for pointless fun.";
+const START_PROMPT_BODY = "Use bushes to hide. Reach the flag to win. Collect gold for fun.";
 
 export function shouldShowStartGamePrompt({ showStartPrompt = true } = {}) {
   return showStartPrompt !== false;

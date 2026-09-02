@@ -14,6 +14,7 @@ import {
   getCharacterMovementCollider,
 } from "./character-contract.js";
 import { getCharacterLayerOrder } from "./character-spatial.js";
+import { GridSpot } from "../systems/environment/grid-spot.js";
 
 export function createSharedCharacterActor({
   definition,
@@ -26,6 +27,7 @@ export function createSharedCharacterActor({
   api = { addSprite2D, createSprite2DLayer, playSprite2DAnimation, removeSprite2D, stopSpriteAnimation, updateSprite2D },
 }) {
   let position = { ...initialPosition };
+  const gridSpot = new GridSpot(position, { width: tileSize, height: tileSize });
   let activeAnimation = null;
   let animationManager = null;
   let currentAnimation = null;
@@ -82,11 +84,18 @@ export function createSharedCharacterActor({
   return {
     layers: Object.values(layers),
     getPosition: () => ({ ...position }),
-    setPosition(next) { position = { ...next }; updateSprites(); },
+    setPosition(next) { position = { ...next }; gridSpot.update(position); updateSprites(); },
     getMovementCollider: () => getCharacterMovementCollider(position, definition),
     getCombatCollider: () => getCharacterCombatCollider(position, tileSize),
+    faceDirection(direction) {
+      if (disposed) return;
+      if (Math.abs(direction.y) > Math.abs(direction.x)) heading = direction.y < 0 ? "up" : "down";
+      else if (direction.x !== 0) heading = direction.x < 0 ? "left" : "right";
+      if (direction.x !== 0) updateSprites({ flipX: direction.x < 0 });
+    },
     setMovementIntent(intent) {
       movementIntent = { x: intent.x, y: intent.y };
+      if (movementIntent.x !== 0) updateSprites({ flipX: movementIntent.x < 0 });
       if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
         heading = movementIntent.y < 0 ? "up" : "down";
       } else if (movementIntent.x !== 0) {
@@ -97,15 +106,15 @@ export function createSharedCharacterActor({
     update(deltaSeconds, dynamicColliders = []) {
       const movement = movementIntent;
       position = gridMovement.move(position, movement, movementSpeed * Math.max(0, deltaSeconds), deltaSeconds, bounds, [...obstacles, ...dynamicColliders.map(({ collider }) => collider)]);
+      gridSpot.update(position);
       if (movement.x !== 0 || movement.y !== 0) {
         if (sprites.walking) this.playAnimation("walking");
       } else this.playAnimation("idle");
       updateSprites();
       return { position: { ...position }, state: movement.x || movement.y ? "walking" : "idle" };
     },
-    getGridPosition: (size) => ({
-      x: Math.floor(position.x / size), y: Math.floor(position.y / size),
-    }),
+    getGridPosition: () => ({ ...gridSpot.cell }),
+    getGridSpot: () => gridSpot,
     setArtYOffset(value) { artYOffset = Number.isFinite(value) ? value : 0; updateSprites(); },
     setVisualTransform(patch) { updateSprites(patch); },
     playAnimation(name) {

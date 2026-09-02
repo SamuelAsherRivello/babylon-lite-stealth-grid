@@ -1,5 +1,7 @@
 import { addSprite2D, createSprite2DLayer, playSprite2DAnimation, removeSprite2D, stopSpriteAnimation, updateSprite2D } from "@babylonjs/lite";
 import { getYSortedLayerOrder } from "../environment/render-depth.js";
+import { GridSpot } from "../environment/grid-spot.js";
+import { GRID } from "../environment/grid-contract.js";
 
 const DEFAULT_API = { addSprite2D, createSprite2DLayer, playSprite2DAnimation, removeSprite2D, stopSpriteAnimation, updateSprite2D };
 const DEATH_SECONDS = 0.25;
@@ -11,11 +13,14 @@ export function createGoldStone({ object, atlas = null, animationManager = null,
     positionPx: [object.position.x, screenHeight - object.position.y],
     sizePx: [descriptor.frameSize.width, descriptor.frameSize.height], frame: 0,
   });
+  const gridSpot = new GridSpot(object.position, GRID);
   let health = 1; let dying = false; let dead = false; let elapsed = 0; let idleRemaining = 5 + random() * 5; let animation = null;
   const rotation = Math.PI / 9;
   return {
     layer, sprite, type: "GoldObject", id: `gold-object-${object.id}`,
     position: { ...object.position },
+    getGridSpot() { return gridSpot; },
+    get cell() { return { ...gridSpot.cell }; },
     get health() { return health; }, get isAlive() { return !dying && !dead; },
     get isDying() { return dying; }, get isDead() { return dead; },
     getCombatCollider() { return this.isAlive ? descriptor.combatCollider : null; },

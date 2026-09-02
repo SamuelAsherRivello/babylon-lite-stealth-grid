@@ -1,3 +1,5 @@
+import { canEnemyTargetPlayer } from '../../../systems/perception/player-hidden.js';
+
 export const ARCHER_FACING_RANGE = 5 * 64;
 export const ARCHER_ATTACK_RANGE = 4 * 64;
 export const ARCHER_RECOVERY_SECONDS = 0.75;
@@ -9,7 +11,7 @@ export function getDistanceSquared(from, to) {
 }
 
 export function chooseArcherAction(position, player, state = "ready") {
-  if (!player || player.isAlive === false || player.detected !== true) return { state, facing: 0, target: null };
+  if (!canEnemyTargetPlayer(player) || player.detected !== true) return { state, facing: 0, target: null };
   const distanceSquared = getDistanceSquared(position, player.position);
   const facing = player.position.x < position.x ? -1 : 1;
   if (state === "ready" && distanceSquared <= ARCHER_ATTACK_RANGE ** 2) {

@@ -267,12 +267,12 @@ test("Level01 exposes the current authored enemy roster and player placement", a
   const { map, externalTilesets } = await readLevelWithTilesets();
   const level = normalizeTiledMap(map, externalTilesets);
   assert.deepEqual(level.spawners.map(({ type, gameCell }) => ({ type, gameCell })), [
-    { type: "MONK", gameCell: { x: 5, y: 13 } },
-    { type: "PLAYER", gameCell: { x: 3, y: 4 } },
-    { type: "GOBLIN", gameCell: { x: 0, y: 12 } },
-    { type: "WARRIOR", gameCell: { x: 0, y: 6 } },
-    { type: "ARCHER", gameCell: { x: 1, y: 9 } },
-    { type: "LANCER", gameCell: { x: 8, y: 8 } },
+    { type: "MONK", gameCell: { x: 5, y: 12 } },
+    { type: "PLAYER", gameCell: { x: 3, y: 3 } },
+    { type: "GOBLIN", gameCell: { x: 0, y: 11 } },
+    { type: "WARRIOR", gameCell: { x: 0, y: 5 } },
+    { type: "ARCHER", gameCell: { x: 1, y: 8 } },
+    { type: "LANCER", gameCell: { x: 8, y: 10 } },
   ]);
 });
 

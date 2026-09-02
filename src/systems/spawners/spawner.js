@@ -32,6 +32,7 @@ export function createSpawner({
   spawnMode = SPAWN_MODE_NEARBY,
   spawnMaxDistance = 1,
   getWalkableCells = null,
+  validateSpawnPosition = false,
   isWalkable = () => true,
   getActorPosition = (actor) => actor?.position ?? actor?.actor?.getPosition?.(),
   createActor,
@@ -145,7 +146,7 @@ export function createSpawner({
     let created = 0;
     for (let index = 0; index < count; index += 1) {
       const exactInitialSpawn = actors.length === 0 && spawnMaxDistance === 0;
-      const candidates = exactInitialSpawn
+      let candidates = exactInitialSpawn
         ? [{ ...config.position }]
         : tileSize === null
         ? [{ ...config.position }]
@@ -155,6 +156,21 @@ export function createSpawner({
             { x: Math.floor(candidate.x / tileSize), y: Math.floor(candidate.y / tileSize) },
           ))
           : getNearbySpawnPositions();
+      if (validateSpawnPosition && tileSize !== null) {
+        const cellOf = p => ({ x: Math.floor(p.x / tileSize), y: Math.floor(p.y / tileSize) });
+        const occupied = new Set(actors.map(getActorPosition).filter(Boolean).map(p => `${cellOf(p).x},${cellOf(p).y}`));
+        const available = p => {
+          const cell = cellOf(p);
+          return !occupied.has(`${cell.x},${cell.y}`) && isWalkable(p, cell);
+        };
+        candidates = candidates.filter(available);
+        if (!candidates.length) {
+          const origin = cellOf(config.position);
+          const distance = p => Math.abs(cellOf(p).x - origin.x) + Math.abs(cellOf(p).y - origin.y);
+          candidates = getAnywhereSpawnPositions().filter(available)
+            .sort((a, b) => distance(a) - distance(b) || a.y - b.y || a.x - b.x).slice(0, 1);
+        }
+      }
       if (candidates.length === 0) {
         break;
       }

@@ -8,8 +8,8 @@ export function createCoordinatesUi(documentRef = globalThis.document) {
       container.hidden = !visible;
     },
     update(pixelPosition, gridPosition) {
-      pixelOutput.value = `X ${Math.round(pixelPosition.x)} · Y ${Math.round(pixelPosition.y)}`;
-      gridOutput.value = `C ${gridPosition.x} · R ${gridPosition.y}`;
+      pixelOutput.value = `Pos:  (${Math.round(pixelPosition.x)},${Math.round(pixelPosition.y)})`;
+      gridOutput.value = `Grid: (${gridPosition.y},${gridPosition.x})`;
     },
   };
 }

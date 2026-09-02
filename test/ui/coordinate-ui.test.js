@@ -11,9 +11,12 @@ test("Coordinates UI lives in src/ui and contains separate pixel and grid output
   assert.match(html, /id="coordinates-ui" class="coordinates-ui"/);
   assert.match(html, /id="coordinates-ui-pixel"/);
   assert.match(html, /id="coordinates-ui-grid"/);
-  assert.match(html, />C 3 · R 7<\/output>/);
-  assert.match(css, /\.coordinates-ui\s*\{[^}]*right:\s*var\(--ui-safe-right\)/s);
-  assert.match(css, /\.coordinates-ui\s*\{[^}]*top:\s*max\(18cqw, var\(--ui-safe-top\)\);[^}]*text-align:\s*center;/s);
+  assert.match(html, />Pos:  \(288,512\)<\/output>/);
+  assert.match(html, />Grid: \(7,3\)<\/output>/);
+  assert.match(css, /\.gold-counter,\s*\.coordinates-ui\s*\{/);
+  assert.match(css, /\.coordinates-ui\s*\{[^}]*top:\s*calc\(var\(--ui-safe-top\) \+ 3em\);/s);
+  assert.doesNotMatch(css, /\.coordinates-ui\s*\{[^}]*white-space:\s*pre;/s);
+  assert.match(css, /\.coordinates-ui output\s*\{[^}]*white-space:\s*pre;/s);
   assert.match(source, /export function createCoordinatesUi/);
   assert.doesNotMatch(html, /id="coordinates"|class="coordinates"/);
   assert.doesNotMatch(css, /\.coordinates(?:\s|,|\{)/);
@@ -37,6 +40,9 @@ test("Coordinates UI visibility follows the collider diagnostic setting", () => 
 
   ui.setVisible(true);
   assert.equal(container.hidden, false);
+  ui.update({ x: 317.2, y: 641.8 }, { x: 4, y: 10 });
+  assert.equal(pixelOutput.value, "Pos:  (317,642)");
+  assert.equal(gridOutput.value, "Grid: (10,4)");
 });
 
 test("virtual controller contains matching Move, Item (C), and Attack (V) labels", async () => {

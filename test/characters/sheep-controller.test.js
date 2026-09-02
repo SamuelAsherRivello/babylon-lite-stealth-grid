@@ -84,7 +84,7 @@ test("sheep remains stationary through the complete bounce before running", () =
   assert.deepEqual(sheep.getPosition(), start);
 });
 
-test("sheep moves without overshoot, faces travel, and returns idle on a cell center", () => {
+test("sheep moves without overshoot, faces travel, and enters cooldown on a cell center", () => {
   const { api, sheep } = createTestSheep({
     minimumFleeDistanceCells: 1,
     maximumFleeDistanceCells: 1,
@@ -93,13 +93,13 @@ test("sheep moves without overshoot, faces travel, and returns idle on a cell ce
   api.animations.at(-1).options.onEnd();
   sheep.update(1, [nearbyPlayer]);
 
-  assert.equal(sheep.state, SheepState.IDLE);
+  assert.equal(sheep.state, SheepState.COOLDOWN);
   assert.deepEqual(sheep.getPosition(), { x: 288, y: 224 });
   assert.equal(api.spriteUpdates.at(-1).positionPx[1], 224);
   assert.equal(api.spriteUpdates.at(-1).flipX, false);
 });
 
-test("sheep stops safely if a planned segment becomes blocked", () => {
+test("sheep takes a safe alternative if a planned segment becomes blocked", () => {
   const obstacles = [];
   const { api, sheep } = createTestSheep({
     obstacles,
@@ -112,8 +112,9 @@ test("sheep stops safely if a planned segment becomes blocked", () => {
   sheep.update(1, []);
   sheep.update(1, []);
 
-  assert.equal(sheep.state, SheepState.IDLE);
-  assert.deepEqual(sheep.getPosition(), { x: 224, y: 224 });
+  assert.equal(sheep.state, SheepState.COOLDOWN);
+  assert.notDeepEqual(sheep.getPosition(), { x: 224, y: 224 });
+  assert.notDeepEqual(sheep.getPosition(), { x: 288, y: 224 });
 });
 
 test("player and NPC dynamic colliders both block fleeing", () => {
@@ -166,7 +167,7 @@ test("contact command cancels running, bounces stationary, then separates", () =
   assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
 });
 
-test("coincident contact partners can move apart without ignoring other sheep", () => {
+test("coincident contact partners wait without crossing colliders and retry after separation", () => {
   const { api, sheep } = createTestSheep();
   const coincidentPartner = {
     type: "npc",
@@ -182,7 +183,10 @@ test("coincident contact partners can move apart without ignoring other sheep", 
   api.animations.at(-1).options.onEnd();
   assert.equal(sheep.state, SheepState.RUNNING);
   sheep.update(1, [], [coincidentPartner]);
-  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
+  assert.deepEqual(sheep.getPosition(), { x: 224, y: 224 });
+  assert.equal(sheep.getNavigationSnapshot().recoveryState, "waiting");
+  for (let i = 0; i < 240; i++) sheep.update(1 / 60, [], []);
+  assert.notDeepEqual(sheep.getPosition(), { x: 224, y: 224 });
 });
 
 test("knockback cannot move through another living sheep", () => {

@@ -53,7 +53,7 @@ export function createSfxPlayer({ context, baseUrl, fetchAudio = fetch, volume =
 export function isInteractiveButton(target) {
   const button = target?.closest?.('button, [role="button"], input[type="button"], input[type="submit"], input[type="reset"]');
   return Boolean(button && !button.matches(':disabled')
-    && !button.closest('[inert], [hidden], [aria-disabled="true"]'));
+    && !button.closest('.virtual-controller, [inert], [hidden], [aria-disabled="true"]'));
 }
 
 let player;

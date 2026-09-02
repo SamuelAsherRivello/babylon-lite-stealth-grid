@@ -251,3 +251,28 @@ test("zero-distance initial spawns use the exact configured position", () => {
   spawner.initialize();
   assert.deepEqual(positions, [{ x: 224, y: 405.76 }]);
 });
+
+test('validated exact autonomous spawn chooses nearest available cell with stable ties', () => {
+  const { spawner } = createHarness({
+    position: { x: 32, y: 800 }, minimumCount: 1, maximumCount: 1,
+    tileSize: 64, spawnMaxDistance: 0, guaranteeInitialPopulation: true,
+    validateSpawnPosition: true,
+    getWalkableCells: () => [{ x: 0, y: 13 }, { x: 0, y: 11 }, { x: 2, y: 12 }],
+    isWalkable: (_position, cell) => !(cell.x === 0 && cell.y === 12),
+  });
+  spawner.initialize();
+  assert.deepEqual(spawner.actors[0].position, { x: 32, y: 736 });
+});
+test('validated autonomous spawn defers until an occupied cell becomes available', () => {
+  let available = false;
+  const { spawner } = createHarness({
+    position: { x: 32, y: 32 }, minimumCount: 1, maximumCount: 1,
+    tileSize: 64, spawnMaxDistance: 0, guaranteeInitialPopulation: true,
+    validateSpawnPosition: true, getWalkableCells: () => [{ x: 0, y: 0 }],
+    isWalkable: () => available,
+  });
+  assert.equal(spawner.initialize(), 0);
+  available = true;
+  assert.equal(spawner.update(1), 1);
+  assert.deepEqual(spawner.actors[0].position, { x: 32, y: 32 });
+});

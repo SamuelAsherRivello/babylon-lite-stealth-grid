@@ -1,3 +1,5 @@
+import { createDistanceImpulse } from "../../gameplay/player-damage.js";
+import { createBushGravity } from "./bush-gravity.js";
 import {
   addSprite2D,
   createSprite2DLayer,
@@ -10,6 +12,7 @@ import {
 import {
   createGridAlignedMovementController,
   getCharacterCollider,
+  isColliderWithinBounds,
   getMovementVector,
   moveWithCollisions,
   selectMovementInput,
@@ -19,6 +22,7 @@ import { GRID } from "../../systems/environment/grid-contract.js";
 import { PlayerState, createPlayerStateMachine } from "./player-state.js";
 import { createVirtualController } from "../../../plugins/virtual-controller-babylon-lite/index.js";
 import { getCharacterGridCell, getCharacterLayerOrder } from "../character-spatial.js";
+import { GridSpot } from "../../systems/environment/grid-spot.js";
 import {
   PLAYER_ITEMS,
   PLAYER_PAWN_FRAME,
@@ -124,6 +128,7 @@ export function createPlayer({
   onDropItem = () => {},
 }) {
   let position = { ...initialPosition };
+  const gridSpot = new GridSpot(position, { width: GRID.tileSizePx, height: GRID.tileSizePx });
   const getArtScreenPosition = (worldPosition) => worldToScreen({
     x: worldPosition.x + PLAYER_ART_OFFSET.x,
     y: worldPosition.y + PLAYER_ART_OFFSET.y,
@@ -152,9 +157,8 @@ export function createPlayer({
 
   const pressedKeys = new Set();
   let inputEnabled = true;
-  let knockback = { x: 0, y: 0 };
-  let knockbackTimer = 0;
-  let knockbackDuration = 0;
+  const bushGravity = createBushGravity();
+  const knockbackImpulse = createDistanceImpulse();
   const stateMachine = createPlayerStateMachine();
   let weaponSlot = null;
   let itemSlot = null;
@@ -173,6 +177,7 @@ export function createPlayer({
   );
 
   function getSelectedMovement() {
+    if (!inputEnabled) return { x: 0, y: 0 };
     return selectMovementInput(
       getMovementVector(pressedKeys),
       virtualController.getMovement(),
@@ -392,26 +397,15 @@ export function createPlayer({
   function applyKnockback(direction, {
     duration = DEFAULT_KNOCKBACK_DURATION_SECONDS,
     speed = DEFAULT_KNOCKBACK_SPEED,
+    distance = speed * duration / 2,
   } = {}) {
-    const normalizer = Math.hypot(direction.x, direction.y) || 1;
-    knockback = {
-      x: direction.x / normalizer * speed,
-      y: direction.y / normalizer * speed,
-    };
-    knockbackTimer = duration;
-    knockbackDuration = Math.max(0.0001, duration);
+    knockbackImpulse.start(direction, { distance, duration });
+    bushGravity.cancel();
   }
 
   function getKnockbackMovement(deltaSeconds) {
-    if (knockbackTimer <= 0) {
-      return null;
-    }
-    const intensity = Math.max(0, knockbackTimer / knockbackDuration);
-    knockbackTimer = Math.max(0, knockbackTimer - Math.max(0, deltaSeconds));
-    return {
-      x: knockback.x * intensity,
-      y: knockback.y * intensity,
-    };
+    const displacement = knockbackImpulse.step(deltaSeconds);
+    return displacement && { x: displacement.x / Math.max(deltaSeconds, 1e-9), y: displacement.y / Math.max(deltaSeconds, 1e-9) };
   }
 
   window.addEventListener("keydown", handleKeyDown);
@@ -420,6 +414,12 @@ export function createPlayer({
 
   return {
     layers: Object.values(layers),
+    observeHidingBushes(bushes) {
+      const wasActive = bushGravity.active;
+      bushGravity.observe(bushes, position, inputEnabled && !knockbackImpulse.active);
+      if (wasActive !== bushGravity.active) gridAlignedMovement.reset();
+    },
+    isGravityMoving() { return bushGravity.active; },
     dispose() {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
@@ -448,13 +448,15 @@ export function createPlayer({
     getPosition() {
       return { ...position };
     },
-    setPosition(next) { position = { ...next }; updateSprites(); },
+    setPosition(next) { position = { ...next }; gridSpot.update(position); updateSprites(); },
     getLoadout() {
       return { weapon: weaponSlot, item: itemSlot };
     },
     getGridPosition(tileSize) {
+      if (tileSize === GRID.tileSizePx) return { ...gridSpot.cell };
       return getCharacterGridCell(this.getMovementCollider(), tileSize);
     },
+    getGridSpot() { return gridSpot; },
     getHeading() {
       return stateMachine.heading;
     },
@@ -462,6 +464,7 @@ export function createPlayer({
     setInputEnabled(enabled) {
       inputEnabled = Boolean(enabled);
       if (!inputEnabled) {
+        bushGravity.cancel();
         resetInput();
       }
     },
@@ -487,7 +490,7 @@ export function createPlayer({
           );
         }
       }
-      const selectedMovement = getSelectedMovement();
+      const selectedMovement = bushGravity.movementLocked ? { x: 0, y: 0 } : getSelectedMovement();
       const knockbackMovement = getKnockbackMovement(deltaSeconds);
       const transition = stateMachine.updateLocomotion(selectedMovement);
       if (transition.changed) {
@@ -495,7 +498,8 @@ export function createPlayer({
       }
 
       if (
-        stateMachine.state === PlayerState.SHOOTING
+        inputEnabled
+        && stateMachine.state === PlayerState.SHOOTING
         && activeAnimation
         && stateMachine.releaseShot(activeAnimation.current)
       ) {
@@ -517,14 +521,34 @@ export function createPlayer({
       ];
       if (knockbackMovement) {
         gridAlignedMovement.reset();
-        position = moveWithCollisions(
-          position,
-          movement,
-          distance,
-          bounds,
-          PLAYER_CHARACTER,
-          activeObstacles,
-        );
+        const length = Math.hypot(movement.x, movement.y) || 1;
+        const direction = { x: movement.x / length, y: movement.y / length };
+        const steps = Math.max(1, Math.ceil(distance));
+        for (let step = 0; step < steps; step++) {
+          const candidate = moveWithCollisions(position, direction, distance / steps, bounds, PLAYER_CHARACTER, activeObstacles);
+          const collider = getCharacterCollider(candidate, PLAYER_FRAME, PLAYER_PIVOT, PLAYER_MOVEMENT_COLLIDER);
+          if (isColliderWithinBounds(collider, bounds.width, bounds.height)) position = candidate;
+        }
+      } else if (bushGravity.movementLocked) {
+        gridAlignedMovement.reset();
+        const target = bushGravity.step(deltaSeconds);
+        if (target) {
+          const dx = target.x - position.x;
+          const dy = target.y - position.y;
+          const length = Math.hypot(dx, dy);
+          const steps = Math.max(1, Math.ceil(length));
+          const direction = length ? { x: dx / length, y: dy / length } : { x: 0, y: 0 };
+          for (let step = 0; step < steps; step++) {
+            const next = moveWithCollisions(position, direction, length / steps, bounds, PLAYER_CHARACTER, activeObstacles);
+            const expected = { x: position.x + dx / steps, y: position.y + dy / steps };
+            position = next;
+            if (Math.hypot(next.x - expected.x, next.y - expected.y) > 1e-6) {
+              bushGravity.cancel();
+              break;
+            }
+            if (step === steps - 1) position = target;
+          }
+        }
       } else if (ENABLE_QUANTIZE_MOVEMENT) {
         position = gridAlignedMovement.move(
           position,
@@ -545,6 +569,8 @@ export function createPlayer({
           activeObstacles,
         );
       }
+
+      gridSpot.update(position);
 
       const screenPosition = getArtScreenPosition(position);
       const order = renderOrderOverride ?? getCharacterLayerOrder(this.getMovementCollider(), bounds.height);

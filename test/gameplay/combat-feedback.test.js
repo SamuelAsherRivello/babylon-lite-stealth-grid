@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
-const mainSource = await readFile(new URL("../../src/main.js", import.meta.url), "utf8");
+const mainSource = await readFile(new URL("../../src/gameplay/combat-actor.js", import.meta.url), "utf8");
 
 test("damage feedback uses the more obvious flash and knockback tuning", () => {
   assert.match(mainSource, /DAMAGE_FLASH_DURATION_SECONDS = 0\.6;/);

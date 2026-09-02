@@ -19,7 +19,7 @@ test("archer locks perception to shot facing despite changing movement requests,
   const actor = makeArcher();
   const manager = createSpriteAnimationManager();
   actor.playAnimation(manager);
-  actor.update(0, [], [], { position: { x: 192, y: 320 }, detected: true });
+  actor.shootAt({ x: 192, y: 320 });
   assert.equal(actor.state, "shooting");
   assertFacing(actor, "left");
   for (const movement of [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: 1, y: 0 }, { x: -1, y: 0 }]) {

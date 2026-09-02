@@ -1,0 +1,20 @@
+## MODIFIED Requirements
+
+### Requirement: Enemies preserve suspicion and last-known locations
+An enemy SHALL maintain a suspicious cell, an alerted cell, and a last-known cell independently. While ALERT, renewed direct visual detection SHALL update the alerted and last-known cells. A visually confirmed ALERT enemy SHALL temporarily track the player's changing location inside bushes until the existing alert timer expires, without refreshing that timer or emitting new visual evidence from concealment. Other loss of direct detection SHALL freeze the last-known cell. After ALERT expires, the enemy SHALL retain the last tracked cell for investigation and SHALL NOT track hidden movement without new direct confirmation.
+
+#### Scenario: Player hides after confirmation
+- **WHEN** the player enters and moves inside bushes during an enemy's visually confirmed ALERT
+- **THEN** the enemy follows the changing player cell and can attack within existing attack limits while its remaining alert timer decreases
+
+#### Scenario: Hidden tracking expires
+- **WHEN** the existing alert duration expires while the player remains hidden
+- **THEN** the enemy enters INVESTIGATING, freezes its last tracked cell, and loses permission to target the hidden player
+
+#### Scenario: Suspicious location is remembered
+- **WHEN** an enemy becomes SUSPICIOUS
+- **THEN** it stores and faces the suspicion location until suspicion expires or stronger evidence replaces it
+
+#### Scenario: Exposed player is confirmed again
+- **WHEN** the player leaves concealment and an enemy receives fresh alert-level visual evidence
+- **THEN** normal confirmation updates the location and refreshes the configured alert duration

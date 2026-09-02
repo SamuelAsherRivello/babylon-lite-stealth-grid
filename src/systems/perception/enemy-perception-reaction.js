@@ -53,7 +53,7 @@ function durationFrom(value, random) {
 }
 
 export function createEnemyPerceptionReaction({ profile = {}, random = Math.random,
-  onStateChange = () => {}, onFace = () => {}, onMoveTo = () => {} } = {}) {
+  onStateChange = () => {}, onStop = () => {}, onFace = () => {}, onMoveTo = () => {} } = {}) {
   if (typeof random !== "function") throw new TypeError("random must be a function");
   const merged = { ...DEFAULT_PROFILE, ...profile };
   const config = Object.freeze({
@@ -72,10 +72,17 @@ export function createEnemyPerceptionReaction({ profile = {}, random = Math.rand
   let lastKnownCell = null;
   let remainingSeconds = 0;
   let searchDirectionIndex = 0;
+  let visuallyConfirmed = false;
 
   function setState(next, duration = 0) {
-    if (state !== next) { const previous = state; state = next; onStateChange(next, previous); }
+    if (next !== PERCEPTION_STATES.ALERT) visuallyConfirmed = false;
     remainingSeconds = duration;
+    if (state !== next) {
+      const previous = state;
+      state = next;
+      if (next !== PERCEPTION_STATES.NONE) onStop();
+      onStateChange(next, previous);
+    }
   }
   function snapshot() {
     return freezeSnapshot({ state, suspicionCell: copyCell(suspicionCell), alertedCell: copyCell(alertedCell),
@@ -94,6 +101,8 @@ export function createEnemyPerceptionReaction({ profile = {}, random = Math.rand
         : strength >= config.suspiciousThreshold
           ? PERCEPTION_STATES.SUSPICIOUS
           : PERCEPTION_STATES.NONE;
+
+    if (type === TYPES.VISUAL && candidate === PERCEPTION_STATES.ALERT) visuallyConfirmed = true;
 
     if (state === PERCEPTION_STATES.ALERT && type === TYPES.VISUAL
       && candidate === PERCEPTION_STATES.ALERT) {
@@ -150,12 +159,26 @@ export function createEnemyPerceptionReaction({ profile = {}, random = Math.rand
     }
     return snapshot();
   }
-  function reset() { state = PERCEPTION_STATES.NONE; suspicionCell = null; alertedCell = null; lastKnownCell = null; remainingSeconds = 0; searchDirectionIndex = 0; }
+  function reset() {
+    suspicionCell = null; alertedCell = null; lastKnownCell = null; searchDirectionIndex = 0;
+    setState(PERCEPTION_STATES.NONE);
+  }
+  function canTrackHiddenPlayer() {
+    return state === PERCEPTION_STATES.ALERT && visuallyConfirmed && remainingSeconds > 0;
+  }
+  function trackHiddenPlayer(cell) {
+    if (!canTrackHiddenPlayer()) return false;
+    lastKnownCell = copyCell(cell);
+    alertedCell = copyCell(cell);
+    onMoveTo(lastKnownCell);
+    return true;
+  }
   function forceState(nextState) {
     if (!Object.values(PERCEPTION_STATES).includes(nextState)) throw new TypeError("unsupported perception state");
     if (nextState === PERCEPTION_STATES.NONE) { reset(); return snapshot(); }
     setState(nextState, 999999);
     return snapshot();
   }
-  return Object.freeze({ acceptDetection, update, reset, forceState, getSnapshot: snapshot });
+  return Object.freeze({ acceptDetection, update, reset, forceState, getSnapshot: snapshot,
+    canTrackHiddenPlayer, trackHiddenPlayer });
 }

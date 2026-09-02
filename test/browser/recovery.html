@@ -1,0 +1,28 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>C054 recovery verification</title>
+<style>body{background:#111827;color:#e5e7eb;font:15px system-ui;margin:24px}canvas{background:#1f2937;border:1px solid #475569}pre{white-space:pre-wrap}</style>
+<h1>Movement recovery verification</h1><p>Production actors and collision movement. Each enclosure opens at 7 seconds. Results stop at 22 seconds.</p>
+<canvas width="960" height="300"></canvas><pre id="results">Running…</pre>
+<script type="module">
+import {createRecoveryScenario} from './recovery-scenario.js';
+const scenarios=['goblin','warrior','lancer','archer','monk','sheep'].map(kind=>createRecoveryScenario(kind));
+const canvas=document.querySelector('canvas'), ctx=canvas.getContext('2d'), output=document.querySelector('#results');
+const history=[]; let elapsed=0, previous=performance.now(), lastSample=-1;
+function frame(now){
+ const delta=Math.min((now-previous)/1000,.05); previous=now; elapsed+=delta;
+ for(const scenario of scenarios) scenario.update(delta);
+ ctx.clearRect(0,0,960,300);
+ scenarios.forEach((s,i)=>{
+  const state=s.snapshot(), x=10+i*160;
+  ctx.fillStyle='#e5e7eb';ctx.fillText(s.kind,x,24);
+  ctx.save();ctx.translate(x,140);ctx.scale(.8,-.8);
+  ctx.fillStyle='#64748b';for(const o of s.obstacles)ctx.fillRect(o.x,o.y-s.origin.y,o.width,o.height);
+  ctx.fillStyle=state.released?'#34d399':'#fbbf24';ctx.beginPath();ctx.arc(state.position.x,state.position.y-s.origin.y,12,0,Math.PI*2);ctx.fill();ctx.restore();
+  ctx.fillStyle='#e5e7eb';ctx.fillText(state.recoveryState,x,210);
+  ctx.fillText(`retry ${state.retryRemaining.toFixed(1)}s`,x,230);
+ });
+ if(Math.floor(elapsed)>lastSample){lastSample=Math.floor(elapsed);history.push({seconds:elapsed,actors:scenarios.map(s=>s.snapshot())});}
+ const result={complete:elapsed>=22,history};output.textContent=JSON.stringify(result,null,2);output.dataset.result=JSON.stringify(result);
+ if(elapsed<22)requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script></html>

@@ -1,4 +1,5 @@
 import { getYSortedLayerOrder } from "../systems/environment/render-depth.js";
+import { getQuantizedGridCell } from "../systems/environment/grid-spot.js";
 
 export function getColliderCenter(collider) {
   if (!collider || !Number.isFinite(collider.x) || !Number.isFinite(collider.y)) {
@@ -18,11 +19,10 @@ export function getCharacterGridCell(movementCollider, tileSize) {
   if (!Number.isFinite(tileSize) || tileSize <= 0) {
     throw new TypeError("positive tileSize is required");
   }
-  const center = getColliderCenter(movementCollider);
-  return {
-    x: Math.floor(center.x / tileSize),
-    y: Math.floor(center.y / tileSize),
-  };
+  return getQuantizedGridCell(getColliderCenter(movementCollider), {
+    width: tileSize,
+    height: tileSize,
+  });
 }
 
 export function getCharacterLayerOrder(movementCollider, screenHeight) {

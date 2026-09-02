@@ -89,6 +89,24 @@ export function createGridAlignedMovementController(character, tileSize) {
     reset() {
       alignmentSession = null;
     },
+    moveTo(position, target, distance, bounds, obstacles) {
+      alignmentSession = null;
+      const dx = target.x - position.x, dy = target.y - position.y;
+      const axis = Math.abs(dx) >= Math.abs(dy) ? 'x' : 'y';
+      const remaining = target[axis] - position[axis];
+      const travel = Math.min(Math.abs(remaining), Math.max(0, distance));
+      const direction = axis === 'x' ? { x: Math.sign(remaining), y: 0 } : { x: 0, y: Math.sign(remaining) };
+      // Bounded, small collision-checked steps prevent large-frame tunneling.
+      const steps = Math.ceil(travel / 4);
+      let next = position;
+      for (let step = 0; step < steps; step++) {
+        const amount = Math.min(4, travel - step * 4);
+        const moved = moveWithCollisions(next, direction, amount, bounds, character, obstacles);
+        if (moved.x === next.x && moved.y === next.y) break;
+        next = moved;
+      }
+      return next;
+    },
     move(position, movement, distance, deltaSeconds, bounds, obstacles) {
       const cardinalMovement = classifyCardinalMovement(movement);
       if (!cardinalMovement) {

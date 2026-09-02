@@ -15,7 +15,13 @@ import {
   getPerceptionBlinkState,
   getVisibleVisualCells,
   createEnemyVisionShadowDrawCommands,
+  GRID_SPOT_MARKER_STYLE,
+  createGridSpotMarkerCommands,
+  drawGridSpotMarker,
+  PLAYER_CENTER_MARKER_STYLE,
+  createPlayerCenterMarkerCommands,
 } from "../../src/ui/collider-diagnostics.js";
+import { GridSpot } from "../../src/systems/environment/grid-spot.js";
 
 test("visible visual cells stop before terrain and living blockers", () => {
   const actor = { id: "enemy", type: "enemy", isAlive: true, cell: { x: 2, y: 2 }, heading: "right", visualRange: 4 };
@@ -106,6 +112,46 @@ test("visual squares fill cells and audio squares are centered at half size", ()
   assert.deepEqual(createPerceptionSquare({ x: 2, y: 3 }, 64, 16), [
     { x: 152, y: 216 }, { x: 168, y: 216 }, { x: 168, y: 232 }, { x: 152, y: 232 },
   ]);
+});
+
+test("grid spot diagnostics create one centralized marker per active entity", () => {
+  const spot = new GridSpot({ x: 65, y: 32 }, { width: 64, height: 64 });
+  const commands = createGridSpotMarkerCommands([
+    { gridSpot: spot },
+    { gridSpot: spot },
+    { gridSpot: spot, active: false },
+  ]);
+  assert.equal(commands.length, 2);
+  assert.deepEqual(commands.map(({ x, y }) => ({ x, y })), [
+    { x: 96, y: 32 }, { x: 96, y: 32 },
+  ]);
+  assert.equal(commands[0].style, GRID_SPOT_MARKER_STYLE);
+});
+
+test("grid spot marker rendering is centralized and uses the white X", () => {
+  const calls = [];
+  const context = {
+    beginPath: () => calls.push("begin"),
+    moveTo: (...args) => calls.push(["move", ...args]),
+    lineTo: (...args) => calls.push(["line", ...args]),
+    stroke: () => calls.push("stroke"),
+  };
+  drawGridSpotMarker(context, { x: 32, y: 32, style: GRID_SPOT_MARKER_STYLE }, 1024);
+  assert.equal(calls.filter((call) => Array.isArray(call) && call[0] === "move").length, 2);
+  assert.equal(context.strokeStyle, "#ffffff");
+  assert.equal(context.lineWidth, 1);
+});
+
+test("player live-center marker is black, slightly larger, and player-only", () => {
+  const markers = createPlayerCenterMarkerCommands([
+    { isPlayer: true, movementCollider: { type: "circle", x: 32, y: 32, radius: 8 } },
+    { isPlayer: false, movementCollider: { type: "circle", x: 96, y: 32, radius: 8 } },
+  ]);
+  assert.equal(markers.length, 1);
+  assert.deepEqual({ x: markers[0].x, y: markers[0].y }, { x: 32, y: 32 });
+  assert.equal(markers[0].style.strokeStyle, "#000000");
+  assert.ok(markers[0].style.size > GRID_SPOT_MARKER_STYLE.size);
+  assert.equal(markers[0].style, PLAYER_CENTER_MARKER_STYLE);
 });
 
 test("perception commands keep overlapping visual and audio squares independent", () => {

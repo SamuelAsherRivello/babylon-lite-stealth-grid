@@ -28,8 +28,13 @@ test("Level01 runtime exposes Gold Stone combat colliders to projectile targets 
   assert.match(source, /goldStoneObjects[\s\S]*combatCollider: object\.getCombatCollider\(\)/);
 });
 
-test("runtime exposes gold pickup combat colliders and center markers without movement colliders", () => {
-  assert.match(mainSource, /pickupSystem\.pickups[\s\S]*combatCollider: pickup\.getCombatCollider\(\)[\s\S]*centerCollider: pickup\.getCombatCollider\(\)[\s\S]*movementCollider: null/);
+test("runtime exposes gold pickup combat colliders and grid spots without movement colliders", () => {
+  assert.match(mainSource, /pickupSystem\.pickups[\s\S]*combatCollider: pickup\.getCombatCollider\(\)[\s\S]*movementCollider: null[\s\S]*gridSpot: new GridSpot/);
+});
+
+test("diagnostic player-center classification does not depend on active-update scope", () => {
+  assert.match(mainSource, /isPlayer: record\.type === SpawnerType\.PLAYER/);
+  assert.doesNotMatch(mainSource, /isPlayer: record\.actor === playerRecord\.actor/);
 });
 
 test("pickup collection uses the player combat collider", () => {
@@ -45,13 +50,7 @@ test("an upper-body projectile can overlap combat geometry without the movement 
   assert.equal(collidersOverlap(projectileCollider, movementCollider), false);
 });
 
-test("combat overlap remains gated by existing attack and movement conditions", () => {
-  assert.match(
-    mainSource,
-    /touching[\s\S]*record\.actor\.state === EnemyState\.ATTACKING[\s\S]*playerRecord\.combat\.applyDamage/,
-  );
-  assert.match(
-    mainSource,
-    /touching && \(playerMovement\.x !== 0 \|\| playerMovement\.y !== 0\)[\s\S]*record\.combat\.applyDamage/,
-  );
+test("player damage uses committed impact events while player contact still requires movement", () => {
+  assert.match(mainSource, /resolveMeleeImpacts\(enemyRecords, playerRecord\)/);
+  assert.match(mainSource, /touching && \(playerMovement\.x !== 0 \|\| playerMovement\.y !== 0\)[\s\S]*record\.combat\.applyDamage/);
 });

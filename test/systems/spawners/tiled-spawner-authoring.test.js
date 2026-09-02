@@ -70,6 +70,16 @@ test("tile spawners normalize type defaults, Warrior override, and origin-relati
   ]);
 });
 
+test("off-grid tile spawners use the cell containing their bottom edge", () => {
+  for (const y of [888.333333333333, 895.5, 896]) {
+    const level = normalizeTiledMap(makeMap([
+      { id: 1, name: "Player", gid: 1, x: 288.5, y, width: 37, height: 37 },
+    ]), new Map([["../tilesets/SpawnerTypes.tsj", makeTileset()]]));
+
+    assert.deepEqual(level.spawners[0].gameCell, { x: 4, y: 2 }, `bottom edge y=${y}`);
+  }
+});
+
 test("level must contain exactly one Player Spawner", () => {
   const tileset = new Map([["../tilesets/SpawnerTypes.tsj", makeTileset()]]);
   assert.throws(
