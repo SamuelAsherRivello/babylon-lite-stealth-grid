@@ -3,4 +3,6 @@ dist/
 .playwright-cli/
 output/
 assets/local-imports/
-.c060-focused.log
+# Generated root-level test/build logs and diagnostic capture.
+/*.log
+/vision-check.png
