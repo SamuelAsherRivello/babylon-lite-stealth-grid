@@ -35,14 +35,14 @@ test("eight particle previews form a centered horizontal row", () => {
   );
 });
 
-test("main composes, scales, and settings-gates every particle preview layer", async () => {
+test("main composes and settings-gates particle previews at the fixed logical resolution", async () => {
   const source = await readFile(new URL("../../src/main.js", import.meta.url), "utf8");
 
   assert.match(source, /createParticleFxPreviewLayout/);
   assert.match(source, /PARTICLE_FX_CLASS_BY_KEY/);
   assert.match(source, /particleEffects = await Promise\.all/);
   assert.match(source, /particleEffects\.map\(\(effect\) => effect\.layer\)/);
-  assert.match(source, /for \(const effect of particleEffects\)/);
-  assert.match(source, /effect\.layer\.view\.zoom = viewportScale/);
+  assert.match(source, /engine\._w = GAME_VIEWPORT\.referenceResolution\.width/);
+  assert.match(source, /engine\._h = GAME_VIEWPORT\.referenceResolution\.height/);
   assert.match(source, /applyParticleFxPreviewSetting/);
 });

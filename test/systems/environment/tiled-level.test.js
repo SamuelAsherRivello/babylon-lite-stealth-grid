@@ -8,24 +8,24 @@ import {
   formatLevelCellLabel,
   normalizeTiledMap,
   validateTiledMap,
-} from "../plugins/tiled-babylon-lite/index.js";
+} from "../../../plugins/tiled-babylon-lite/index.js";
 
 const LEVEL_PATH = new URL(
-  "../../public/levels/tiled/maps/Level01.tmj",
+  "../../../public/levels/tiled/maps/Level01.tmj",
   import.meta.url,
 );
-const MAIN_PATH = new URL("../../src/main.js", import.meta.url);
+const MAIN_PATH = new URL("../../../src/main.js", import.meta.url);
 const TILESET_NAMES = Array.from({ length: 5 }, (_, index) => `Tilemap_color${index + 1}`);
 const TILESET_URLS = TILESET_NAMES.map((name) => new URL(
-  `../../public/levels/tiled/tilesets/${name}.tsj`,
+  `../../../public/levels/tiled/tilesets/${name}.tsj`,
   import.meta.url,
 ));
 const WOOD_RESOURCE_TILESET_URL = new URL(
-  "../../public/levels/tiled/tilesets/WoodResourceObjects.tsj",
+  "../../../public/levels/tiled/tilesets/WoodResourceObjects.tsj",
   import.meta.url,
 );
 const MEAT_RESOURCE_TILESET_URL = new URL(
-  "../../public/levels/tiled/tilesets/MeatResourceObjects.tsj",
+  "../../../public/levels/tiled/tilesets/MeatResourceObjects.tsj",
   import.meta.url,
 );
 const COLOR_THREE_SOURCE = "../tilesets/Tilemap_color3.tsj";
@@ -173,7 +173,7 @@ test("runtime registers and scales every tileset-specific terrain layer", async 
   const source = await readFile(MAIN_PATH, "utf8");
 
   assert.match(source, /\.\.\.terrainLayers/);
-  assert.match(source, /for \(const layer of terrainLayers\)/);
+  assert.match(source, /engine\._w = GAME_VIEWPORT\.referenceResolution\.width/);
   assert.doesNotMatch(source, /\bterrainLayer\b/);
 });
 
@@ -263,15 +263,16 @@ test("normalization imports Tiled collision objects into bottom-left local coord
   }]);
 });
 
-test("Level01 exposes implemented Player, Sheep, Goblin, Warrior, and Archer spawners", async () => {
+test("Level01 exposes the current authored enemy roster and player placement", async () => {
   const { map, externalTilesets } = await readLevelWithTilesets();
   const level = normalizeTiledMap(map, externalTilesets);
   assert.deepEqual(level.spawners.map(({ type, gameCell }) => ({ type, gameCell })), [
-    { type: "PLAYER", gameCell: { x: 3, y: 7 } },
-    { type: "SHEEP", gameCell: { x: 6, y: 4 } },
-    { type: "GOBLIN", gameCell: { x: 2, y: 5 } },
-    { type: "WARRIOR", gameCell: { x: 5, y: 9 } },
-    { type: "ARCHER", gameCell: { x: 4, y: 7 } },
+    { type: "MONK", gameCell: { x: 5, y: 13 } },
+    { type: "PLAYER", gameCell: { x: 3, y: 4 } },
+    { type: "GOBLIN", gameCell: { x: 0, y: 12 } },
+    { type: "WARRIOR", gameCell: { x: 0, y: 6 } },
+    { type: "ARCHER", gameCell: { x: 1, y: 9 } },
+    { type: "LANCER", gameCell: { x: 8, y: 8 } },
   ]);
 });
 

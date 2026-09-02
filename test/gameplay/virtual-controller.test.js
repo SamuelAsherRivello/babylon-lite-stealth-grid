@@ -55,7 +55,7 @@ function pointerEvent(type, pointerId, clientX = 0, clientY = 0) {
 }
 
 globalThis.window = new EventTarget();
-const { createVirtualController } = await import("../plugins/virtual-controller-babylon-lite/index.js");
+const { createVirtualController } = await import("../../plugins/virtual-controller-babylon-lite/index.js");
 
 function createHarness(onAttack, onMovementChange) {
   const joystick = new FakeControl();

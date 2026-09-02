@@ -5,7 +5,7 @@ import {
   DEFLECT_DURATION_SECONDS,
   createProjectileRenderer,
   getProjectileRotation,
-} from "../../src/systems/objects/projectile-renderer.js";
+} from "../../../src/systems/objects/projectile-renderer.js";
 
 function createFakeApi() {
   const sprites = [];

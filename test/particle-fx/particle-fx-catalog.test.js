@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   validateAsepriteSpriteDescriptor,
-} from "../plugins/aseprite-babylon-lite/index.js";
+} from "../../plugins/aseprite-babylon-lite/index.js";
 import {
   PARTICLE_FX_CATALOG,
   PARTICLE_FX_ORDER,

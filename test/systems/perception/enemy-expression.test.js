@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getEnemyExpression } from "../../src/systems/perception/enemy-expression.js";
+import { getEnemyExpression } from "../../../src/systems/perception/enemy-expression.js";
 
 test("enemy expressions map each perception state to one icon and flash", () => {
   assert.deepEqual(getEnemyExpression("NONE"), { icon: null, flash: null });

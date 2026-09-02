@@ -1,6 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
+test("collision movement applies distance once even when given a velocity vector", () => {
+  const character = { frame: { width: 64, height: 64 }, pivot: { x: 0.5, y: 0.5 }, collider: { type: "circle", x: 32, y: 32, radius: 10 } };
+  const result = moveWithCollisions({ x: 100, y: 100 }, { x: 100, y: 0 }, 10, { width: 500, height: 500 }, character, []);
+  assert.deepEqual(result, { x: 110, y: 100 });
+});
+
 import {
   aabbOverlapsPolygon,
   aabbsOverlap,
@@ -26,7 +32,7 @@ import {
   worldToGrid,
   worldToScreen,
 } from "../../src/gameplay/game-logic.js";
-import { calculateJoystickInput } from "../plugins/virtual-controller-babylon-lite/index.js";
+import { calculateJoystickInput } from "../../plugins/virtual-controller-babylon-lite/index.js";
 import { GRID } from "../../src/systems/environment/grid-contract.js";
 import {
   NON_WALKABLE_TERRAIN_FRAMES,

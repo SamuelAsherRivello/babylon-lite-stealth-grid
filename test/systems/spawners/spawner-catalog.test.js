@@ -6,7 +6,7 @@ import {
   SpawnerType,
   SpawnMode,
   createInitialSpawnerConfigs,
-} from "../../src/systems/spawners/spawner-catalog.js";
+} from "../../../src/systems/spawners/spawner-catalog.js";
 
 test("spawner catalog derives Babylon defaults from authored types and cells", () => {
   const configs = createInitialSpawnerConfigs({

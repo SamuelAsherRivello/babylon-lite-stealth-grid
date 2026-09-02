@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createProjectileRenderer } from "../../src/systems/objects/projectile-renderer.js";
+import { createProjectileRenderer } from "../../../src/systems/objects/projectile-renderer.js";
 
 test("projectile renderer preserves an arrow owner identity", () => {
   const api = {

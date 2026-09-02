@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-import { normalizeTiledMap } from "../plugins/tiled-babylon-lite/index.js";
+import { normalizeTiledMap } from "../../../plugins/tiled-babylon-lite/index.js";
 
 const SPAWNER_TILESET_URL = new URL(
-  "../../public/levels/tiled/tilesets/SpawnerTypes.tsj",
+  "../../../public/levels/tiled/tilesets/SpawnerTypes.tsj",
   import.meta.url,
 );
 
@@ -18,7 +18,7 @@ function makeMap(objects) {
       { name: "World Origin", type: "tilelayer", data: [
         ...Array(135).fill(0), 1, ...Array(8).fill(0),
       ] },
-      { name: "Spawners", type: "objectgroup", objects },
+      { name: "Spawners", type: "objectgroup", objects: [...objects, { id: 999, class: "GoalSpawner", x: 512, y: 64 }] },
     ],
   };
 }
@@ -34,9 +34,11 @@ function makeTileset() {
   };
 }
 
-test("spawner palette contains Player, Sheep, and Enemy items with only type metadata", async () => {
+test("spawner palette contains Player, Sheep, Enemy, Monk, and Goal items", async () => {
   const tileset = JSON.parse(await readFile(SPAWNER_TILESET_URL, "utf8"));
-  assert.deepEqual(tileset.tiles.map(({ id, name, properties }) => ({
+  assert.equal(tileset.tiles.find(({ id }) => id === 3).class, "GoalSpawner");
+  assert.equal(tileset.tiles.find(({ id }) => id === 4).properties.find(({ name }) => name === "type").value, "MONK");
+  assert.deepEqual(tileset.tiles.filter(({ id }) => id < 3).sort((a, b) => a.id - b.id).map(({ id, name, properties }) => ({
     id,
     name,
     properties,

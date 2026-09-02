@@ -37,6 +37,9 @@ jobs:
       - name: Verify publishing contracts
         run: npm run test:publish
 
+      - name: Run full test suite
+        run: npm test
+
       - name: Build production demo
         run: npm run build
 

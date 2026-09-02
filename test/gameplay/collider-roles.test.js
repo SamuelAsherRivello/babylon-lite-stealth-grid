@@ -28,16 +28,16 @@ import {
 
 const position = { x: 200, y: 300 };
 
-test("player keeps its movement circle and gains a centered feet-anchored combat rectangle", () => {
+test("player movement and combat colliders share the logical position as center", () => {
   assert.deepEqual(PLAYER_MOVEMENT_COLLIDER, {
-    type: "circle", x: 93, y: 126, radius: 18.2,
+    type: "circle", x: 96, y: 149.76, radius: 18.2,
   });
   assert.deepEqual(PLAYER_COMBAT_COLLIDER, {
     x: 64, y: 117.75999999999999, width: 64, height: 64,
   });
   assert.deepEqual(
     getCharacterCollider(position, PLAYER_FRAME, { x: 0.5, y: 0.78 }, PLAYER_COMBAT_COLLIDER),
-    { x: 168, y: 300, width: 64, height: 64 },
+    { x: 168, y: 268, width: 64, height: 64 },
   );
 });
 

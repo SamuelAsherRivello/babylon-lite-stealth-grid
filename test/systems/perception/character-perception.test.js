@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CARDINAL_DIRECTIONS, createCharacterPerception, evaluatePerception, getAudioCells, getVisualCells, getVisualStrength, PerceptionTargetState } from "../../src/systems/perception/character-perception.js";
+import { CARDINAL_DIRECTIONS, createCharacterPerception, evaluatePerception, getAudioCells, getVisualCells, getVisualStrength, PerceptionTargetState } from "../../../src/systems/perception/character-perception.js";
 
 test("visual geometry and strengths are cardinal and distance-ranked", () => {
   assert.deepEqual(getVisualCells({ x: 2, y: 3 }, CARDINAL_DIRECTIONS.right), [{ x: 3, y: 3 }, { x: 4, y: 3 }, { x: 5, y: 3 }, { x: 6, y: 3 }]);

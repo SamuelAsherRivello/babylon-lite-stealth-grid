@@ -59,6 +59,6 @@ test("archer uses the circular body collider", async () => {
 
   assert.match(
     player,
-    /PLAYER_MOVEMENT_COLLIDER = \{[\s\S]*type: "circle",[\s\S]*x: 93,[\s\S]*y: 126,[\s\S]*radius: 18\.2,/,
+    /PLAYER_MOVEMENT_COLLIDER = \{[\s\S]*type: "circle",[\s\S]*x: PLAYER_FRAME\.width \* PLAYER_PIVOT\.x,[\s\S]*y: PLAYER_FRAME\.height \* PLAYER_PIVOT\.y,[\s\S]*radius: 18\.2,/,
   );
 });

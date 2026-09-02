@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { normalizeTiledMap } from "../plugins/tiled-babylon-lite/index.js";
+import { normalizeTiledMap } from "../../../plugins/tiled-babylon-lite/index.js";
 
 test("terrain normalization skips object-only tilesets instead of producing undefined images", () => {
   const map = {
@@ -16,6 +16,7 @@ test("terrain normalization skips object-only tilesets instead of producing unde
       { name: "World Origin", type: "tilelayer", data: [1, 0] },
       { name: "Background", type: "tilelayer", data: [100, 1] },
       { name: "Spawners", type: "objectgroup", objects: [{ id: 1, gid: 200, x: 0, y: 64 }] },
+      { name: "Goals", type: "objectgroup", objects: [{ id: 2, class: "GoalSpawner", x: 64, y: 0 }] },
     ],
   };
   const externalTilesets = new Map([

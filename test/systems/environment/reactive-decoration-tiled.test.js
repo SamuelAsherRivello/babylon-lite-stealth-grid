@@ -5,16 +5,30 @@ import test from "node:test";
 import {
   normalizeTiledMap,
   validateTiledMap,
-} from "../plugins/tiled-babylon-lite/index.js";
+} from "../../../plugins/tiled-babylon-lite/index.js";
 
-const MAP_URL = new URL("../../public/levels/tiled/maps/Level01.tmj", import.meta.url);
-const TERRAIN_URL = new URL("../../public/levels/tiled/tilesets/Tilemap_color3.tsj", import.meta.url);
-const BUSH_URL = new URL("../../public/levels/tiled/tilesets/TinySwordsBushDecorations.tsj", import.meta.url);
-const SPAWNER_URL = new URL("../../public/levels/tiled/tilesets/SpawnerTypes.tsj", import.meta.url);
-const COLOR_ONE_URL = new URL("../../public/levels/tiled/tilesets/Tilemap_color1.tsj", import.meta.url);
+const MAP_URL = new URL("../../../public/levels/tiled/maps/Level01.tmj", import.meta.url);
+const TERRAIN_URL = new URL("../../../public/levels/tiled/tilesets/Tilemap_color3.tsj", import.meta.url);
+const BUSH_URL = new URL("../../../public/levels/tiled/tilesets/TinySwordsBushDecorations.tsj", import.meta.url);
+const SPAWNER_URL = new URL("../../../public/levels/tiled/tilesets/SpawnerTypes.tsj", import.meta.url);
+const COLOR_ONE_URL = new URL("../../../public/levels/tiled/tilesets/Tilemap_color1.tsj", import.meta.url);
 
 async function json(url) {
   return JSON.parse(await readFile(url, "utf8"));
+}
+
+async function readLevelFixture({ gold = false } = {}) {
+  const map = await json(MAP_URL);
+  const external = new Map(await Promise.all(map.tilesets.map(async ({ source }) => [
+    source, await json(new URL(source, MAP_URL)),
+  ])));
+  // Gold stones remain supported but are not placed in the current level.
+  // Exercise the integration with an explicit fixture, never edit Level01.
+  if (gold) map.layers.find(({ name }) => name === "Y-Sorted Props").objects.push({
+    id: 999, name: "Gold fixture", x: 352, y: 320, width: 64, height: 64,
+    gid: map.tilesets.find(({ source }) => source.endsWith("/GoldStoneObjects.tsj")).firstgid,
+  });
+  return { map, external };
 }
 
 function pngDimensions(bytes) {
@@ -24,8 +38,8 @@ function pngDimensions(bytes) {
 
 test("bush source and editor preview are valid PNGs with expected dimensions", async () => {
   const [source, preview] = await Promise.all([
-    readFile(new URL("../../public/assets/terrain/decorations/bushes/Bushe1.png", import.meta.url)),
-    readFile(new URL("../../public/assets/terrain/decorations/bushes/Bushe1-frame0.png", import.meta.url)),
+    readFile(new URL("../../../public/assets/terrain/decorations/bushes/Bushe1.png", import.meta.url)),
+    readFile(new URL("../../../public/assets/terrain/decorations/bushes/Bushe1-frame0.png", import.meta.url)),
   ]);
   assert.deepEqual(pngDimensions(source), { width: 1024, height: 128 });
   assert.deepEqual(pngDimensions(preview), { width: 64, height: 64 });
@@ -45,27 +59,20 @@ test("bush tileset exposes exactly one placeable reactive decoration item", asyn
   assert.equal(tileset.tiles[0].objectgroup.objects[1].class, "CombatCollider");
 });
 
-test("Level01 normalizes the bush as a bottom-centered independent object", async () => {
-  const [map, terrain, bush, spawners, colorOne] = await Promise.all([
-    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL), json(COLOR_ONE_URL),
-  ]);
-  const external = new Map([
-    ["../tilesets/Tilemap_color3.tsj", terrain],
-    ["../tilesets/TinySwordsBushDecorations.tsj", bush],
-    ["../tilesets/SpawnerTypes.tsj", spawners],
-    ["../tilesets/Tilemap_color1.tsj", colorOne],
-  ]);
+test("Level01 normalizes five independent authored bushes", async () => {
+  const { map, external } = await readLevelFixture();
   assert.deepEqual(validateTiledMap(map, external), []);
   const level = normalizeTiledMap(map, external);
-  assert.equal(level.reactiveDecorations.length, 1);
+  assert.equal(level.reactiveDecorations.length, 5);
   const object = level.reactiveDecorations[0];
   assert.equal(object.name, "Bush 1");
   assert.equal(object.layerName, "Y-Sorted Props");
-  const placed = map.layers.find(({ name }) => name === "Y-Sorted Props").objects[0];
-  assert.equal(placed.width, 64);
-  assert.equal(placed.height, 64);
+  const placed = map.layers.find(({ name }) => name === "Y-Sorted Props").objects.find(({ id }) => id === object.id);
+  // Tiled preview artwork may be resized; runtime geometry comes from the tile.
+  assert.ok(placed.width > 0);
+  assert.ok(placed.height > 0);
   assert.deepEqual(object.position, {
-    x: 352,
+    x: 224,
     y: 480,
   });
   assert.deepEqual(object.decoration.frameSize, { width: 128, height: 128 });
@@ -79,23 +86,16 @@ test("Level01 normalizes the bush as a bottom-centered independent object", asyn
     y: object.position.y, radius: 24,
   });
   assert.deepEqual(object.decoration.combatCollider, {
-    x: object.position.x - 32,
+    x: object.position.x - 36,
     y: object.position.y - 32,
     width: 64,
     height: 64,
   });
 });
 
-test("Level01 normalizes one visible Gold Stone object", async () => {
-  const [map, terrain, bush, spawners, colorOne, gold] = await Promise.all([
-    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL), json(COLOR_ONE_URL),
-    json(new URL("../../public/levels/tiled/tilesets/GoldStoneObjects.tsj", import.meta.url)),
-  ]);
-  const level = normalizeTiledMap(map, new Map([
-    ["../tilesets/Tilemap_color3.tsj", terrain], ["../tilesets/TinySwordsBushDecorations.tsj", bush],
-    ["../tilesets/SpawnerTypes.tsj", spawners], ["../tilesets/Tilemap_color1.tsj", colorOne],
-    ["../tilesets/GoldStoneObjects.tsj", gold],
-  ]));
+test("a Gold Stone fixture normalizes its world position and attack collider", async () => {
+  const { map, external } = await readLevelFixture({ gold: true });
+  const level = normalizeTiledMap(map, external);
   assert.equal(level.goldStones.length, 1);
   assert.equal(level.goldStones[0].position.x, 288);
   assert.equal(level.goldStones[0].position.y, 768);
@@ -104,21 +104,10 @@ test("Level01 normalizes one visible Gold Stone object", async () => {
 });
 
 test("GoldObject keeps its attack collider and gold-drop descriptor", async () => {
-  const [map, terrain, bush, spawners, colorOne, gold] = await Promise.all([
-    json(MAP_URL), json(TERRAIN_URL), json(BUSH_URL), json(SPAWNER_URL), json(COLOR_ONE_URL),
-    json(new URL("../../public/levels/tiled/tilesets/GoldStoneObjects.tsj", import.meta.url)),
-  ]);
-  const errors = validateTiledMap(map, new Map([
-    ["../tilesets/Tilemap_color3.tsj", terrain], ["../tilesets/TinySwordsBushDecorations.tsj", bush],
-    ["../tilesets/SpawnerTypes.tsj", spawners], ["../tilesets/Tilemap_color1.tsj", colorOne],
-    ["../tilesets/GoldStoneObjects.tsj", gold],
-  ]));
+  const { map, external } = await readLevelFixture({ gold: true });
+  const errors = validateTiledMap(map, external);
   assert.deepEqual(errors, []);
-  const level = normalizeTiledMap(map, new Map([
-    ["../tilesets/Tilemap_color3.tsj", terrain], ["../tilesets/TinySwordsBushDecorations.tsj", bush],
-    ["../tilesets/SpawnerTypes.tsj", spawners], ["../tilesets/Tilemap_color1.tsj", colorOne],
-    ["../tilesets/GoldStoneObjects.tsj", gold],
-  ]));
+  const level = normalizeTiledMap(map, external);
   assert.equal(level.goldStones[0].class, "GoldObject");
   assert.ok(level.goldStones[0].goldStone.combatCollider);
 });
@@ -155,6 +144,7 @@ test("reactive decoration property precedence is class then tile then object", (
       { type: "objectgroup", name: "Spawners", objects: [{
         id: 8, gid: 2, x: 32, y: 64,
       }] },
+      { type: "objectgroup", name: "Goals", objects: [{ id: 9, class: "GoalSpawner", x: 32, y: 0 }] },
     ],
   };
   const tileset = {

@@ -52,7 +52,7 @@ test("release metadata styling matches the proportional upper-left contract", as
   const styles = await readFile(new URL("../../src/ui/style.css", import.meta.url), "utf8");
   const rule = styles.match(/\.release-metadata\s*\{([^}]*)\}/s)?.[1] ?? "";
 
-  assert.match(styles, /--screen-margin:\s*25px/);
+  assert.match(styles, /--screen-margin:\s*20px/);
   assert.match(rule, /position:\s*absolute/);
   assert.match(rule, /top:\s*var\(--ui-safe-top\)/);
   assert.match(rule, /left:\s*var\(--ui-safe-left\)/);

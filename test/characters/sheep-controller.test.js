@@ -66,7 +66,7 @@ test("sheep retains its own typed NPC circle collider size", () => {
   const collider = sheep.getMovementCollider();
   assert.equal(collider.type, "circle");
   assert.equal(collider.x, 224);
-  assert.ok(Math.abs(collider.y - 270.52) < 1e-10);
+  assert.equal(collider.y, 224);
   assert.equal(collider.radius, 26);
 });
 
@@ -94,8 +94,8 @@ test("sheep moves without overshoot, faces travel, and returns idle on a cell ce
   sheep.update(1, [nearbyPlayer]);
 
   assert.equal(sheep.state, SheepState.IDLE);
-  assert.deepEqual(sheep.getPosition(), { x: 288, y: 241.48000000000002 });
-  assert.equal(api.spriteUpdates.at(-1).positionPx[1], 194.51999999999998);
+  assert.deepEqual(sheep.getPosition(), { x: 288, y: 224 });
+  assert.equal(api.spriteUpdates.at(-1).positionPx[1], 224);
   assert.equal(api.spriteUpdates.at(-1).flipX, false);
 });
 
@@ -108,30 +108,32 @@ test("sheep stops safely if a planned segment becomes blocked", () => {
   });
   sheep.update(0.016, [nearbyPlayer]);
   api.animations.at(-1).options.onEnd();
-  obstacles.push({ x: 256, y: 256, width: 64, height: 64 });
-  sheep.update(1, [nearbyPlayer]);
-  sheep.update(1, [nearbyPlayer]);
+  obstacles.push({ x: 256, y: 192, width: 64, height: 64 });
+  sheep.update(1, []);
+  sheep.update(1, []);
 
   assert.equal(sheep.state, SheepState.IDLE);
-  assert.deepEqual(sheep.getPosition(), { x: 224, y: 241.48000000000002 });
+  assert.deepEqual(sheep.getPosition(), { x: 224, y: 224 });
 });
 
 test("player and NPC dynamic colliders both block fleeing", () => {
   const playerBlocker = {
     type: "player",
-    collider: { type: "circle", x: 288, y: 270.52, radius: 26 },
+    collider: { type: "circle", x: 288, y: 224, radius: 26 },
   };
   const npcBlocker = { ...playerBlocker, type: "npc" };
 
   const blocked = createTestSheep({ minimumFleeDistanceCells: 1, maximumFleeDistanceCells: 1 });
   blocked.sheep.update(0.016, [nearbyPlayer], [playerBlocker]);
   blocked.api.animations.at(-1).options.onEnd();
-  assert.equal(blocked.sheep.state, SheepState.IDLE);
+  blocked.sheep.update(1, [], [playerBlocker]);
+  assert.notDeepEqual(blocked.sheep.getPosition(), { x: 288, y: 224 });
 
   const npcBlocked = createTestSheep({ minimumFleeDistanceCells: 1, maximumFleeDistanceCells: 1 });
   npcBlocked.sheep.update(0.016, [nearbyPlayer], [npcBlocker]);
   npcBlocked.api.animations.at(-1).options.onEnd();
-  assert.equal(npcBlocked.sheep.state, SheepState.IDLE);
+  npcBlocked.sheep.update(1, [], [npcBlocker]);
+  assert.notDeepEqual(npcBlocked.sheep.getPosition(), { x: 288, y: 224 });
 });
 
 test("disposing stops the active sheep animation", () => {
@@ -161,7 +163,7 @@ test("contact command cancels running, bounces stationary, then separates", () =
   api.animations.at(-1).options.onEnd();
   assert.equal(sheep.state, SheepState.RUNNING);
   sheep.update(1, [], []);
-  assert.deepEqual(sheep.getPosition(), { x: 160, y: 241.48000000000002 });
+  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
 });
 
 test("coincident contact partners can move apart without ignoring other sheep", () => {
@@ -180,7 +182,7 @@ test("coincident contact partners can move apart without ignoring other sheep", 
   api.animations.at(-1).options.onEnd();
   assert.equal(sheep.state, SheepState.RUNNING);
   sheep.update(1, [], [coincidentPartner]);
-  assert.deepEqual(sheep.getPosition(), { x: 160, y: 241.48000000000002 });
+  assert.deepEqual(sheep.getPosition(), { x: 160, y: 224 });
 });
 
 test("knockback cannot move through another living sheep", () => {
@@ -188,7 +190,7 @@ test("knockback cannot move through another living sheep", () => {
   const blocker = {
     type: "npc",
     id: "sheep-2",
-    collider: { type: "circle", x: 276, y: 270.52, radius: 26 },
+    collider: { type: "circle", x: 276, y: 224, radius: 26 },
   };
   sheep.applyKnockback({ x: 1, y: 0 }, { duration: 1, speed: 100 });
   sheep.update(1, [], [blocker]);

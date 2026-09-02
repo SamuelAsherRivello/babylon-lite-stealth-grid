@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createEnemyPerceptionReaction, PERCEPTION_STATES } from "../../src/systems/perception/enemy-perception-reaction.js";
+import { createEnemyPerceptionReaction, PERCEPTION_STATES } from "../../../src/systems/perception/enemy-perception-reaction.js";
 
 const cell = (x, y) => ({ x, y });
 
@@ -14,7 +14,7 @@ test("uses discrete thresholds and keeps separate remembered cells", () => {
   assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.INVESTIGATING);
   assert.deepEqual(reaction.getSnapshot().lastKnownCell, cell(2, 2));
   reaction.acceptDetection({ type: "visual", strength: 1, cell: cell(3, 2) });
-  assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.ALERTED);
+  assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.ALERT);
   assert.deepEqual(reaction.getSnapshot().alertedCell, cell(3, 2));
 });
 

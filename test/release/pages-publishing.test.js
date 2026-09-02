@@ -23,6 +23,8 @@ test("Pages publishing checks deployment contracts before building", async () =>
   assert.match(workflow, /push:\s+branches:\s+- master/);
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /run: npm run test:publish/);
+  assert.match(workflow, /run: npm test/);
+  assert.ok(workflow.indexOf("run: npm test") < workflow.indexOf("run: npm run build"));
   assert.ok(workflow.indexOf("run: npm run test:publish") < workflow.indexOf("run: npm run build"));
   assert.match(workflow, /path: dist/);
   assert.doesNotMatch(workflow, /babylon-light-stealth-grid/);

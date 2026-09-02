@@ -18,11 +18,11 @@ test("Lancer keeps the lowercase code-facing character identity", async () => {
   assert.match(source, /LANCER:\s*"lancer"/);
 });
 
-test("Lancer remains on its looping idle animation for now", async () => {
+test("Lancer keeps a looping idle animation and participates in enemy patrol", async () => {
   const [catalog, main] = await Promise.all([
     readFile(new URL("../src/characters/enemies/lancer/lancer-animation-catalog.js", import.meta.url), "utf8"),
     readFile(new URL("../src/main.js", import.meta.url), "utf8"),
   ]);
   assert.match(catalog, /idle: createDescriptor\("Lancer Idle", "Lancer_Idle\.png", 12, true\)/);
-  assert.match(main, /character: SpawnerCharacter\.LANCER, actor, combat, controller: \{ update\(\) \{\} \}/);
+  assert.match(main, /character: SpawnerCharacter\.LANCER, actor, combat, controller: createEnemyPatrolController\(actor/);
 });

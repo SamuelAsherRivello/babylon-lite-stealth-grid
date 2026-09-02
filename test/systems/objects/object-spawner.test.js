@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createObjectSpawner } from "../../src/systems/objects/object-spawner.js";
+import { createObjectSpawner } from "../../../src/systems/objects/object-spawner.js";
 
 test("object spawner creates exactly once and never respawns", () => {
   const positions = [];

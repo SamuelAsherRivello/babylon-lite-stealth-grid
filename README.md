@@ -52,12 +52,11 @@ WebGPU not working? See [Troubleshooting](#troubleshooting).
 
 ### Release Workflow
 
-1. Run `npm ci`, `npm run test:publish`, and `npm run build`. Run `npm test`
-   separately to check the full gameplay suite; it currently has known failures
-   and is not the Pages deployment gate.
+1. Run `npm ci`, `npm test`, `npm run test:publish`, and `npm run build`.
+   Both the full test suite and focused publishing checks must pass before deployment.
 2. Commit and push to `master` in
    [`SamuelAsherRivello/babylon-lite-stealth-grid`](https://github.com/SamuelAsherRivello/babylon-lite-stealth-grid).
-   The `Deploy live demo` workflow validates publishing contracts, builds `dist`,
+   The `Deploy live demo` workflow runs all tests, validates publishing contracts, builds `dist`,
    and deploys it using GitHub Actions. No release tag is needed to publish.
 3. Wait for the [deployment workflow](https://github.com/SamuelAsherRivello/babylon-lite-stealth-grid/actions/workflows/deploy-pages.yml)
    to succeed, then verify the [live game](https://samuelasherrivello.github.io/babylon-lite-stealth-grid/).

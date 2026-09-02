@@ -54,7 +54,7 @@ test("arrow spawn positions cover straight up and down", () => {
   });
 });
 
-test("player module owns archer input and animation", async () => {
+test("player module owns pawn input and animation", async () => {
   const [mainSource, playerSource] = await Promise.all([
     readFile(new URL("../../src/main.js", import.meta.url), "utf8"),
     readFile(new URL("../../src/characters/player/player.js", import.meta.url), "utf8"),
@@ -67,11 +67,11 @@ test("player module owns archer input and animation", async () => {
   assert.match(playerSource, /KeyV/);
   assert.match(playerSource, /onShoot/);
   assert.match(playerSource, /ARROW_SPAWN_OFFSETS/);
-  assert.match(playerSource, /Archer_Idle\.png/);
-  assert.match(playerSource, /Archer_Run\.png/);
-  assert.match(playerSource, /Archer_Shoot\.png/);
-  assert.match(playerSource, /name === "idle" \? 5 : name === "run" \? 3 : 7/);
-  assert.match(playerSource, /name !== "shoot"/);
+  assert.match(playerSource, /Pawn_Idle\.png/);
+  assert.match(playerSource, /Pawn_Run\.png/);
+  assert.match(playerSource, /Pawn_Interact Knife\.png/);
+  assert.match(playerSource, /visibleName\.startsWith\("idle"\)\s*\? 7\s*:\s*visibleName\.startsWith\("run"\) \? 5 : 3/);
+  assert.match(playerSource, /visibleName !== "shoot"/);
   assert.match(playerSource, /createPlayerStateMachine/);
   assert.match(playerSource, /createGridAlignedMovementController/);
   assert.match(playerSource, /const ENABLE_QUANTIZE_MOVEMENT = false;/);

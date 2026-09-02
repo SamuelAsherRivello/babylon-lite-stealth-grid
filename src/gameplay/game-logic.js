@@ -428,6 +428,12 @@ export function moveWithCollisions(
   obstacles,
 ) {
   let nextPosition = { ...position };
+  // Callers may pass knockback velocity; distance already includes its speed.
+  // Preserve per-axis directional input in [-1, 1], but do not multiply speed twice.
+  const magnitude = Math.hypot(movement.x, movement.y);
+  if (Math.max(Math.abs(movement.x), Math.abs(movement.y)) > 1) {
+    movement = { x: movement.x / magnitude, y: movement.y / magnitude };
+  }
   const validObstacles = obstacles.filter(Boolean);
   const currentCollider = getCharacterCollider(position, character.frame, character.pivot, character.collider);
   const centerOf = (collider) => collider.type === "circle"

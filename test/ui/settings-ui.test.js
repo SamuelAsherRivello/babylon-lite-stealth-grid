@@ -190,7 +190,10 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(main, /playerRecord\.actor\.update\(activeDelta, dynamicColliders\)/);
   assert.match(main, /showColliders = runtimeSettingsStore\.get\(RUNTIME_DEBUG_SETTING_KEYS\.showColliders\)/);
   assert.match(main, /marker\.setVisible\(value\)/);
-  assert.match(main, /const diagnosticCharacters = \[[\s\S]*SpawnerType\.SHEEP[\s\S]*SpawnerType\.ENEMY[\s\S]*getCombatCollider\(\)[\s\S]*getMovementCollider\(\)[\s\S]*drawDiagnostics\([\s\S]*diagnosticCharacters[\s\S]*projectiles\.getColliders\(\)[\s\S]*showColliders/);
+  const diagnostics = main.slice(main.indexOf("const diagnosticCharacters = ["), main.indexOf('window.addEventListener("beforeunload"'));
+  for (const required of ["SpawnerType.SHEEP", "SpawnerType.ENEMY", "getCombatCollider()", "getMovementCollider()", "drawDiagnostics(", "projectiles.getColliders()", "showColliders"]) {
+    assert.ok(diagnostics.includes(required), `missing ${required}`);
+  }
   assert.match(main, /function drawGridLines\(\)[\s\S]*rgb\(80 86 92 \/ 48%\)[\s\S]*lineWidth = 1/);
   assert.match(main, /if \(!enabled\) \{[\s\S]*return;[\s\S]*\}[\s\S]*drawGridLines\(\)/);
   assert.doesNotMatch(main, /DISPLAY_SETTING_KEYS|applyFullscreenPreference/);
@@ -240,7 +243,11 @@ test("settings chrome follows inspiration frame-relative measurements", async ()
     const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const declarations = styles.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`, "s"))?.[1] ?? "";
     assert.ok(declarations, `missing ${selector}`);
-    assert.doesNotMatch(declarations, /(?:\d|\.)(?:px|vw|vh)\b/);
+    // The close button uses a deliberate three-pixel inset inside the panel.
+    const scalableDeclarations = selector === ".game-window-close"
+      ? declarations.replace(/(?:top|right):\s*3px;/g, "")
+      : declarations;
+    assert.doesNotMatch(scalableDeclarations, /(?:\d|\.)(?:px|vw|vh)\b/);
   }
   assert.match(styles, /--screen-margin:\s*20px/);
   assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*var\(--ui-safe-top\);[^}]*right:\s*var\(--ui-safe-right\);[^}]*width:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*height:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*padding:\s*0\.35cqw;[^}]*border:\s*0\.175cqw solid/s);

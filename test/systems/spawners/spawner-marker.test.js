@@ -5,8 +5,8 @@ import {
   SPAWNER_GRAYSCALE_FRAGMENT,
   SPAWNER_MARKER_ORDER,
   createSpawnerMarker,
-} from "../../src/systems/spawners/spawner-marker.js";
-import { GAME_DEPTH } from "../../src/systems/environment/render-depth.js";
+} from "../../../src/systems/spawners/spawner-marker.js";
+import { GAME_DEPTH } from "../../../src/systems/environment/render-depth.js";
 
 test("spawner marker uses static frame-zero grayscale artwork at half size", () => {
   const calls = [];
