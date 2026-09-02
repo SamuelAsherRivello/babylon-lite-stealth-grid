@@ -55,8 +55,8 @@ function createApi() {
   };
 }
 
-test("goblin collider matches the player's art-baseline offset", () => {
-  assert.equal(GOBLIN_MOVEMENT_COLLIDER.y, 123);
+test("goblin movement collider retains its logical body geometry", () => {
+  assert.equal(GOBLIN_MOVEMENT_COLLIDER.y, 161.28);
   assert.equal(GOBLIN_MOVEMENT_COLLIDER.x, 96);
   assert.equal(GOBLIN_MOVEMENT_COLLIDER.radius, 24);
 });
@@ -93,7 +93,7 @@ test("goblin starts idle, switches locomotion, and mirrors left", () => {
 
   assert.equal(goblin.state, "idle");
   assert.equal(api.calls.layers.find((layer) => layer.atlas.name === "idle").visible, true);
-  assert.deepEqual(api.calls.added[0].options.positionPx, [200, 500]);
+  assert.deepEqual(api.calls.added[0].options.positionPx, [200, 564]);
 
   goblin.playAnimation({});
   assert.ok(

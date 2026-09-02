@@ -6,6 +6,7 @@ import {
   stopSpriteAnimation,
   updateSprite2D,
 } from "@babylonjs/lite";
+import { moveWithCollisions } from "../gameplay/game-logic.js";
 
 import {
   getCharacterArtTransform,
@@ -20,13 +21,17 @@ export function createSharedCharacterActor({
   bounds,
   initialPosition,
   tileSize,
+  obstacles = [],
+  movementSpeed = 120,
   api = { addSprite2D, createSprite2DLayer, playSprite2DAnimation, removeSprite2D, stopSpriteAnimation, updateSprite2D },
 }) {
   let position = { ...initialPosition };
   let activeAnimation = null;
   let animationManager = null;
+  let currentAnimation = null;
   let artYOffset = 0;
   let disposed = false;
+  let movementIntent = { x: 0, y: 0 };
   const layers = {};
   const sprites = {};
 
@@ -75,6 +80,20 @@ export function createSharedCharacterActor({
     setPosition(next) { position = { ...next }; updateSprites(); },
     getMovementCollider: () => getCharacterMovementCollider(position, definition),
     getCombatCollider: () => getCharacterCombatCollider(position, tileSize),
+    setMovementIntent(intent) { movementIntent = { x: intent.x, y: intent.y }; },
+    update(deltaSeconds) {
+      const movement = movementIntent;
+      position = moveWithCollisions(
+        position, movement, movementSpeed * Math.max(0, deltaSeconds), bounds,
+        { frame: definition.frame, pivot: { x: 0.5, y: 1 - tileSize / 2 / definition.frame.height }, collider: { type: "circle", x: definition.frame.width / 2, y: definition.frame.height - tileSize / 2, radius: definition.movementCollider.radius } },
+        obstacles,
+      );
+      if (movement.x !== 0 || movement.y !== 0) {
+        if (sprites.walking) this.playAnimation("walking");
+      } else this.playAnimation("idle");
+      updateSprites();
+      return { position: { ...position }, state: movement.x || movement.y ? "walking" : "idle" };
+    },
     getGridPosition: (size) => ({
       x: Math.floor(position.x / size), y: Math.floor(position.y / size),
     }),
@@ -82,6 +101,8 @@ export function createSharedCharacterActor({
     setVisualTransform(patch) { updateSprites(patch); },
     playAnimation(name) {
       if (!animationManager || disposed || !sprites[name]) return;
+      if (currentAnimation === name) return;
+      currentAnimation = name;
       if (activeAnimation) api.stopSpriteAnimation(activeAnimation);
       for (const [layerName, layer] of Object.entries(layers)) layer.visible = layerName === name;
       const descriptor = definition.animations[name];

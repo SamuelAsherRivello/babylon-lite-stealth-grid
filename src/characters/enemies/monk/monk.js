@@ -5,7 +5,8 @@ import { MONK_ANIMATION_CATALOG, MONK_ANIMATION_NAMES } from "./monk-animation-c
 
 export const MONK_FRAME = Object.freeze({ width: 192, height: 192 });
 export const MONK_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
-export const MONK_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
+// Shared actor offsets are screen-space, where positive Y moves artwork down.
+export const MONK_ART_OFFSET = Object.freeze({ x: 0, y: 55 });
 export const MONK_MOVEMENT_COLLIDER = Object.freeze({ type: "circle", x: 96, y: 161.28, radius: 24 });
 export const MONK_COMBAT_COLLIDER = Object.freeze({ x: 64, y: 97.28, width: 64, height: 64 });
 
@@ -24,18 +25,17 @@ export async function loadMonkAtlases(engine, api = DEFAULT_API) {
   ])));
 }
 
-export function createMonk({ atlases, initialPosition, bounds, runtimeApi }) {
+export function createMonk({ atlases, initialPosition, bounds, obstacles = [], runtimeApi }) {
   const actor = createSharedCharacterActor({
     definition: MONK_DEFINITION, atlases, initialPosition, bounds,
-    tileSize: 64, api: runtimeApi,
+    tileSize: 64, obstacles, api: runtimeApi,
   });
   return {
     ...actor,
     get state() { return "idle"; },
     get isAttacking() { return false; },
     getHeading() { return "down"; },
-    setMovementIntent() {},
-    update() { return { position: actor.getPosition(), state: "idle" }; },
+    update(deltaSeconds) { return actor.update(deltaSeconds); },
     playAnimation(manager) { actor.setAnimationManager(manager); actor.playAnimation("idle"); },
     playHeal() { actor.playAnimation("heal"); },
     playHealEffect() { actor.playAnimation("heal-effect"); },

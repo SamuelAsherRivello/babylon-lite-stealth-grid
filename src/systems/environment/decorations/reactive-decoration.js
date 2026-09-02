@@ -13,7 +13,7 @@ import { getYSortedLayerOrder } from "../render-depth.js";
 
 export const REACTIVE_DECORATION_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
 // Keep artwork independently offset from the shared collider anchor.
-export const REACTIVE_DECORATION_ART_OFFSET = Object.freeze({ x: -3, y: -40 });
+export const REACTIVE_DECORATION_ART_OFFSET = Object.freeze({ x: 0, y: -52 });
 
 const DEFAULT_API = {
   addSprite2D,

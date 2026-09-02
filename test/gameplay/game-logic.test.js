@@ -10,6 +10,7 @@ import {
   createGridAlignmentSession,
   createTerrainReviewTiles,
   getCharacterCollider,
+  getOtherCharacterColliders,
   formatPositionReadout,
   getLogicalViewportScale,
   gridCellToScreen,
@@ -315,6 +316,19 @@ test("generic collider overlap handles circle pairs and AABB-circle pairs", () =
   assert.equal(collidersOverlap({ x: 120, y: 90, width: 30, height: 20 }, sheep), true);
 });
 
+test("other character colliders include live peers but not the current character", () => {
+  const records = [
+    { combat: { label: "enemy-1", isAlive: true }, actor: { getMovementCollider: () => ({ x: 1, y: 2, width: 3, height: 4 }) } },
+    { combat: { label: "enemy-2", isAlive: true }, actor: { getMovementCollider: () => ({ x: 5, y: 6, width: 7, height: 8 }) } },
+    { combat: { label: "dead", isAlive: false }, actor: { getMovementCollider: () => ({ x: 9, y: 10, width: 11, height: 12 }) } },
+  ];
+
+  assert.deepEqual(
+    getOtherCharacterColliders(records, "enemy-1", "enemy"),
+    [{ type: "enemy", collider: { x: 5, y: 6, width: 7, height: 8 } }],
+  );
+});
+
 test("horizontal circle movement into a diagonal is pushed along the slope", () => {
   const triangle = {
     type: "polygon",
@@ -343,6 +357,15 @@ test("horizontal circle movement into a diagonal is pushed along the slope", () 
     circleOverlapsPolygon({ ...result, radius: 5 }, triangle.points),
     false,
   );
+});
+
+test("overlapping character circles can only move apart", () => {
+  const character = { frame: { width: 64, height: 64 }, pivot: { x: 0.5, y: 0.5 }, collider: { type: "circle", x: 32, y: 32, radius: 16 } };
+  const other = { type: "circle", x: 110, y: 100, radius: 16 };
+  const toward = moveWithCollisions({ x: 100, y: 100 }, { x: 1, y: 0 }, 10, { width: 400, height: 400 }, character, [other]);
+  const away = moveWithCollisions({ x: 100, y: 100 }, { x: -1, y: 0 }, 10, { width: 400, height: 400 }, character, [other]);
+  assert.deepEqual(toward, { x: 100, y: 100 });
+  assert.deepEqual(away, { x: 90, y: 100 });
 });
 
 test("AABB containment checks the complete box", () => {

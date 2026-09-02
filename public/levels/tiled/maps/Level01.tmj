@@ -45,7 +45,7 @@
                 }, 
                 {
                  "gid":60,
-                 "height":64,
+                 "height":44,
                  "id":11,
                  "name":"Monk Spawner",
                  "opacity":1,
@@ -58,9 +58,9 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":64,
+                 "width":40,
                  "x":97,
-                 "y":576
+                 "y":500.666666666667
                 }, 
                 {
                  "gid":56,
@@ -77,20 +77,20 @@
                 }, 
                 {
                  "gid":58,
-                 "height":64,
+                 "height":40,
                  "id":5,
                  "name":"Goblin Spawner",
                  "opacity":1,
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":64,
-                 "x":32.3333333333333,
-                 "y":576
+                 "width":44,
+                 "x":32.6666666666666,
+                 "y":500.333333333333
                 }, 
                 {
                  "gid":58,
-                 "height":64,
+                 "height":37.3333333333334,
                  "id":1,
                  "name":"Warrior Spawner",
                  "opacity":1,
@@ -103,13 +103,13 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":64,
-                 "x":416.666666666667,
-                 "y":448.666666666667
+                 "width":38.6666666666667,
+                 "x":286.666666666667,
+                 "y":498.666666666667
                 }, 
                 {
                  "gid":58,
-                 "height":64,
+                 "height":49,
                  "id":9,
                  "name":"Archer Spawner",
                  "opacity":1,
@@ -122,9 +122,9 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":64,
-                 "x":349.833333333333,
-                 "y":512.5
+                 "width":46.3333333333333,
+                 "x":224.666666666666,
+                 "y":505.5
                 }, 
                 {
                  "gid":59,
@@ -142,7 +142,7 @@
             
                 {
                  "gid":58,
-                 "height":64,
+                 "height":43,
                  "id":11,
                  "name":"Red Lancer Spawner",
                  "opacity":1,
@@ -155,9 +155,9 @@
                  "rotation":0,
                  "type":"",
                  "visible":true,
-                 "width":64,
-                 "x":160.5,
-                 "y":575.833333333333
+                 "width":45.3333333333333,
+                 "x":163.166666666667,
+                 "y":501.833333333333
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -289,16 +289,42 @@
          "objects":[
                 {
                  "gid":55,
-                 "height":64,
+                 "height":35,
                  "id":7,
                  "name":"Bush 1",
                  "opacity":1,
                  "rotation":0,
                  "type":"ReactiveDecoration",
                  "visible":true,
-                 "width":64,
-                 "x":288,
-                 "y":426.333333333333
+                 "width":43,
+                 "x":353.5,
+                 "y":776.333333333333
+                }, 
+                {
+                 "gid":55,
+                 "height":35,
+                 "id":12,
+                 "name":"Bush 1",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"ReactiveDecoration",
+                 "visible":true,
+                 "width":43,
+                 "x":416.5,
+                 "y":780.5
+                }, 
+                {
+                 "gid":55,
+                 "height":35,
+                 "id":13,
+                 "name":"Bush 1",
+                 "opacity":1,
+                 "rotation":0,
+                 "type":"ReactiveDecoration",
+                 "visible":true,
+                 "width":43,
+                 "x":479.5,
+                 "y":782.5
                 }],
          "opacity":1,
          "type":"objectgroup",
@@ -307,7 +333,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":12,
+ "nextobjectid":14,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.12.2",

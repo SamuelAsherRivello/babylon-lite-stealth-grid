@@ -89,10 +89,15 @@ export function normalizeTiledMap(map, externalTilesets) {
         ...propertiesToObject(tile.properties),
         ...propertiesToObject(object.properties),
       };
-      const position = {
-        x: object.x - originColumn * map.tilewidth,
-        y: (originRow + 1) * map.tileheight - object.y,
-      };
+      const position = className === "ReactiveDecoration"
+        ? {
+          x: (Math.floor(object.x / map.tilewidth) + 0.5 - originColumn) * map.tilewidth,
+          y: (originRow + 2 - (Math.floor(object.y / map.tileheight) + 0.5)) * map.tileheight,
+        }
+        : {
+          x: object.x - originColumn * map.tilewidth,
+          y: (originRow + 1) * map.tileheight - object.y,
+        };
       const frameWidth = Number(properties.frameWidth ?? tile.imagewidth);
       const frameHeight = Number(properties.frameHeight ?? tile.imageheight);
       return [{

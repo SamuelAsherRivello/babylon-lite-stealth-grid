@@ -26,7 +26,9 @@ import { selectGoblinAttackAnimation } from "./goblin-state.js";
 
 export const GOBLIN_FRAME = Object.freeze({ width: 192, height: 192 });
 export const GOBLIN_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
-export const GOBLIN_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
+// Sprite coordinates use a screen-down Y offset; this asset's visible body
+// sits one cell above the shared logical anchor inside its frame.
+export const GOBLIN_ART_OFFSET = Object.freeze({ x: 0, y: -64 });
 export const GOBLIN_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 96,
@@ -303,6 +305,7 @@ export function createGoblin({
     getPosition() {
       return { ...position };
     },
+    setPosition(next) { position = { ...next }; updateSprites(); },
     playAnimation(manager) {
       animationManager = manager;
       playStateAnimation("idle");

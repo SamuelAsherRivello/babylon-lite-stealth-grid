@@ -30,7 +30,7 @@ import {
 
 export const WARRIOR_FRAME = Object.freeze({ width: 192, height: 192 });
 export const WARRIOR_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
-export const WARRIOR_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
+export const WARRIOR_ART_OFFSET = Object.freeze({ x: 0, y: -55 });
 export const WARRIOR_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 96,
@@ -299,6 +299,7 @@ export function createWarrior({
     getPosition() {
       return { ...position };
     },
+    setPosition(next) { position = { ...next }; updateSprites(); },
     playAnimation(manager) {
       animationManager = manager;
       playStateAnimation(WarriorState.IDLE);

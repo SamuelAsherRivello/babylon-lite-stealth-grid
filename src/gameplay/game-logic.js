@@ -326,6 +326,40 @@ export function colliderOverlapsObstacle(collider, obstacle) {
   return collidersOverlap(collider, obstacle);
 }
 
+export function separateOverlappingCharacterColliders(records, padding = 0.01) {
+  for (let index = 0; index < records.length; index += 1) {
+    for (let otherIndex = index + 1; otherIndex < records.length; otherIndex += 1) {
+      const first = records[index];
+      const second = records[otherIndex];
+      if (first.combat?.isAlive === false || second.combat?.isAlive === false) continue;
+      const a = first.actor.getMovementCollider();
+      const b = second.actor.getMovementCollider();
+      if (a.type !== "circle" || b.type !== "circle") continue;
+      const dx = a.x - b.x;
+      const dy = a.y - b.y;
+      const distance = Math.hypot(dx, dy);
+      const overlap = a.radius + b.radius - distance;
+      if (overlap <= 0) continue;
+      const normal = distance > 0 ? { x: dx / distance, y: dy / distance } : { x: 1, y: 0 };
+      const correction = (overlap + padding) / 2;
+      first.actor.setPosition?.({ x: first.actor.getPosition().x + normal.x * correction, y: first.actor.getPosition().y + normal.y * correction });
+      second.actor.setPosition?.({ x: second.actor.getPosition().x - normal.x * correction, y: second.actor.getPosition().y - normal.y * correction });
+    }
+  }
+}
+
+export function getOtherCharacterColliders(records, currentLabel, type) {
+  return records
+    .filter((record) => (
+      record.combat?.isAlive
+      && record.combat.label !== currentLabel
+    ))
+    .map((record) => ({
+      type,
+      collider: record.actor.getMovementCollider(),
+    }));
+}
+
 export function isAabbWithinBounds(aabb, maxX, maxY) {
   return aabb.x >= 0
     && aabb.y >= 0
@@ -353,6 +387,12 @@ export function moveWithCollisions(
   obstacles,
 ) {
   let nextPosition = { ...position };
+  const currentCollider = getCharacterCollider(position, character.frame, character.pivot, character.collider);
+  const overlappingCircles = obstacles.filter((obstacle) => (
+    currentCollider.type === "circle"
+    && obstacle.type === "circle"
+    && collidersOverlap(currentCollider, obstacle)
+  ));
 
   for (const axis of ["x", "y"]) {
     if (movement[axis] === 0) {
@@ -389,13 +429,22 @@ export function moveWithCollisions(
       character.pivot,
       character.collider,
     );
+    const separating = overlappingCircles.every((obstacle) => {
+      const dx = currentCollider.x - obstacle.x;
+      const dy = currentCollider.y - obstacle.y;
+      return movement.x * dx + movement.y * dy > 0;
+    });
+    if (overlappingCircles.length > 0 && !separating) {
+      continue;
+    }
     const isBlocked = !isColliderWithinBounds(
       resolvedCollider,
       bounds.width,
       bounds.height,
-    ) || obstacles.some(
-      (obstacle) => colliderOverlapsObstacle(resolvedCollider, obstacle),
-    );
+    ) || obstacles.some((obstacle) => {
+      if (overlappingCircles.includes(obstacle) && separating) return false;
+      return colliderOverlapsObstacle(resolvedCollider, obstacle);
+    });
 
     if (!isBlocked) {
       nextPosition = resolvedCandidate;

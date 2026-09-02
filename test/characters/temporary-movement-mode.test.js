@@ -19,3 +19,8 @@ test("temporary bush-burning QA mode is removed", async () => {
   const source = await readFile(new URL("main.js", ROOT), "utf8");
   assert.doesNotMatch(source, /temporaryBushQaMode|verifyBushBurning/);
 });
+
+test("bush sensor is not presented as a green walkability collider", async () => {
+  const source = await readFile(new URL("main.js", ROOT), "utf8");
+  assert.match(source, /const gridCollider = \{[\s\S]{0,300}?width: TILE_SIZE,[\s\S]{0,120}?movementCollider: null/);
+});

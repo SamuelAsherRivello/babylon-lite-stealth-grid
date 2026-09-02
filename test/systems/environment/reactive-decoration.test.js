@@ -88,7 +88,7 @@ test("bush owns 100 health, a living-only combat collider, and two fire hits", (
 
 test("reactive decoration starts on authored transform and idle frame", () => {
   const { decoration } = createHarness();
-  assert.deepEqual(decoration.sprite.positionPx, [97, 864]);
+  assert.deepEqual(decoration.sprite.positionPx, [100, 876]);
   assert.deepEqual(decoration.sprite.sizePx, [128, 128]);
   assert.equal(decoration.sprite.frame, 0);
   assert.deepEqual(decoration.layer.pivot, [0.5, 0.84]);

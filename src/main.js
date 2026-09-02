@@ -13,7 +13,7 @@ import {
   updateSpriteAnimationManager,
 } from "@babylonjs/lite";
 
-import { gridCellToScreenForFrame, collidersOverlap } from "./gameplay/game-logic.js";
+import { gridCellToScreenForFrame, collidersOverlap, getOtherCharacterColliders, separateOverlappingCharacterColliders } from "./gameplay/game-logic.js";
 import { createGameStateMachine, GameState } from "./gameplay/game-state.js";
 import { gridCellToWorldCenter } from "./gameplay/world-viewport.js";
 import { GAME_VIEWPORT, formatViewportDiagnostics, logicalPointFromClient, measureGameViewport, renderViewportQaMarkers } from "./gameplay/game-viewport.js";
@@ -41,6 +41,8 @@ import {
   loadGoblinAtlases,
 } from "./characters/enemies/goblin/goblin.js";
 import { createGoblinBehaviorController } from "./characters/enemies/goblin/goblin-behavior-controller.js";
+import { createEnemyPatrolController } from "./characters/enemies/enemy-patrol-controller.js";
+import { createCharacterLockupWatchdog } from "./gameplay/character-lockup-watchdog.js";
 import { ARCHER_FRAME, ARCHER_MOVEMENT_COLLIDER, ARCHER_PIVOT, createArcher, loadArcherAtlases } from "./characters/enemies/archer/archer.js";
 import { createGridWalkability } from "./characters/npc/sheep/sheep-navigation.js";
 import {
@@ -438,7 +440,7 @@ async function start() {
     `${import.meta.env.BASE_URL}assets/terrain/resources/gold/gold-pickup-2.png`,
   ];
   const goldStoneAtlases = new Map(await Promise.all([...goldStoneImages].map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
-  const goldPickupAtlases = new Map(await Promise.all(goldPickupImages.map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
+  const goldPickupAtlases = new Map(await Promise.all(goldPickupImages.map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [64, 64], sampling: "nearest" })])));
   const pickupSystem = createPickupSystem();
   const goldPickupDefinition = {
     create: ({ position, index }) => {
@@ -656,9 +658,9 @@ async function start() {
 
   function createArcherRecord(position) {
     const ownerId = `archer-${nextActorId++}`;
-    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, onShoot: (spawnPosition, target, options) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
+    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders, onShoot: (spawnPosition, target, options) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
     const combat = createCombatActorState({ label: ownerId, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
-    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: { update() {} } });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: createEnemyPatrolController(actor) });
   }
 
   function createGoblinRecord(position) {
@@ -751,20 +753,20 @@ async function start() {
       character: SpawnerCharacter.WARRIOR,
       actor,
       combat,
-      controller: createWarriorDemoController(actor),
+      controller: createEnemyPatrolController(actor),
     });
   }
 
   function createLancerRecord(position) {
     const actor = createLancer({ atlases: lancerAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
     const combat = createCombatActorState({ label: `lancer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, LANCER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [LANCER_FRAME.width * value, LANCER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: (direction, options) => actor.applyKnockback(direction, options) });
-    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.LANCER, actor, combat, controller: { update() {} } });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.LANCER, actor, combat, controller: createEnemyPatrolController(actor) });
   }
 
   function createMonkRecord(position) {
     const actor = createMonk({ atlases: monkAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
     const combat = createCombatActorState({ label: `monk-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, MONK_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [MONK_FRAME.width * value, MONK_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
-    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, actor, combat, controller: { update() {} } });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, actor, combat, controller: createEnemyPatrolController(actor) });
   }
 
   const spawnerConfigs = createInitialSpawnerConfigs({
@@ -1064,6 +1066,7 @@ async function start() {
   const goal = createGoal({ host: gameUi, artworkUrl: "./assets/goals/Goal.png", position: { x: (level.goals[0].gameCell.x + 0.5) * TILE_SIZE, y: (level.goals[0].gameCell.y + 0.5) * TILE_SIZE }, screenWidth: SCREEN_WIDTH, screenHeight: SCREEN_HEIGHT });
   const levelCompleteUi = createLevelCompleteUi({ host: domBody, onContinue: () => window.location.reload() });
   const gameStateMachine = createGameStateMachine();
+  const characterLockupWatchdog = createCharacterLockupWatchdog();
 
   function update(currentTime) {
     const deltaSeconds = Math.min((currentTime - previousTime) / 1000, 0.05);
@@ -1090,6 +1093,16 @@ async function start() {
       const playerRecord = spawnerByType.get(SpawnerType.PLAYER).actors[0] ?? null;
       const sheepRecords = getRecordsByType(SpawnerType.SHEEP);
       const enemyRecords = getRecordsByType(SpawnerType.ENEMY);
+      const characterRecords = [
+        ...(playerRecord ? [playerRecord] : []),
+        ...sheepRecords,
+        ...enemyRecords,
+      ];
+      const lockup = characterLockupWatchdog.inspect(characterRecords, activeDelta);
+      if (lockup) console.warn("Character lockup detected; separating", lockup.labels);
+      separateOverlappingCharacterColliders([
+        ...characterRecords,
+      ]);
       const playerMovementCollider = playerRecord?.combat.isAlive
         ? playerRecord.actor.getMovementCollider()
         : null;
@@ -1195,6 +1208,11 @@ async function start() {
             : []),
           ...sheepMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: "npc", collider })),
+          ...getOtherCharacterColliders(
+            enemyRecords,
+            record.combat.label,
+            CharacterType.ENEMY,
+          ),
         ], record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot);
       }
       characterPerception.update(activeDelta);
@@ -1305,7 +1323,7 @@ async function start() {
         decoration.update(reactiveCharacters, activeDelta);
       }
       for (const object of goldStoneObjects) object.update(activeDelta);
-      pickupSystem.update(activeDelta, playerMovementCollider);
+      pickupSystem.update(activeDelta, playerCombatCollider);
 
       projectiles.update(activeDelta);
       const projectilesToRemove = [];
@@ -1435,14 +1453,36 @@ async function start() {
     }));
     diagnosticCharacters.push(...reactiveDecorations
       .filter((decoration) => !decoration.isDead)
-      .map((decoration) => ({
-        combatCollider: decoration.getCombatCollider(),
-        movementCollider: decoration.getMovementCollider(),
-      })));
+      .map((decoration) => {
+        const combatCollider = decoration.getCombatCollider();
+        if (!combatCollider) return null;
+        const centerX = combatCollider.x + combatCollider.width / 2;
+        const centerY = combatCollider.y + combatCollider.height / 2;
+        const gridCollider = {
+          x: Math.floor(centerX / TILE_SIZE) * TILE_SIZE,
+          y: Math.floor(centerY / TILE_SIZE) * TILE_SIZE,
+          width: TILE_SIZE,
+          height: TILE_SIZE,
+        };
+        return {
+        combatCollider: gridCollider,
+        centerCollider: gridCollider,
+        // The bush sensor is a non-blocking trigger, not a walkability
+        // collider. Keep it out of the green movement-collider diagnostics.
+        movementCollider: null,
+        };
+      }).filter(Boolean));
     diagnosticCharacters.push(...goldStoneObjects
       .filter((object) => !object.isDead)
       .map((object) => ({
         combatCollider: object.getCombatCollider(),
+        movementCollider: null,
+      })));
+    diagnosticCharacters.push(...pickupSystem.pickups
+      .filter((pickup) => !pickup.isDead)
+      .map((pickup) => ({
+        combatCollider: pickup.getCombatCollider(),
+        centerCollider: pickup.getCombatCollider(),
         movementCollider: null,
       })));
     drawDiagnostics(
@@ -1601,25 +1641,6 @@ function drawDiagnostics(
   goldPickups = [],
 ) {
   debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
-  for (const pickup of goldPickups) {
-    if (!pickup.isAlive) continue;
-    const center = pickup.position;
-    const screenX = center.x - TILE_SIZE / 2;
-    const screenY = SCREEN_HEIGHT - center.y - TILE_SIZE / 2;
-
-    // Yellow marks the PNG render frame; green marks the complete grid cell.
-    debugContext.strokeStyle = "#ffe600";
-    debugContext.lineWidth = 3;
-    debugContext.strokeRect(
-      screenX + 3,
-      screenY + 3,
-      TILE_SIZE - 6,
-      TILE_SIZE - 6,
-    );
-    debugContext.strokeStyle = "#20e060";
-    debugContext.lineWidth = 2;
-    debugContext.strokeRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
-  }
   for (const character of diagnosticCharacters) {
     if (!character.movementCollider || !Array.isArray(character.expressionInstances)) continue;
     const collider = character.movementCollider;
@@ -1633,18 +1654,6 @@ function drawDiagnostics(
     const iconOffsetY = ENEMY_EXPRESSION_ICON_OFFSET_Y_BY_CHARACTER[character.character]
       ?? ENEMY_EXPRESSION_ICON_OFFSET_Y_PIXELS;
     const iconY = SCREEN_HEIGHT - centerY + iconOffsetY + (character.expressionJumpOffset ?? 0);
-    if (character.character === SpawnerCharacter.MONK) {
-      const artPivotY = 1 - TILE_SIZE / 2 / MONK_FRAME.height;
-      const artCenterY = SCREEN_HEIGHT - centerY;
-      debugContext.strokeStyle = "#ffffff";
-      debugContext.lineWidth = 2;
-      debugContext.strokeRect(
-        centerX - MONK_FRAME.width / 2,
-        artCenterY - artPivotY * MONK_FRAME.height,
-        MONK_FRAME.width,
-        MONK_FRAME.height,
-      );
-    }
     debugContext.font = "700 28px system-ui, sans-serif";
     debugContext.textAlign = "center";
     debugContext.textBaseline = "middle";

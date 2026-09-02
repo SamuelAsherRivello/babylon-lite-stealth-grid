@@ -95,14 +95,13 @@ export function createCharacterColliderDrawCommands(characters) {
 
 export function createCharacterCenterDrawCommands(characters) {
   return characters
-    .filter(({ movementCollider }) => Boolean(movementCollider))
-    .map(({ movementCollider }) => ({
-      x: movementCollider.type === "circle"
-        ? movementCollider.x
-        : movementCollider.x + movementCollider.width / 2,
-      y: movementCollider.type === "circle"
-        ? movementCollider.y
-        : movementCollider.y + movementCollider.height / 2,
-    }));
+    .filter(({ centerCollider, movementCollider }) => Boolean(centerCollider ?? movementCollider))
+    .map(({ centerCollider, movementCollider }) => {
+      const collider = centerCollider ?? movementCollider;
+      return {
+        x: collider.type === "circle" ? collider.x : collider.x + collider.width / 2,
+        y: collider.type === "circle" ? collider.y : collider.y + collider.height / 2,
+      };
+    });
 }
 import { getAudioCells, getVisualCells, getVisualStrength } from "../systems/perception/character-perception.js";

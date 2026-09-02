@@ -28,6 +28,14 @@ test("Level01 runtime exposes Gold Stone combat colliders to projectile targets 
   assert.match(source, /goldStoneObjects[\s\S]*combatCollider: object\.getCombatCollider\(\)/);
 });
 
+test("runtime exposes gold pickup combat colliders and center markers without movement colliders", () => {
+  assert.match(mainSource, /pickupSystem\.pickups[\s\S]*combatCollider: pickup\.getCombatCollider\(\)[\s\S]*centerCollider: pickup\.getCombatCollider\(\)[\s\S]*movementCollider: null/);
+});
+
+test("pickup collection uses the player combat collider", () => {
+  assert.match(mainSource, /pickupSystem\.update\(activeDelta, playerCombatCollider\)/);
+});
+
 test("an upper-body projectile can overlap combat geometry without the movement circle", () => {
   const movementCollider = { type: "circle", x: 200, y: 324, radius: 18.2 };
   const combatCollider = { x: 168, y: 172, width: 64, height: 128 };

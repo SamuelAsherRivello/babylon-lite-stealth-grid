@@ -30,7 +30,7 @@ import {
 
 export const LANCER_FRAME = Object.freeze({ width: 320, height: 320 });
 export const LANCER_PIVOT = Object.freeze({ x: 0.5, y: 0.84 });
-export const LANCER_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
+export const LANCER_ART_OFFSET = Object.freeze({ x: 0, y: -100 });
 export const LANCER_MOVEMENT_COLLIDER = Object.freeze({
   type: "circle",
   x: 160,
@@ -299,6 +299,7 @@ export function createLancer({
     getPosition() {
       return { ...position };
     },
+    setPosition(next) { position = { ...next }; updateSprites(); },
     playAnimation(manager) {
       animationManager = manager;
       playStateAnimation(LancerState.IDLE);

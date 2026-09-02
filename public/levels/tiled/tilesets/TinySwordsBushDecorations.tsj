@@ -26,7 +26,7 @@
         "visible": true,
         "width": 48,
         "x": 40,
-        "y": 93
+        "y": 104
       }, {
         "class": "CombatCollider",
         "height": 64,
@@ -36,7 +36,7 @@
         "visible": true,
         "width": 64,
         "x": 28,
-        "y": 85
+        "y": 96
       }],
       "opacity": 1,
       "type": "objectgroup",

@@ -1,9 +1,9 @@
 {
     "activeFile": "maps/Level01.tmj",
     "expandedProjectPaths": [
-        "maps",
         "tilesets",
-        "."
+        ".",
+        "maps"
     ],
     "fileStates": {
         "maps/Level01.tmj": {
@@ -11,11 +11,11 @@
                 6,
                 5
             ],
-            "scale": 0.5,
-            "selectedLayer": 2,
+            "scale": 1,
+            "selectedLayer": 0,
             "viewCenter": {
-                "x": 218,
-                "y": 432
+                "x": 378,
+                "y": 713
             }
         },
         "maps/Level01.tmj.bak.tmj": {

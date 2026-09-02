@@ -65,8 +65,8 @@ test("Level01 normalizes the bush as a bottom-centered independent object", asyn
   assert.equal(placed.width, 64);
   assert.equal(placed.height, 64);
   assert.deepEqual(object.position, {
-    x: placed.x,
-    y: 1024 - placed.y,
+    x: 352,
+    y: 480,
   });
   assert.deepEqual(object.decoration.frameSize, { width: 128, height: 128 });
   assert.equal(object.decoration.frameCount, 8);
@@ -76,11 +76,11 @@ test("Level01 normalizes the bush as a bottom-centered independent object", asyn
   assert.deepEqual(object.decoration.acceptedCharacterTypes, ["player", "npc", "enemy"]);
   assert.deepEqual(object.decoration.sensor, {
     type: "circle", x: object.position.x,
-    y: object.position.y + 11, radius: 24,
+    y: object.position.y, radius: 24,
   });
   assert.deepEqual(object.decoration.combatCollider, {
     x: object.position.x - 32,
-    y: object.position.y - 21,
+    y: object.position.y - 32,
     width: 64,
     height: 64,
   });

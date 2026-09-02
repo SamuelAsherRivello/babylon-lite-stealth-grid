@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createGoldStone } from "../../src/systems/objects/gold-stone.js";
-import { chooseNineGridDestinations, createGoldPickup } from "../../src/systems/objects/gold-pickup.js";
+import { createGoldStone } from "../../../src/systems/objects/gold-stone.js";
+import { chooseNineGridDestinations, createGoldPickup } from "../../../src/systems/objects/gold-pickup.js";
 
 test("gold stone has one health and enters object death after one hit", () => {
   const updates = [];
@@ -22,8 +22,16 @@ test("pickups choose distinct surrounding 9-grid cells and collect during spawn"
   const destinations = chooseNineGridDestinations({ x: 3, y: 3 }, 3, () => true, () => 0.1);
   assert.equal(new Set(destinations.map(({ x, y }) => `${x},${y}`)).size, 3);
   assert.ok(destinations.every(({ x, y }) => Math.abs(x - 3) <= 1 && Math.abs(y - 3) <= 1 && (x !== 3 || y !== 3)));
-  const pickup = createGoldPickup({ object: { id: 1 }, startPosition: { x: 32, y: 32 }, destination: { x: 96, y: 32 }, api: { createSprite2DLayer: () => ({}), addSprite2D: () => ({}), updateSprite2D: () => {}, removeSprite2D: () => {} } });
+  const updates = [];
+  const pickup = createGoldPickup({ object: { id: 1 }, startPosition: { x: 32, y: 32 }, destination: { x: 96, y: 32 }, api: { createSprite2DLayer: () => ({}), addSprite2D: () => ({}), updateSprite2D: (_sprite, patch) => updates.push(patch), removeSprite2D: () => {} } });
   assert.equal(pickup.type, "GoldPickup");
+  assert.equal(pickup.getMovementCollider(), null);
+  assert.deepEqual(pickup.getCombatCollider(), { x: 20, y: 20, width: 24, height: 24 });
   assert.equal(pickup.collect(), true);
-  assert.equal(pickup.isDying, true);
+  assert.equal(pickup.isPickingUp, true);
+  pickup.update(0.09);
+  assert.ok(updates.some(({ positionPx, alpha }) => positionPx?.[1] === 967 && alpha < 1 && alpha > 0));
+  pickup.update(0.09);
+  assert.ok(updates.some(({ positionPx, alpha }) => positionPx?.[1] === 942 && alpha === 0));
+  assert.equal(pickup.isDead, true);
 });

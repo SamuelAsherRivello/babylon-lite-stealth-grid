@@ -44,7 +44,7 @@ export const PLAYER_FRAME = PLAYER_PAWN_FRAME;
 export const PLAYER_PIVOT = { x: 0.5, y: 0.78 };
 // Artwork offset within the character's grid cell. Colliders stay anchored
 // to the gameplay position so this can be tuned independently later.
-export const PLAYER_ART_OFFSET = Object.freeze({ x: 0, y: 0 });
+export const PLAYER_ART_OFFSET = Object.freeze({ x: 0, y: -40 });
 export const PLAYER_MOVEMENT_COLLIDER = {
   type: "circle",
   x: PLAYER_FRAME.width * PLAYER_PIVOT.x,
@@ -429,6 +429,7 @@ export function createPlayer({
     getPosition() {
       return { ...position };
     },
+    setPosition(next) { position = { ...next }; updateSprites(); },
     getLoadout() {
       return { weapon: weaponSlot, item: itemSlot };
     },
