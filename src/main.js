@@ -1964,7 +1964,8 @@ const skipIntro = shouldSkipIntro({
   search: globalThis.location?.search,
 });
 
-start({ ...startupOptions, showStartPrompt: startupOptions.showStartPrompt !== false && !skipIntro }).catch((error) => {
+export const gameReady = start({ ...startupOptions, showStartPrompt: startupOptions.showStartPrompt !== false && !skipIntro }).catch((error) => {
   console.error(error);
   errorOutput.textContent = formatStartupError(error);
+  throw error;
 });

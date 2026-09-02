@@ -5,12 +5,19 @@
 Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game
 prototype that runs with WebGPU.
 
+A Babylon-branded startup preloader appears before the first game graphics,
+covers asset loading, and closes after the first rendered frame. Loading errors
+show a Retry button. This lightweight screen is local to the project because
+Babylon Lite does not ship the full engine's default loading UI.
+
 <figure>
+  <a href="https://samuelasherrivello.github.io/babylon-lite-stealth-grid/">
   <img
     alt="Babylon Light Stealth Grid gameplay screenshot"
     src="./documentation/images/output-arrow-check.png"
     width="400px"
   >
+  </a>
   <figcaption>
     Image 1 - Babylon.js Lite Game - HTML5 + WebGPU
   </figcaption>
@@ -45,11 +52,29 @@ WebGPU not working? See [Troubleshooting](#troubleshooting).
 
 ### Release Workflow
 
-1. Update `public/environment.json` and create a matching three-component
-   GitHub Release tag such as `v0.1.1`.
-2. Push the release commit to `master` and wait for `Deploy live demo` to
-   finish.
-3. Verify the published build from the Live Demo link.
+1. Run `npm ci`, `npm run test:publish`, and `npm run build`. Run `npm test`
+   separately to check the full gameplay suite; it currently has known failures
+   and is not the Pages deployment gate.
+2. Commit and push to `master` in
+   [`SamuelAsherRivello/babylon-lite-stealth-grid`](https://github.com/SamuelAsherRivello/babylon-lite-stealth-grid).
+   The `Deploy live demo` workflow validates publishing contracts, builds `dist`,
+   and deploys it using GitHub Actions. No release tag is needed to publish.
+3. Wait for the [deployment workflow](https://github.com/SamuelAsherRivello/babylon-lite-stealth-grid/actions/workflows/deploy-pages.yml)
+   to succeed, then verify the [live game](https://samuelasherrivello.github.io/babylon-lite-stealth-grid/).
+
+For a versioned release, also update `public/environment.json` and optionally
+create a matching three-component GitHub Release tag such as `v0.1.8`.
+The displayed version comes from that file, not from Git tags.
+
+GitHub repository Settings → Pages → Source must remain **GitHub Actions**.
+To redeploy the current branch without a new commit, use **Run workflow** on
+`Deploy live demo`. Vite uses `base: "./"`, so asset URLs remain relative to the
+Pages project path after a repository rename. If renamed again, update the Git
+remote and these README links; keep the workflow branch aligned with the
+repository's publishing branch. The screenshot above also opens the live game.
+
+To recover from a bad publish, make a corrective commit and push it to `master`;
+do not rewrite history or force-push.
 
 ### More Commands
 
@@ -60,6 +85,7 @@ WebGPU not working? See [Troubleshooting](#troubleshooting).
 | 3 | Build | `npm run build` | Creates the production bundle. |
 | 4 | Preview | `npm run preview` | Serves the production bundle locally. |
 | 5 | Test | `npm test` | Runs the automated tests. |
+| 6 | Publishing checks | `npm run test:publish` | Checks Pages links, screenshot, relative paths, and release metadata. |
 
 ## Project Overview
 

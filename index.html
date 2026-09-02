@@ -5,10 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <link rel="icon" href="data:," />
     <title>Babylon Lite Stealth Grid</title>
+    <style>
+      #startup-preloader { position: fixed; inset: 0; z-index: 10000; display: grid; place-content: center; justify-items: center; gap: 1rem; padding: 2rem; background: #090c16; color: #fff; font: 1rem system-ui, sans-serif; text-align: center; }
+      #startup-preloader[hidden], #startup-preloader [hidden] { display: none; }
+      #startup-preloader strong { font-size: 2rem; letter-spacing: .12em; }
+      #startup-preloader p { max-width: 36rem; margin: 0; }
+      #startup-spinner { width: 3rem; height: 3rem; border: .25rem solid #30384e; border-top-color: #ffcc00; border-radius: 50%; animation: startup-spin 1s linear infinite; }
+      #startup-retry { padding: .75rem 1.5rem; border: 0; border-radius: .5rem; background: #ffcc00; color: #151a29; font: inherit; cursor: pointer; }
+      @keyframes startup-spin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) { #startup-spinner { animation: none; } }
+    </style>
     <link rel="stylesheet" href="./src/ui/style.css" />
     <link rel="stylesheet" href="./plugins/virtual-controller-babylon-lite/virtual-controller.css" />
   </head>
   <body>
+    <div id="startup-preloader" role="status" aria-live="polite" aria-busy="true">
+      <strong>BABYLON.JS</strong>
+      <span id="startup-spinner" aria-hidden="true"></span>
+      <p id="startup-message">Loading Stealth Grid…</p>
+      <button id="startup-retry" type="button" hidden>Retry</button>
+      <noscript>This game requires JavaScript. Enable it and reload the page.</noscript>
+    </div>
     <main class="stage" aria-label="Babylon Light Stealth Grid game">
       <div class="game-frame">
         <canvas
@@ -66,6 +83,6 @@
       </div>
     </div>
     </main>
-    <script type="module" src="./src/main.js"></script>
+    <script type="module" src="./src/bootstrap.js"></script>
   </body>
 </html>
