@@ -6,7 +6,7 @@ import {
   stopSpriteAnimation,
   updateSprite2D,
 } from "@babylonjs/lite";
-import { moveWithCollisions } from "../gameplay/game-logic.js";
+import { createGridAlignedMovementController } from "../gameplay/game-logic.js";
 
 import {
   getCharacterArtTransform,
@@ -32,8 +32,13 @@ export function createSharedCharacterActor({
   let artYOffset = 0;
   let disposed = false;
   let movementIntent = { x: 0, y: 0 };
+  let heading = "right";
   const layers = {};
   const sprites = {};
+  const gridMovement = createGridAlignedMovementController(
+    { frame: definition.frame, pivot: { x: 0.5, y: 1 - tileSize / 2 / definition.frame.height }, collider: { type: "circle", x: definition.frame.width / 2, y: definition.frame.height - tileSize / 2, radius: definition.movementCollider.radius } },
+    tileSize,
+  );
 
   function transform(size = definition.displaySize) {
     const result = getCharacterArtTransform(position, definition, bounds.height, tileSize, size);
@@ -80,14 +85,18 @@ export function createSharedCharacterActor({
     setPosition(next) { position = { ...next }; updateSprites(); },
     getMovementCollider: () => getCharacterMovementCollider(position, definition),
     getCombatCollider: () => getCharacterCombatCollider(position, tileSize),
-    setMovementIntent(intent) { movementIntent = { x: intent.x, y: intent.y }; },
+    setMovementIntent(intent) {
+      movementIntent = { x: intent.x, y: intent.y };
+      if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
+        heading = movementIntent.y < 0 ? "up" : "down";
+      } else if (movementIntent.x !== 0) {
+        heading = movementIntent.x < 0 ? "left" : "right";
+      }
+    },
+    getHeading: () => heading,
     update(deltaSeconds) {
       const movement = movementIntent;
-      position = moveWithCollisions(
-        position, movement, movementSpeed * Math.max(0, deltaSeconds), bounds,
-        { frame: definition.frame, pivot: { x: 0.5, y: 1 - tileSize / 2 / definition.frame.height }, collider: { type: "circle", x: definition.frame.width / 2, y: definition.frame.height - tileSize / 2, radius: definition.movementCollider.radius } },
-        obstacles,
-      );
+      position = gridMovement.move(position, movement, movementSpeed * Math.max(0, deltaSeconds), deltaSeconds, bounds, obstacles);
       if (movement.x !== 0 || movement.y !== 0) {
         if (sprites.walking) this.playAnimation("walking");
       } else this.playAnimation("idle");

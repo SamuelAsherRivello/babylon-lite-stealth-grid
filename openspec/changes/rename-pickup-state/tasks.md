@@ -1,0 +1,4 @@
+- [x] C047-T001 Update the pickup object API to expose `IsPickedUp = false` and a one-shot `pickup()` transition.
+- [x] C047-T002 Stop exposing the pickup collection collider after `IsPickedUp` becomes true and update pickup-system detection to use the new API.
+- [x] C047-T003 Update focused pickup tests for immediate state transition and repeated-detection protection.
+- [x] C047-T004 Run focused tests, relevant regression tests, and the production build.

@@ -34,7 +34,7 @@ export function createMonk({ atlases, initialPosition, bounds, obstacles = [], r
     ...actor,
     get state() { return "idle"; },
     get isAttacking() { return false; },
-    getHeading() { return "down"; },
+    getHeading() { return actor.getHeading(); },
     update(deltaSeconds) { return actor.update(deltaSeconds); },
     playAnimation(manager) { actor.setAnimationManager(manager); actor.playAnimation("idle"); },
     playHeal() { actor.playAnimation("heal"); },

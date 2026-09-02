@@ -26,13 +26,13 @@ export function createPickup({ type = "pickup", id = "pickup", object = { id }, 
     pivot: [0.5, 0.5],
   });
   const sprite = api.addSprite2D(layer, { positionPx: getSpritePosition(startPosition, screenHeight), sizePx: [64, 64], frame: 0, alpha: 0, scaleX: 0.1, scaleY: 0.1 });
-  let elapsed = 0; let state = "spawning";
+  let elapsed = 0; let state = "spawning"; let IsPickedUp = false;
   const start = { ...startPosition }; const end = { x: destination.x, y: destination.y };
   return {
     layer, sprite, type, id: `${type}-${object.id}`,
-    get isAlive() { return state !== "dead"; }, get isSpawning() { return state === "spawning"; }, get isPickingUp() { return state === "pickingUp"; }, get isDying() { return state === "pickingUp"; }, get isDead() { return state === "dead"; },
+    get isAlive() { return state !== "dead"; }, get isSpawning() { return state === "spawning"; }, get isDying() { return state === "pickingUp"; }, get isDead() { return state === "dead"; }, get IsPickedUp() { return IsPickedUp; },
     getCombatCollider() {
-      return this.isAlive
+      return this.isAlive && !IsPickedUp
         ? { x: this.position.x - 12, y: this.position.y - 12, width: 24, height: 24 }
         : null;
     },
@@ -41,7 +41,7 @@ export function createPickup({ type = "pickup", id = "pickup", object = { id }, 
     // movement collider and therefore never obstruct player movement.
     getCollider() { return this.getCombatCollider(); },
     position: { ...start },
-    collect() { if (!this.isAlive) return false; state = "pickingUp"; elapsed = 0; return true; },
+    pickup() { if (!this.isAlive || IsPickedUp) return false; IsPickedUp = true; state = "pickingUp"; elapsed = 0; return true; },
     update(deltaSeconds = 0) {
       elapsed += Math.max(0, deltaSeconds);
       if (state === "spawning") {

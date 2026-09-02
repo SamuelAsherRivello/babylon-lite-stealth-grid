@@ -13,7 +13,7 @@ import {
   updateSpriteAnimationManager,
 } from "@babylonjs/lite";
 
-import { gridCellToScreenForFrame, collidersOverlap, getOtherCharacterColliders, separateOverlappingCharacterColliders } from "./gameplay/game-logic.js";
+import { gridCellToScreenForFrame, collidersOverlap, getOtherCharacterGridOccupancyColliders, getOtherCharacterColliders, separateOverlappingCharacterColliders } from "./gameplay/game-logic.js";
 import { createGameStateMachine, GameState } from "./gameplay/game-state.js";
 import { gridCellToWorldCenter } from "./gameplay/world-viewport.js";
 import { GAME_VIEWPORT, formatViewportDiagnostics, logicalPointFromClient, measureGameViewport, renderViewportQaMarkers } from "./gameplay/game-viewport.js";
@@ -68,9 +68,10 @@ import {
 } from "./characters/npc/sheep/sheep.js";
 import { CharacterType } from "./characters/npc/sheep/sheep-state.js";
 import { createSheepContactCoordinator } from "./characters/npc/sheep/sheep-flock.js";
-import { createCharacterPerception } from "./systems/perception/character-perception.js";
+import { createCharacterPerception, PerceptionTargetState } from "./systems/perception/character-perception.js";
 import { createEnemyPerceptionReaction } from "./systems/perception/enemy-perception-reaction.js";
 import { getDebugExpressionState, getEnemyExpression } from "./systems/perception/enemy-expression.js";
+import { getPlayerHidingBush, isPlayerHidden, stepHiddenOpacity } from "./systems/perception/player-hidden.js";
 import { EnemyState } from "./characters/enemies/enemy-state.js";
 import {
   createProjectileRenderer,
@@ -78,6 +79,7 @@ import {
 } from "./systems/objects/projectile-renderer.js";
 import { resolveProjectileHit } from "./systems/objects/projectile-combat.js";
 import { createPauseController } from "./ui/pause-controller.js";
+import { createStartGamePrompt, shouldShowStartGamePrompt } from "./ui/start-game-prompt.js";
 import {
   applyAnimatedTilePreviewSetting,
   applyParticleFxPreviewSetting,
@@ -87,6 +89,7 @@ import { createParticleFxPreviewLayout } from "./particle-fx/preview-layout.js";
 import { loadEditorConfig } from "./editor-config/editor-config.js";
 import { createCoordinatesUi } from "./ui/coordinates-ui.js";
 import { createReleaseMetadataUi } from "./ui/release-metadata-ui.js";
+import { createGoldCounterUi } from "./ui/gold-counter-ui.js";
 import { createSettingsUi } from "./ui/settings-ui.js";
 import { createLevelCompleteUi } from "./ui/level-complete-ui.js";
 import { createGoal } from "./systems/goals/goal.js";
@@ -109,6 +112,7 @@ import {
   createInitialSpawnerConfigs,
 } from "./systems/spawners/spawner-catalog.js";
 import { createSpawnerMarker } from "./systems/spawners/spawner-marker.js";
+import { createSelectionSystem, gridSpotFromLogicalPoint } from "./systems/selection/selection-system.js";
 import {
   createReactiveDecoration,
   getCenteredEffectPosition,
@@ -124,6 +128,12 @@ import {
 const SCREEN_WIDTH = GAME_VIEWPORT.referenceResolution.width;
 const SCREEN_HEIGHT = GAME_VIEWPORT.referenceResolution.height;
 const TILE_SIZE = GAME_VIEWPORT.referenceGridSize.width;
+// Temporary work-mode guard while character separation is being completed.
+const TEMPORARILY_FREEZE_ENEMY_AI = false;
+// Diagnostic switch: when true, green movement colliders do not block each other.
+const TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS = false;
+// Diagnostic switch: isolate the player/world loop from enemy updates.
+const TEMPORARILY_DISABLE_ENEMY_UPDATES = false;
 const WATER_FOAM_FRAME_SIZE = 192;
 const WATER_FOAM_FRAME_COUNT = 16;
 const WATER_FOAM_FRAME_DURATION_MS = 100;
@@ -134,16 +144,12 @@ const DEATH_ROTATION_DEGREES = 20;
 const MAX_HEALTH = 100;
 const KNOCKBACK_DURATION_SECONDS = 0.2;
 const KNOCKBACK_SPEED_PIXELS_PER_SECOND = 17.28;
+const PLAYER_HIDDEN_FADE_SECONDS = 0.2;
 const ENEMY_EXPRESSION_FADE_SECONDS = 0.25;
 const ENEMY_EXPRESSION_INSTANCE_FADE_SECONDS = ENEMY_EXPRESSION_FADE_SECONDS / 2;
 const EMOTIONAL_JUMP_DURATION_SECONDS = 0.096;
 const EMOTIONAL_JUMP_HEIGHT_PIXELS = 8;
-const ENEMY_EXPRESSION_ICON_OFFSET_Y_PIXELS = -90;
-const ENEMY_EXPRESSION_ICON_OFFSET_Y_BY_CHARACTER = Object.freeze({
-  [SpawnerCharacter.GOBLIN]: -80,
-  [SpawnerCharacter.ARCHER]: -80,
-  [SpawnerCharacter.WARRIOR]: -80,
-});
+const ENEMY_EXPRESSION_ICON_OFFSET = Object.freeze({ x: 0, y: -64 });
 const ENEMY_EXPRESSION_MIN_SCALE = 0.3;
 const ENEMY_EXPRESSION_GRID_OFFSET = TILE_SIZE;
 const DEGREES_TO_RADIANS = Math.PI / 180;
@@ -162,6 +168,7 @@ const uiLayer = document.querySelector("#uiLayer");
 const gameFrame = document.querySelector(".game-frame");
 const viewportSafeArea = createViewportSafeArea({ element: uiLayer, frameElement: gameFrame });
 const coordinatesUi = createCoordinatesUi();
+const selectionSystem = createSelectionSystem(GRID);
 let latestGameViewport = null;
 let showCropMarks = false;
 
@@ -170,7 +177,6 @@ function refreshGameViewportDiagnostics() {
   canvas.dataset.viewport = formatViewportDiagnostics(latestGameViewport);
   debugCanvas.dataset.viewport = formatViewportDiagnostics(latestGameViewport);
   if (GAME_VIEWPORT.qaDiagnostics) {
-    console.info(`[viewport-qa] ${formatViewportDiagnostics(latestGameViewport)}`);
     renderViewportQaMarkers(latestGameViewport, showCropMarks);
   }
   return latestGameViewport;
@@ -359,7 +365,7 @@ function makeDirection(from, to) {
   };
 }
 
-async function start() {
+export async function start({ showStartPrompt = true } = {}) {
   if (!navigator.gpu) {
     throw new Error("This Babylon Lite demo requires a browser with WebGPU enabled.");
   }
@@ -441,7 +447,8 @@ async function start() {
   ];
   const goldStoneAtlases = new Map(await Promise.all([...goldStoneImages].map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
   const goldPickupAtlases = new Map(await Promise.all(goldPickupImages.map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [64, 64], sampling: "nearest" })])));
-  const pickupSystem = createPickupSystem();
+  let goldCounter;
+  const pickupSystem = createPickupSystem({ onCollect: () => goldCounter?.increment() });
   const goldPickupDefinition = {
     create: ({ position, index }) => {
       const image = goldPickupImages[Math.floor(Math.random() * goldPickupImages.length)];
@@ -453,7 +460,6 @@ async function start() {
   for (const spawner of level.goldPickupSpawners ?? []) {
     const position = gridCellToWorldCenter(spawner.gameCell, TILE_SIZE);
     const pickup = pickupSystem.spawn(goldPickupDefinition, { start: position, cell: spawner.gameCell, destination: position });
-    console.log(`Gold pickup spawned: spawner=${spawner.id} tiledCell=(${spawner.tiledCell.x},${spawner.tiledCell.y}) gameCell=(${spawner.gameCell.x},${spawner.gameCell.y}) position=(${position.x},${position.y}) pickup=${pickup?.id}`);
     pickup?.update(0.35);
   }
   const goldStoneObjects = level.goldStones.map((object) => {
@@ -524,7 +530,22 @@ async function start() {
   let renderer = null;
   let nextActorId = 1;
   const sheepContactCoordinator = createSheepContactCoordinator();
-  const characterPerception = createCharacterPerception();
+  const characterPerception = createCharacterPerception({
+    getBlockers: () => [
+      ...reactiveDecorations.map((decoration) => ({
+        id: decoration.id,
+        type: "bush",
+        isAlive: decoration.isAlive,
+        cell: decoration.cell,
+      })),
+      ...getRecordsByType(SpawnerType.ENEMY).map((record) => ({
+        id: record.combat.label,
+        type: "enemy",
+        isAlive: record.combat.isAlive,
+        cell: record.actor.getGridPosition(TILE_SIZE),
+      })),
+    ],
+  });
 
   function attachActor(record) {
     if (renderer) {
@@ -567,6 +588,7 @@ async function start() {
         isAlive: record.combat.isAlive,
         cell: record.actor.getGridPosition(TILE_SIZE),
         facing: record.actor.getFacing?.() ?? "right",
+        acceptRepeatedDetections: true,
         onDetection: (event) => record.reaction?.acceptDetection(event),
       });
     }
@@ -969,12 +991,19 @@ async function start() {
       const collider = pickup.getCombatCollider();
       if (collider && x >= collider.x && x <= collider.x + collider.width
         && y >= collider.y && y <= collider.y + collider.height) {
-        pickup.collect();
+        pickup.pickup();
         break;
       }
     }
   };
+  const handleGridSelection = (event) => {
+    const viewport = latestGameViewport ?? refreshGameViewportDiagnostics();
+    const logicalPoint = logicalPointFromClient({ x: event.clientX, y: event.clientY }, viewport);
+    const selectedGridSpot = gridSpotFromLogicalPoint(logicalPoint, GRID);
+    if (selectedGridSpot) selectionSystem.toggleGridSpot(selectedGridSpot);
+  };
   canvas.addEventListener("pointerup", handleGoldPickupClick);
+  canvas.addEventListener("pointerup", handleGridSelection);
 
   for (const spawner of spawners) {
     for (const record of spawner.actors) {
@@ -1063,9 +1092,22 @@ async function start() {
     },
   );
   createReleaseMetadataUi({ host: gameUi, metadata: releaseMetadata });
+  goldCounter = createGoldCounterUi({ host: gameUi, total: level.goldPickupSpawners?.length ?? 0 });
   const goal = createGoal({ host: gameUi, artworkUrl: "./assets/goals/Goal.png", position: { x: (level.goals[0].gameCell.x + 0.5) * TILE_SIZE, y: (level.goals[0].gameCell.y + 0.5) * TILE_SIZE }, screenWidth: SCREEN_WIDTH, screenHeight: SCREEN_HEIGHT });
   const levelCompleteUi = createLevelCompleteUi({ host: domBody, onContinue: () => window.location.reload() });
   const gameStateMachine = createGameStateMachine();
+  const startGamePrompt = shouldShowStartGamePrompt({ showStartPrompt })
+    ? createStartGamePrompt({
+      host: domBody,
+      onStart: () => {
+        startGamePrompt.close();
+        pauseController.resume();
+      },
+    })
+    : null;
+  if (startGamePrompt) {
+    pauseController.pause();
+  }
   const characterLockupWatchdog = createCharacterLockupWatchdog();
 
   function update(currentTime) {
@@ -1100,9 +1142,9 @@ async function start() {
       ];
       const lockup = characterLockupWatchdog.inspect(characterRecords, activeDelta);
       if (lockup) console.warn("Character lockup detected; separating", lockup.labels);
-      separateOverlappingCharacterColliders([
-        ...characterRecords,
-      ]);
+      if (!TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS) {
+        separateOverlappingCharacterColliders(characterRecords, 0.01, 8, obstacleColliders);
+      }
       const playerMovementCollider = playerRecord?.combat.isAlive
         ? playerRecord.actor.getMovementCollider()
         : null;
@@ -1129,7 +1171,7 @@ async function start() {
         const dynamicColliders = [
           ...sheepMovementColliders.filter(({ collider }) => collider)
             .map(({ collider }) => ({ type: "npc", collider })),
-          ...enemyMovementColliders.filter(({ collider }) => collider)
+          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : enemyMovementColliders.filter(({ collider }) => collider))
             .map(({ collider }) => ({ type: CharacterType.ENEMY, collider })),
         ];
         playerMovement = playerRecord.actor.update(activeDelta, dynamicColliders).movement;
@@ -1140,11 +1182,17 @@ async function start() {
             type: CharacterType.PLAYER,
             position: playerRecord.actor.getPosition(),
             cell: playerRecord.actor.getGridPosition(TILE_SIZE),
+            detectedBy: characterPerception.getSnapshot().detections
+              .filter(({ type }) => type === "visual" || type === "audio")
+              .map(({ detectorId }) => detectorId),
           }
         : null;
       for (const record of [playerRecord, ...enemyRecords]) {
         if (record) characterPerception.updateActor(record.combat.label, {
           isAlive: record.combat.isAlive,
+          targetState: record === playerRecord && isPlayerHidden(playerCombatCollider, reactiveDecorations)
+            ? PerceptionTargetState.Hidden
+            : PerceptionTargetState.Default,
           cell: record.actor.getGridPosition(TILE_SIZE),
           heading: record.actor.getHeading?.() ?? "right",
         });
@@ -1201,21 +1249,64 @@ async function start() {
         if (!record.combat.isAlive) {
           continue;
         }
-        record.controller.update(activeDelta);
+        if (TEMPORARILY_DISABLE_ENEMY_UPDATES) {
+          continue;
+        }
+        if (TEMPORARILY_FREEZE_ENEMY_AI) {
+          record.actor.setMovementIntent?.({ x: 0, y: 0 });
+        } else {
+          record.controller.update(activeDelta);
+        }
         record.actor.update(activeDelta, [
-          ...(playerMovementCollider
+          ...(playerMovementCollider && !TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS
             ? [{ type: CharacterType.PLAYER, collider: playerMovementCollider }]
             : []),
-          ...sheepMovementColliders.filter(({ collider }) => collider)
+          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : sheepMovementColliders.filter(({ collider }) => collider))
             .map(({ collider }) => ({ type: "npc", collider })),
-          ...getOtherCharacterColliders(
+          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : getOtherCharacterColliders(
             enemyRecords,
             record.combat.label,
             CharacterType.ENEMY,
-          ),
-        ], record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot);
+          )),
+          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : getOtherCharacterGridOccupancyColliders(
+            enemyRecords,
+            record.combat.label,
+            TILE_SIZE,
+          )),
+        ], record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot
+          ? { ...playerSnapshot, detected: playerSnapshot.detectedBy.includes(record.combat.label) }
+          : null);
       }
       characterPerception.update(activeDelta);
+      if (playerRecord?.combat.isAlive && playerCombatCollider) {
+        const hidingBush = getPlayerHidingBush(playerCombatCollider, reactiveDecorations);
+        const hidden = hidingBush !== null;
+        playerRecord.actor.setRenderOrder(hidden ? hidingBush.layer.order - 0.01 : null);
+        if (playerRecord.targetState === undefined) playerRecord.targetState = PerceptionTargetState.Default;
+        if (playerRecord.hiddenOpacity === undefined) playerRecord.hiddenOpacity = 1;
+        const nextTargetState = hidden ? PerceptionTargetState.Hidden : PerceptionTargetState.Default;
+        if (playerRecord.targetState !== nextTargetState) {
+          playerRecord.targetState = nextTargetState;
+          playerRecord.expressionInstances ??= [];
+          for (const instance of playerRecord.expressionInstances) instance.phase = "out";
+          if (hidden) playerRecord.expressionInstances.push({ icon: "H", flash: null, opacity: 0, phase: "in" });
+        }
+        playerRecord.hiddenOpacity = stepHiddenOpacity(
+          playerRecord.hiddenOpacity,
+          hidden,
+          activeDelta,
+          PLAYER_HIDDEN_FADE_SECONDS,
+        );
+        playerRecord.actor.setVisualTransform({ alpha: playerRecord.hiddenOpacity });
+        const step = activeDelta / ENEMY_EXPRESSION_INSTANCE_FADE_SECONDS;
+        for (const instance of playerRecord.expressionInstances) {
+          if (instance.phase === "in") {
+            instance.opacity = Math.min(1, instance.opacity + step);
+            if (instance.opacity >= 1 - 1e-6) { instance.opacity = 1; instance.phase = "steady"; }
+          } else if (instance.phase === "out") instance.opacity = Math.max(0, instance.opacity - step);
+        }
+        playerRecord.expressionInstances = playerRecord.expressionInstances.filter((instance) => instance.phase !== "out" || instance.opacity > 0.0001);
+      }
       for (const record of enemyRecords) {
         record.reaction?.update(activeDelta);
         if (!record.expressionInstances) {
@@ -1440,7 +1531,9 @@ async function start() {
       movementCollider: record.actor.getMovementCollider(),
       character: record.character,
       reaction: record.reaction,
-      expression: record.reaction ? (record.expression ?? getEnemyExpression("NONE")) : null,
+      expression: record.reaction || record.expressionInstances?.length
+        ? (record.expression ?? getEnemyExpression("NONE"))
+        : null,
       expressionInstances: record.expressionInstances ?? [],
     })).filter(({ combat }) => combat.isAlive).map((record) => ({
       combatCollider: record.combat.getCombatCollider(),
@@ -1492,6 +1585,7 @@ async function start() {
       showColliders,
       characterPerception.getSnapshot(),
       pickupSystem.pickups,
+      selectionSystem.getSelectedGridSpot(),
     );
     canvas.dataset.bushDebug = JSON.stringify(getBushBurningSnapshot());
 
@@ -1501,6 +1595,7 @@ async function start() {
   requestAnimationFrame(update);
   window.addEventListener("pagehide", () => {
     canvas.removeEventListener("pointerup", handleGoldPickupClick);
+    canvas.removeEventListener("pointerup", handleGridSelection);
     window.removeEventListener("keydown", handlePerceptionDebugKey);
     viewportSafeArea.dispose();
     viewportResizeObserver.disconnect();
@@ -1524,6 +1619,7 @@ async function start() {
     for (const object of goldStoneObjects) object.dispose();
     goal.dispose();
     levelCompleteUi.dispose();
+    startGamePrompt?.close();
     pickupSystem.dispose();
     projectiles.dispose();
   }, { once: true });
@@ -1639,6 +1735,7 @@ function drawDiagnostics(
   enabled,
   perceptionSnapshot = [],
   goldPickups = [],
+  selectedGridSpot = null,
 ) {
   debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
   for (const character of diagnosticCharacters) {
@@ -1650,10 +1747,9 @@ function drawDiagnostics(
     const centerY = collider.type === "circle"
       ? collider.y
       : (collider.y ?? 0) + (collider.height ?? 0) / 2;
-    const iconX = centerX;
-    const iconOffsetY = ENEMY_EXPRESSION_ICON_OFFSET_Y_BY_CHARACTER[character.character]
-      ?? ENEMY_EXPRESSION_ICON_OFFSET_Y_PIXELS;
-    const iconY = SCREEN_HEIGHT - centerY + iconOffsetY + (character.expressionJumpOffset ?? 0);
+    const iconX = centerX + ENEMY_EXPRESSION_ICON_OFFSET.x;
+    const iconY = SCREEN_HEIGHT - centerY + ENEMY_EXPRESSION_ICON_OFFSET.y
+      + (character.expressionJumpOffset ?? 0);
     debugContext.font = "700 28px system-ui, sans-serif";
     debugContext.textAlign = "center";
     debugContext.textBaseline = "middle";
@@ -1695,6 +1791,14 @@ function drawDiagnostics(
     return;
   }
   drawGridLines();
+  if (selectedGridSpot) {
+    drawAabb({
+      x: selectedGridSpot.x * TILE_SIZE,
+      y: selectedGridSpot.y * TILE_SIZE,
+      width: TILE_SIZE,
+      height: TILE_SIZE,
+    }, "rgb(250 204 21 / 18%)", "#facc15");
+  }
   debugContext.font = "700 8px system-ui, sans-serif";
   debugContext.textBaseline = "middle";
 
@@ -1794,7 +1898,7 @@ function formatStartupError(error) {
   return `The game could not start. Refresh the page and check the browser console for more details. Details: ${detail}`;
 }
 
-start().catch((error) => {
+start(globalThis.stealthGridStartupOptions ?? {}).catch((error) => {
   console.error(error);
   errorOutput.textContent = formatStartupError(error);
 });

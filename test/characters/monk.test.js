@@ -20,7 +20,7 @@ test("Monk moves when given patrol intent and loops its walking animation", () =
   monk.playAnimation({});
   monk.setMovementIntent({ x: 1, y: 0 });
   monk.update(1);
-  assert.deepEqual(monk.getPosition(), { x: 220, y: 100 });
+  assert.deepEqual(monk.getPosition(), { x: 220, y: 96 });
   assert.equal(calls.at(-1).to, 3);
   assert.equal(calls.at(-1).loop, true);
   monk.dispose();

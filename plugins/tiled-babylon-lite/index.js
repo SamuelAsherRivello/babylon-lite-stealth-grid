@@ -38,13 +38,21 @@ export function normalizeTiledMap(map, externalTilesets) {
     if (!tileset) throw new Error(`Missing external tileset: ${source}`);
     return { firstgid, source, tileset };
   }).sort((a, b) => a.firstgid - b.firstgid);
+  const originObjects = map.layers.flatMap((layer) => layer.type === "objectgroup"
+    ? (layer.objects ?? []).filter((object) => (object.name || object.type || object.class) === "World Origin")
+    : []);
   const originLayer = map.layers.find(({ name }) => name === "World Origin");
   const originIndices = originLayer?.data?.map((gid, index) => gid ? index : -1)
     .filter((index) => index >= 0) ?? [];
-  if (originIndices.length !== 1) throw new Error("World Origin layer must contain exactly one marker tile.");
-  const originIndex = originIndices[0];
-  const originColumn = originIndex % map.width;
-  const originRow = Math.floor(originIndex / map.width);
+  if (originObjects.length > 1 || (originObjects.length === 0 && originIndices.length !== 1)) {
+    throw new Error("World Origin must contain exactly one marker object or tile.");
+  }
+  const originColumn = originObjects.length === 1
+    ? Math.floor(originObjects[0].x / map.tilewidth)
+    : originIndices[0] % map.width;
+  const originRow = originObjects.length === 1
+    ? Math.floor(originObjects[0].y / map.tileheight)
+    : Math.floor(originIndices[0] / map.width);
   const layers = map.layers.filter(({ type, name }) => type === "tilelayer" && name !== "World Origin")
     .map((layer) => ({
       name: layer.name,

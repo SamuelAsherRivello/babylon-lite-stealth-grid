@@ -18,6 +18,19 @@ export const AUDIO_PERCEPTION_STYLE = Object.freeze({ fillStyle: "rgb(160 80 255
 export const ACTIVE_PERCEPTION_MARKER_STYLE = Object.freeze({ strokeStyle: "#ff3030", lineWidth: 3, size: 20 });
 const activeStartByKey = new Map();
 
+function hasValidVisualGeometry(actor) {
+  const direction = typeof actor.heading === "string"
+    ? { up: [0, -1], down: [0, 1], left: [-1, 0], right: [1, 0] }[actor.heading]
+    : actor.heading && [actor.heading.x, actor.heading.y];
+  return actor.cell
+    && Array.isArray(direction)
+    && Number.isInteger(direction[0])
+    && Number.isInteger(direction[1])
+    && Math.abs(direction[0]) + Math.abs(direction[1]) === 1
+    && Number.isInteger(actor.visualRange ?? 4)
+    && (actor.visualRange ?? 4) >= 0;
+}
+
 export function getPerceptionBlinkState(activeSince, now) {
   if (activeSince === undefined) return true;
   return ((now - activeSince) % 300) < 200;
@@ -40,6 +53,7 @@ export function createPerceptionDrawCommands(snapshot, tileSize, now = 0) {
   }
   const detectors = Array.isArray(snapshot) ? snapshot : (snapshot?.actors ?? [])
     .filter((actor) => actor.type === "enemy" && actor.isAlive !== false)
+    .filter(hasValidVisualGeometry)
     .map((actor) => ({
       ...actor,
       visualCells: getVisualCells(actor.cell, actor.heading, actor.visualRange ?? 4), id: actor.id,

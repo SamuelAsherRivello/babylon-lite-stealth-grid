@@ -1,0 +1,44 @@
+# enemy-perception-escalation Specification
+
+## Purpose
+
+Defines how stronger player detections raise an enemy's active awareness level, including direct jumps to alert, while keeping reaction state bounded and readable.
+
+## Requirements
+
+### Requirement: Stronger evidence escalates active perception
+An enemy SHALL compare each accepted detection's reaction severity with its current perception state and SHALL transition upward when the detection is more severe. A detection at the current or lower severity SHALL NOT downgrade the enemy or restart a stronger reaction as a weaker reaction.
+
+#### Scenario: Suspicion escalates to investigation
+- **WHEN** an enemy is `SUSPICIOUS` and receives an accepted investigation-level detection
+- **THEN** it becomes `INVESTIGATING`, adopts the detected location as the active investigation target, and uses the full investigation reaction timer
+
+#### Scenario: Suspicion jumps directly to alert
+- **WHEN** an enemy is `SUSPICIOUS` and receives an accepted alert-level direct detection
+- **THEN** it immediately becomes `ALERT`, adopts the detected player cell, and begins alert behavior without passing through `INVESTIGATING`
+
+#### Scenario: Investigation escalates to alert
+- **WHEN** an enemy is `INVESTIGATING` and receives an accepted alert-level direct detection
+- **THEN** it immediately becomes `ALERT`, adopts the detected player cell, and uses the full alert reaction timer
+
+#### Scenario: Weaker evidence does not de-escalate
+- **WHEN** an enemy is `ALERT` or `INVESTIGATING` and receives a detection no stronger than its current state
+- **THEN** it remains at its current state and does not transition downward because of that detection
+
+### Requirement: Same-state refresh is limited to direct visual evidence
+An enemy SHALL refresh the current reaction timer and confirmed location only when a same-severity detection is direct visual evidence for that state. Same-severity audio evidence SHALL NOT extend the reaction timer.
+
+#### Scenario: Alert refreshes from direct sight
+- **WHEN** an alerted enemy receives a renewed direct visual detection at a different player cell
+- **THEN** its alert timer, alerted cell, and last-known cell refresh to the new cell while its state remains `ALERT`
+
+#### Scenario: Audio does not refresh investigation
+- **WHEN** an investigating enemy receives another investigation-level audio detection
+- **THEN** it remains investigating without extending its investigation timer
+
+### Requirement: Escalation replaces stale lower-state timing
+When a detection escalates an enemy, the enemy SHALL invalidate the prior state's expiry timing and start the destination state with its full configured timer, while remaining eligible for normal de-escalation after direct evidence is lost.
+
+#### Scenario: Escalated state survives the prior timer
+- **WHEN** an enemy escalates before its prior suspicion or investigation timer expires
+- **THEN** expiry of the prior timer does not immediately return it to a lower state

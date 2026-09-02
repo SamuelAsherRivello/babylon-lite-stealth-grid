@@ -77,3 +77,33 @@ Reaction durations SHALL be configurable per enemy profile. Without stronger evi
 #### Scenario: Suspicion expires
 - **WHEN** the configurable suspicion duration expires without new evidence
 - **THEN** the enemy becomes `NONE`, clears its perception marker, and hides its overhead expression
+
+### Requirement: Player hiding is represented by a persistent overhead expression
+While alive, the player SHALL be hidden when its combat collider overlaps at least one living bush combat collider. The player SHALL show a capital `H` using the existing overhead expression presentation while hidden, including its normal fade-in and fade-out lifecycle. The `H` SHALL remain visible while any living bush overlaps and SHALL clear when none do.
+
+#### Scenario: Player enters a bush
+- **WHEN** the player's combat collider begins overlapping a living bush combat collider
+- **THEN** the player becomes hidden and the `H` expression fades in
+
+#### Scenario: Player remains between bushes
+- **WHEN** the player leaves one overlapping living bush while still overlapping another
+- **THEN** the player remains hidden and the `H` expression remains active without flickering
+
+#### Scenario: Player leaves all bushes
+- **WHEN** the player's combat collider no longer overlaps any living bush combat collider
+- **THEN** the player becomes unhidden and the `H` expression fades out
+
+#### Scenario: Bush dies while overlapping
+- **WHEN** an overlapping bush dies or is removed
+- **THEN** it no longer contributes to hidden state, and the player becomes unhidden if no other living bush overlaps
+
+### Requirement: Player hiding uses opacity without enemy reaction effects
+On hidden entry, all player artwork layers SHALL animate from 100% to 80% opacity over the same duration used by enemy expression animation. While hidden, newly active player animation layers SHALL remain at 80% opacity. On hidden exit, all player artwork SHALL animate from 80% to 100% opacity over the same duration. Player hiding SHALL NOT trigger a white flash or jump.
+
+#### Scenario: Hidden player changes animation
+- **WHEN** the player changes to another animation while hidden
+- **THEN** the newly visible player artwork remains at 80% opacity
+
+#### Scenario: Hidden player is excluded from perception
+- **WHEN** the player is hidden
+- **THEN** the perception system produces neither audio nor visual detections for the player

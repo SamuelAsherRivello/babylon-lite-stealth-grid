@@ -1,6 +1,6 @@
 import { createGoldPickup } from "./gold-pickup.js";
 
-export function createPickupSystem({ createPickup = createGoldPickup, renderer = null } = {}) {
+export function createPickupSystem({ createPickup = createGoldPickup, renderer = null, onCollect = () => {} } = {}) {
   const pickups = [];
   let activeRenderer = renderer;
 
@@ -28,11 +28,13 @@ export function createPickupSystem({ createPickup = createGoldPickup, renderer =
     },
     update(deltaSeconds, playerCollider = null) {
       for (const pickup of pickups) {
-        pickup.update(deltaSeconds);
         const collider = typeof pickup.getCombatCollider === "function"
           ? pickup.getCombatCollider()
           : pickup.getCollider?.();
-        if (playerCollider && collider && collidersOverlap(playerCollider, collider)) pickup.collect();
+        if (playerCollider && !pickup.IsPickedUp && collider && collidersOverlap(playerCollider, collider)) {
+          if (pickup.pickup() === true) onCollect(pickup);
+        }
+        pickup.update(deltaSeconds);
       }
       for (let i = pickups.length - 1; i >= 0; i -= 1) {
         if (pickups[i].isDead) {

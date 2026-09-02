@@ -118,7 +118,7 @@ test("preview debug controls use exact labels and write independent keys", () =>
   assert.equal(animatedTile.checkbox.checked, false);
 });
 
-test("game window provides dialog labelling, focus, and exact dismissal paths", () => {
+test("game window provides dialog labelling, focus, and closes on any click", () => {
   const documentRef = createDocument();
   const host = new FakeElement();
   host.isConnected = true;
@@ -136,8 +136,6 @@ test("game window provides dialog labelling, focus, and exact dismissal paths", 
   assert.equal(gameWindow.closeButton.focused, true);
 
   click(gameWindow.backdrop, gameWindow.panel);
-  assert.equal(closed, 0);
-  click(gameWindow.backdrop);
   assert.equal(closed, 1);
   assert.equal(opener.focused, true);
   gameWindow.close();
@@ -243,10 +241,10 @@ test("settings chrome follows inspiration frame-relative measurements", async ()
   }
   assert.match(styles, /--screen-margin:\s*20px/);
   assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*var\(--ui-safe-top\);[^}]*right:\s*var\(--ui-safe-right\);[^}]*width:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*height:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*padding:\s*0\.35cqw;[^}]*border:\s*0\.175cqw solid/s);
-  assert.match(styles, /\.game-window-backdrop\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*background:\s*transparent;/s);
+  assert.match(styles, /\.game-window-backdrop\s*\{[^}]*position:\s*fixed;[^}]*inset:\s*0;[^}]*background:\s*rgb\(0 0 0 \/ 42%\)/s);
   assert.match(styles, /\.game-window-dimmer\s*\{[^}]*inset:\s*0;[^}]*rgb\(0 0 0 \/ 20%\)/s);
   assert.match(styles, /\.developer-settings-dimmer\s*\{[^}]*background:\s*rgb\(0 0 0 \/ 20%\)/s);
-  assert.match(styles, /\.game-window\s*\{[^}]*margin-bottom:\s*50px;[^}]*max-height:\s*100%;[^}]*box-shadow:\s*5px 5px 5px rgb\(0 0 0 \/ 32\.5%\);[^}]*overflow:\s*auto;/s);
+  assert.match(styles, /\.menu-panel\s*\{[^}]*box-shadow:\s*5px 5px 5px rgb\(0 0 0 \/ 32\.5%\);[^}]*max-height:\s*100%;[^}]*overflow:\s*auto;/s);
 });
 
 test("gear icon is transparent vector artwork", async () => {

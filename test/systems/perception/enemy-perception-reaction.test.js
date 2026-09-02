@@ -29,6 +29,31 @@ test("audio cannot alert and visual re-detection refreshes alerted cells and dur
   assert.equal(reaction.getSnapshot().remainingSeconds, 5);
 });
 
+test("stronger re-detection escalates directly and replaces the lower-state timer", () => {
+  const reaction = createEnemyPerceptionReaction({ random: () => 0, profile: {
+    suspiciousDuration: [10, 10], investigationDuration: 8, alertedDuration: [3, 3],
+  } });
+  reaction.acceptDetection({ type: "audio", strength: 0.25, cell: cell(1, 1) });
+  reaction.acceptDetection({ type: "visual", strength: 1, cell: cell(2, 1) });
+  assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.ALERT);
+  assert.equal(reaction.getSnapshot().remainingSeconds, 3);
+  assert.deepEqual(reaction.getSnapshot().alertedCell, cell(2, 1));
+  reaction.update(3);
+  assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.INVESTIGATING);
+});
+
+test("investigating escalates to alert while weaker evidence cannot downgrade it", () => {
+  const reaction = createEnemyPerceptionReaction({ random: () => 0, profile: {
+    investigationDuration: 8, alertedDuration: [3, 3],
+  } });
+  reaction.acceptDetection({ type: "audio", strength: 1, cell: cell(1, 1) });
+  reaction.acceptDetection({ type: "audio", strength: 0.25, cell: cell(9, 9) });
+  assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.INVESTIGATING);
+  reaction.acceptDetection({ type: "visual", strength: 1, cell: cell(2, 1) });
+  assert.equal(reaction.getSnapshot().state, PERCEPTION_STATES.ALERT);
+  assert.deepEqual(reaction.getSnapshot().lastKnownCell, cell(2, 1));
+});
+
 test("de-escalates alerted to investigating to suspicious to none", () => {
   const reaction = createEnemyPerceptionReaction({ random: () => 0, profile: {
     alertedDuration: [3, 3], investigationDuration: 2, suspiciousDuration: [1, 1],

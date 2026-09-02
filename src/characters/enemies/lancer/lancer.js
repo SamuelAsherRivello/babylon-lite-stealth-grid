@@ -10,6 +10,7 @@ import {
 
 import {
   getCharacterCollider,
+  createGridAlignedMovementController,
   moveWithCollisions,
   worldToScreen,
 } from "../../../gameplay/game-logic.js";
@@ -91,6 +92,7 @@ export function createLancer({
     pivot: LANCER_PIVOT,
     collider: LANCER_MOVEMENT_COLLIDER,
   };
+  const gridMovement = createGridAlignedMovementController(character, 64);
   const stateMachine = createLancerStateMachine();
   const defense = createLancerDefenseConfig(defenseConfig);
   const attemptedProjectileIds = new Set();
@@ -348,6 +350,7 @@ export function createLancer({
       }
       const knockbackMovement = getKnockbackMovement(deltaSeconds);
       if (knockbackMovement) {
+        gridMovement.reset();
         position = moveWithCollisions(
           position,
           knockbackMovement,
@@ -368,12 +371,12 @@ export function createLancer({
       const movement = stateMachine.movementLocked
         ? { x: 0, y: 0 }
         : movementIntent;
-      position = moveWithCollisions(
+      position = gridMovement.move(
         position,
         movement,
         movementSpeed * Math.max(0, deltaSeconds),
+        deltaSeconds,
         bounds,
-        character,
         [...obstacles, ...dynamicColliders.map(({ collider }) => collider)],
       );
       updateSprites();

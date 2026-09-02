@@ -162,6 +162,8 @@ export function createPlayer({
   let presentationOverrideTimer = 0;
   let animationManager = null;
   let activeAnimation = null;
+  let visualAlpha = 1;
+  let renderOrderOverride = null;
   const shotDirectionMemory = createCardinalDirectionMemory(
     CardinalDirection.RIGHT,
   );
@@ -260,7 +262,10 @@ export function createPlayer({
       patch.scaleY = scaleY;
     }
     if (alpha !== undefined) {
-      patch.alpha = alpha;
+      visualAlpha = alpha;
+      for (const layer of Object.values(layers)) {
+        layer.opacity = visualAlpha;
+      }
     }
     if (rotation !== undefined) {
       patch.rotation = rotation;
@@ -278,6 +283,20 @@ export function createPlayer({
     }
     for (const sprite of Object.values(sprites)) {
       updateSprite2D(sprite, patch);
+    }
+  }
+
+  function updateSprites() {
+    const screenPosition = getArtScreenPosition(position);
+    const order = renderOrderOverride ?? getCharacterLayerOrder(
+      getCharacterCollider(position, PLAYER_FRAME, PLAYER_PIVOT, PLAYER_MOVEMENT_COLLIDER),
+      bounds.height,
+    );
+    for (const layer of Object.values(layers)) layer.order = order;
+    for (const sprite of Object.values(sprites)) {
+      updateSprite2D(sprite, {
+        positionPx: [screenPosition.x, screenPosition.y],
+      });
     }
   }
 
@@ -451,6 +470,10 @@ export function createPlayer({
       playStateAnimation("idle");
     },
     setVisualTransform,
+    setRenderOrder(order) {
+      renderOrderOverride = order === null ? null : Number(order);
+      updateSprites();
+    },
     update(deltaSeconds, dynamicColliders = []) {
       if (presentationOverrideTimer > 0) {
         presentationOverrideTimer = Math.max(
@@ -524,7 +547,7 @@ export function createPlayer({
       }
 
       const screenPosition = getArtScreenPosition(position);
-      const order = getCharacterLayerOrder(this.getMovementCollider(), bounds.height);
+      const order = renderOrderOverride ?? getCharacterLayerOrder(this.getMovementCollider(), bounds.height);
       for (const layer of Object.values(layers)) {
         layer.order = order;
       }

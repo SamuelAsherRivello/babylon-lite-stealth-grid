@@ -1,0 +1,4 @@
+- [x] `C051-T001` Add failing tests proving each cardinal movement direction produces the matching Visual Perception cells and identify the stale heading handoff.
+- [x] `C051-T002` Correct the actor heading/movement-to-perception propagation so current left, up, right, and down movement is published consistently.
+- [x] `C051-T003` Add regression coverage for heading changes, stopped movement retaining the last valid heading, and debug snapshot visual cells.
+- [ ] `C051-T004` Run focused tests, the complete test suite, and a real-browser smoke check with perception diagnostics enabled.

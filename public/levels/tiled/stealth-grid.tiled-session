@@ -5,17 +5,18 @@
         ".",
         "maps"
     ],
+    "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
         "maps/Level01.tmj": {
             "expandedObjectLayers": [
                 6,
                 5
             ],
-            "scale": 1,
-            "selectedLayer": 0,
+            "scale": 2,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 378,
-                "y": 713
+                "x": 147.25,
+                "y": 951.5
             }
         },
         "maps/Level01.tmj.bak.tmj": {

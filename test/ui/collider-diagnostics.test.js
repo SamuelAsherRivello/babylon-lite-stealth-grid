@@ -30,6 +30,15 @@ test("active perception markers are red 20px crosses centered on detected cells"
   assert.deepEqual(createActivePerceptionMarkerCommands({ detections: [] }), []);
 });
 
+test("perception diagnostics skip enemies with invalid visual geometry", () => {
+  assert.doesNotThrow(() => createPerceptionDrawCommands({ actors: [
+    { id: "broken-enemy", type: "enemy", isAlive: true, cell: { x: 2, y: 2 }, heading: undefined },
+  ], detections: [] }, 64));
+  assert.deepEqual(createPerceptionDrawCommands({ actors: [
+    { id: "broken-enemy", type: "enemy", isAlive: true, cell: { x: 2, y: 2 }, heading: undefined },
+  ], detections: [] }, 64), []);
+});
+
 test("terrain colliders use the same green style as movement colliders", () => {
   assert.equal(TERRAIN_COLLIDER_STYLE.fillStyle, MOVEMENT_COLLIDER_STYLE.fillStyle);
   assert.equal(TERRAIN_COLLIDER_STYLE.strokeStyle, MOVEMENT_COLLIDER_STYLE.strokeStyle);

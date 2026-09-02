@@ -172,7 +172,10 @@ export function createSettingsUi({
       developerWindow.backdrop.classList.add("developer-settings-backdrop");
       developerWindow.dimmer?.classList.add("developer-settings-dimmer");
     };
-    developerButton.addEventListener("click", openDeveloperSettings);
+    developerButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      openDeveloperSettings();
+    });
     content.append(
       musicControl.row,
       sfxControl.row,

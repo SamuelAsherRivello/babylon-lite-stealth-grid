@@ -114,7 +114,7 @@ test("goblin starts idle, switches locomotion, and mirrors left", () => {
   goblin.setMovementIntent({ x: -1, y: 0 });
   const result = goblin.update(0.5);
   assert.equal(result.state, "walking");
-  assert.deepEqual(result.position, { x: 150, y: 300 });
+  assert.deepEqual(result.position, { x: 150, y: 288 });
   assert.equal(api.calls.played.at(-1).to, 4);
   assert.equal(api.calls.played.at(-1).loop, true);
   assert.ok(

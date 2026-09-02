@@ -10,6 +10,7 @@ import {
   createGridAlignmentSession,
   createTerrainReviewTiles,
   getCharacterCollider,
+  getOtherCharacterGridOccupancyColliders,
   getOtherCharacterColliders,
   formatPositionReadout,
   getLogicalViewportScale,
@@ -18,6 +19,7 @@ import {
   getMovementVector,
   isAabbWithinBounds,
   moveWithCollisions,
+  separateOverlappingCharacterColliders,
   moveWithinBounds,
   selectMovementInput,
   stepGridAlignment,
@@ -329,6 +331,28 @@ test("other character colliders include live peers but not the current character
   );
 });
 
+test("enemy occupancy colliders reserve the full grid cell of other live enemies", () => {
+  const records = [
+    { combat: { label: "enemy-1", isAlive: true }, actor: { getMovementCollider: () => ({ type: "circle", x: 96, y: 160, radius: 24 }) } },
+    { combat: { label: "enemy-2", isAlive: true }, actor: { getMovementCollider: () => ({ type: "circle", x: 288, y: 32, radius: 24 }) } },
+  ];
+
+  assert.deepEqual(
+    getOtherCharacterGridOccupancyColliders(records, "enemy-1", 64),
+    [{ type: "enemy-grid-occupancy", x: 256, y: 0, width: 64, height: 64 }],
+  );
+});
+
+test("grid occupancy blocks movement into an occupied cell even when actors overlap there", () => {
+  const character = { frame: { width: 64, height: 64 }, pivot: { x: 0.5, y: 0.5 }, collider: { type: "circle", x: 32, y: 32, radius: 20 } };
+  const occupiedCell = { type: "enemy-grid-occupancy", x: 64, y: 0, width: 64, height: 64 };
+
+  assert.deepEqual(
+    moveWithCollisions({ x: 96, y: 32 }, { x: 1, y: 0 }, 16, { width: 256, height: 256 }, character, [occupiedCell]),
+    { x: 96, y: 32 },
+  );
+});
+
 test("horizontal circle movement into a diagonal is pushed along the slope", () => {
   const triangle = {
     type: "polygon",
@@ -365,7 +389,47 @@ test("overlapping character circles can only move apart", () => {
   const toward = moveWithCollisions({ x: 100, y: 100 }, { x: 1, y: 0 }, 10, { width: 400, height: 400 }, character, [other]);
   const away = moveWithCollisions({ x: 100, y: 100 }, { x: -1, y: 0 }, 10, { width: 400, height: 400 }, character, [other]);
   assert.deepEqual(toward, { x: 100, y: 100 });
-  assert.deepEqual(away, { x: 90, y: 100 });
+  assert.deepEqual(away, { x: 100, y: 100 });
+});
+
+test("character separation solver removes overlapping green circles", () => {
+  const positions = [{ x: 100, y: 100 }, { x: 110, y: 100 }];
+  const records = positions.map((position, index) => ({
+    combat: { isAlive: true },
+    actor: {
+      frame: { width: 64, height: 64 },
+      pivot: { x: 0.5, y: 0.5 },
+      collider: { type: "circle", x: 32, y: 32, radius: 24 },
+      getPosition: () => position,
+      getMovementCollider: () => ({ type: "circle", x: position.x, y: position.y, radius: 24 }),
+      setPosition: (next) => Object.assign(position, next),
+    },
+    id: index,
+  }));
+  separateOverlappingCharacterColliders(records);
+  assert.ok(Math.hypot(positions[0].x - positions[1].x, positions[0].y - positions[1].y) >= 48);
+});
+
+test("character separation never pushes a character into terrain", () => {
+  const positions = [{ x: 100, y: 100 }, { x: 110, y: 100 }];
+  const records = positions.map((position, index) => ({
+    combat: { isAlive: true },
+    actor: {
+      frame: { width: 64, height: 64 },
+      pivot: { x: 0.5, y: 0.5 },
+      collider: { type: "circle", x: 32, y: 32, radius: 24 },
+      getPosition: () => position,
+      getMovementCollider: () => ({ type: "circle", x: position.x, y: position.y, radius: 24 }),
+      setPosition: (next) => Object.assign(position, next),
+    },
+    id: index,
+  }));
+  const blockedCell = { x: 0, y: 76, width: 76, height: 48 };
+
+  separateOverlappingCharacterColliders(records, 0.01, 8, [blockedCell]);
+
+  assert.equal(collidersOverlap(records[0].actor.getMovementCollider(), blockedCell), false);
+  assert.equal(collidersOverlap(records[1].actor.getMovementCollider(), blockedCell), false);
 });
 
 test("AABB containment checks the complete box", () => {
@@ -405,17 +469,14 @@ test("collision-aware movement applies the unobstructed axis for sliding", () =>
   assert.deepEqual(result, { x: 50, y: 70 });
 });
 
-test("collision-aware movement keeps the full collider inside the playfield", () => {
-  const result = moveWithCollisions(
-    { x: 10, y: 10 },
-    { x: -1, y: -1 },
-    20,
-    { width: 100, height: 100 },
-    { frame: { width: 20, height: 20 }, pivot: { x: 0.5, y: 0.5 } },
-    [],
-  );
+test("collision-aware movement can cross every logical playfield edge", () => {
+  const character = { frame: { width: 20, height: 20 }, pivot: { x: 0.5, y: 0.5 } };
+  const bounds = { width: 100, height: 100 };
 
-  assert.deepEqual(result, { x: 10, y: 10 });
+  assert.deepEqual(moveWithCollisions({ x: 10, y: 50 }, { x: -1, y: 0 }, 20, bounds, character, []), { x: -10, y: 50 });
+  assert.deepEqual(moveWithCollisions({ x: 90, y: 50 }, { x: 1, y: 0 }, 20, bounds, character, []), { x: 110, y: 50 });
+  assert.deepEqual(moveWithCollisions({ x: 50, y: 10 }, { x: 0, y: -1 }, 20, bounds, character, []), { x: 50, y: -10 });
+  assert.deepEqual(moveWithCollisions({ x: 50, y: 90 }, { x: 0, y: 1 }, 20, bounds, character, []), { x: 50, y: 110 });
 });
 
 test("position readout keeps pixels above feet-based row and column", () => {

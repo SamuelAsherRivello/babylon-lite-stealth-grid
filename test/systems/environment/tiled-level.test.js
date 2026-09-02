@@ -34,7 +34,7 @@ const COLOR_THREE_COLLIDABLE_IDS = [
   27, 28, 29, 30, 32, 33, 34, 36, 39, 41, 42, 43, 44, 45, 48, 50, 51, 52, 53,
 ];
 const LEVEL01_AUTHORED_CONTENT_SHA256 =
-  "1354f6070f776bcc131576552177fa9323025435d824c0d6644402f353289693";
+  "87c2f86d0c7070da778e270886f2598fa9b7cc3f893c2a3b34b9abc1760df6b3";
 
 async function readJson(url) {
   return JSON.parse(await readFile(url, "utf8"));
@@ -61,8 +61,8 @@ test("Level01 loads its authored visual layers without requiring a Terrain layer
   const level = normalizeTiledMap(map, externalTilesets);
   const tiles = collectTiledLayerTiles(level);
 
-  assert.equal(level.width, 9);
-  assert.equal(level.height, 16);
+  assert.equal(level.width, 11);
+  assert.equal(level.height, 18);
   assert.deepEqual(level.layers.map(({ name }) => name), [
     "Background",
     "Midground",
@@ -78,8 +78,25 @@ test("Level01 normalizes the lower-left origin cell to game tile zero zero", asy
   const { map, externalTilesets } = await readLevelWithTilesets();
   const level = normalizeTiledMap(map, externalTilesets);
 
-  assert.deepEqual(level.origin, { x: 0, y: 0 });
-  assert.deepEqual(level.layers[0].tiles.at(-1).gameCell, { x: 8, y: 0 });
+  assert.deepEqual(level.origin, { x: 1, y: 1 });
+  assert.deepEqual(level.layers[0].tiles.find(({ gameCell }) => gameCell.x === 8 && gameCell.y === 0).gameCell, { x: 8, y: 0 });
+});
+
+test("Level01 authors a full-cell blocking perimeter without shifting the playable screen", async () => {
+  const { map, externalTilesets } = await readLevelWithTilesets();
+  const level = normalizeTiledMap(map, externalTilesets);
+  const boundary = collectTiledLayerTiles(level).filter(({ gameCell }) => (
+    gameCell.x < 0 || gameCell.x >= 9 || gameCell.y < 0 || gameCell.y >= 16
+  ));
+
+  assert.equal(boundary.length, 54);
+  assert.deepEqual(level.origin, { x: 1, y: 1 });
+  assert.deepEqual(boundary.find(({ gameCell }) => gameCell.x === -1 && gameCell.y === -1).gameCell, { x: -1, y: -1 });
+  assert.deepEqual(boundary.find(({ gameCell }) => gameCell.x === 9 && gameCell.y === 15).gameCell, { x: 9, y: 15 });
+  assert.deepEqual(boundary[0].collisionShapes, [{
+    type: "rectangle", x: 0, y: 0, width: 1, height: 1,
+  }]);
+  assert.deepEqual(level.layers[0].tiles.find(({ gameCell }) => gameCell.x === 0 && gameCell.y === 0).gameCell, { x: 0, y: 0 });
 });
 
 test("Level01 migration preserves authored content and color-three global ids", async () => {

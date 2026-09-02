@@ -27,8 +27,11 @@ test("pickups choose distinct surrounding 9-grid cells and collect during spawn"
   assert.equal(pickup.type, "GoldPickup");
   assert.equal(pickup.getMovementCollider(), null);
   assert.deepEqual(pickup.getCombatCollider(), { x: 20, y: 20, width: 24, height: 24 });
-  assert.equal(pickup.collect(), true);
-  assert.equal(pickup.isPickingUp, true);
+  assert.equal(pickup.IsPickedUp, false);
+  assert.equal(pickup.pickup(), true);
+  assert.equal(pickup.IsPickedUp, true);
+  assert.equal(pickup.getCombatCollider(), null);
+  assert.equal(pickup.pickup(), false);
   pickup.update(0.09);
   assert.ok(updates.some(({ positionPx, alpha }) => positionPx?.[1] === 967 && alpha < 1 && alpha > 0));
   pickup.update(0.09);

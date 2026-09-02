@@ -1,5 +1,5 @@
-import { addSprite2D, createSprite2DLayer, loadSpriteAtlas, playSprite2DAnimation, removeSprite2D, updateSprite2D } from "@babylonjs/lite";
-import { getCharacterCollider, moveWithCollisions, worldToScreen } from "../../../gameplay/game-logic.js";
+import { addSprite2D, createSprite2DLayer, loadSpriteAtlas, playSprite2DAnimation, removeSprite2D, removeSpriteAnimation, updateSprite2D } from "@babylonjs/lite";
+import { createGridAlignedMovementController, getCharacterCollider, worldToScreen } from "../../../gameplay/game-logic.js";
 import { getYSortedLayerOrder } from "../../../systems/environment/render-depth.js";
 import { chooseArcherAction, ARCHER_RECOVERY_SECONDS } from "./archer-ai.js";
 
@@ -10,7 +10,7 @@ export const ARCHER_MOVEMENT_COLLIDER = Object.freeze({ type: "circle", x: 96, y
 export const ARCHER_COMBAT_COLLIDER = Object.freeze({ x: ARCHER_FRAME.width * ARCHER_PIVOT.x - 64 / 2, y: ARCHER_FRAME.height * ARCHER_PIVOT.y + 64 / 2 - 64, width: 64, height: 64 });
 const ARROW_ATTACH_OFFSET = Object.freeze({ x: 16, y: 55 });
 const ARROW_ATTACH_ANGLE = Math.atan2(-55, -64);
-const ANIMS = Object.freeze({ idle: ["Archer_Idle.png", 6, true], walking: ["Archer_Run.png", 6, true], shooting: ["Archer_Shoot.png", 6, false] });
+const ANIMS = Object.freeze({ idle: ["Archer_Idle.png", 6, true], walking: ["Archer_Run.png", 4, true], shooting: ["Archer_Shoot.png", 6, false] });
 
 export async function loadArcherAtlases(engine) {
   return Object.fromEntries(await Promise.all(Object.entries(ANIMS).map(async ([name, [file]]) => [name, await loadSpriteAtlas(engine, `./assets/units/archer/${file}`, { gridSize: [192, 192], sampling: "nearest" })])));
@@ -18,8 +18,9 @@ export async function loadArcherAtlases(engine) {
 
 export function createArcher({ atlases, initialPosition, bounds, obstacles = [], onShoot = () => {} }) {
   let position = { ...initialPosition }; let artYOffset = 0; let disposed = false; let manager = null; let active = null; let state = "idle";
-  let facing = 1; let target = null; let recovery = 0; let released = false; let shootElapsed = 0;
+  let facing = 1; let heading = "right"; let target = null; let recovery = 0; let released = false; let shootElapsed = 0;
   let movementIntent = { x: 0, y: 0 };
+  const gridMovement = createGridAlignedMovementController({ frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER }, 64);
   const layers = {}; const sprites = {};
   const getArtScreenPosition = (worldPosition) => worldToScreen({ x: worldPosition.x + ARCHER_ART_OFFSET.x, y: worldPosition.y + ARCHER_ART_OFFSET.y }, 1, bounds.height);
   const updateSprites = (transform = {}) => {
@@ -31,7 +32,7 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
     const layer = createSprite2DLayer(atlases[name], { capacity: 1, order: getYSortedLayerOrder(position.y, bounds.height), pivot: [0.5, 0.84], visible: name === "idle" });
     layers[name] = layer; const screen = getArtScreenPosition(position); sprites[name] = addSprite2D(layer, { positionPx: [screen.x, screen.y + artYOffset], sizePx: [192, 192], frame: 0 });
   }
-  function play(name) { state = name; if (!manager || disposed) return; if (active) active.stop?.(); Object.entries(layers).forEach(([key, layer]) => { layer.visible = key === name; }); const [, count, loop] = ANIMS[name]; active = playSprite2DAnimation(manager, sprites[name], 0, count - 1, loop, 100, loop ? undefined : { onEnd: () => { if (name === "shooting") { recovery = ARCHER_RECOVERY_SECONDS; state = "recovering"; } else play("idle"); } }); }
+  function play(name) { state = name; if (!manager || disposed) return; if (active) { active.stop?.(); removeSpriteAnimation(manager, active); active = null; } Object.entries(layers).forEach(([key, layer]) => { layer.visible = key === name; }); const [, count, loop] = ANIMS[name]; active = playSprite2DAnimation(manager, sprites[name], 0, count - 1, loop, 100, loop ? undefined : { onEnd: () => { if (name === "shooting") { recovery = ARCHER_RECOVERY_SECONDS; state = "recovering"; } else play("idle"); } }); }
   function setVisualTransform(transform) {
     const screenPosition = getArtScreenPosition(position);
     const centeredTransform = transform.sizePx
@@ -54,7 +55,7 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
       return state === "shooting";
     },
     getHeading() {
-      return facing < 0 ? "left" : "right";
+      return heading;
     },
     getPosition() {
       return { ...position };
@@ -71,7 +72,14 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
       manager = m;
       play("idle");
     },
-    setMovementIntent(movement) { movementIntent = { x: movement.x, y: movement.y }; },
+    setMovementIntent(movement) {
+      movementIntent = { x: movement.x, y: movement.y };
+      if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
+        heading = movementIntent.y < 0 ? "up" : "down";
+      } else if (movementIntent.x !== 0) {
+        heading = movementIntent.x < 0 ? "left" : "right";
+      }
+    },
     update(deltaSeconds, _dynamic, _projectiles, player) {
       if (disposed) return;
       const delta = Math.max(0, deltaSeconds);
@@ -94,10 +102,7 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
         }
         return;
       }
-      position = moveWithCollisions(position, movementIntent,
-        120 * delta, bounds,
-        { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER },
-        obstacles);
+      position = gridMovement.move(position, movementIntent, 120 * delta, delta, bounds, obstacles);
       const locomotion = movementIntent.x || movementIntent.y ? "walking" : "idle";
       if (state !== locomotion) play(locomotion);
       updateSprites();

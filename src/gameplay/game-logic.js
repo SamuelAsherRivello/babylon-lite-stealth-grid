@@ -326,11 +326,19 @@ export function colliderOverlapsObstacle(collider, obstacle) {
   return collidersOverlap(collider, obstacle);
 }
 
-export function separateOverlappingCharacterColliders(records, padding = 0.01) {
-  for (let index = 0; index < records.length; index += 1) {
-    for (let otherIndex = index + 1; otherIndex < records.length; otherIndex += 1) {
-      const first = records[index];
-      const second = records[otherIndex];
+export function separateOverlappingCharacterColliders(records, padding = 0.01, maxIterations = 8, obstacles = []) {
+  const validRecords = records.filter((record) => (
+    typeof record?.actor?.getMovementCollider === "function"
+    && typeof record.actor.getPosition === "function"
+  ));
+  const validObstacles = obstacles.filter(Boolean);
+
+  for (let iteration = 0; iteration < maxIterations; iteration += 1) {
+    let changed = false;
+    for (let index = 0; index < validRecords.length; index += 1) {
+      for (let otherIndex = index + 1; otherIndex < validRecords.length; otherIndex += 1) {
+      const first = validRecords[index];
+      const second = validRecords[otherIndex];
       if (first.combat?.isAlive === false || second.combat?.isAlive === false) continue;
       const a = first.actor.getMovementCollider();
       const b = second.actor.getMovementCollider();
@@ -340,11 +348,29 @@ export function separateOverlappingCharacterColliders(records, padding = 0.01) {
       const distance = Math.hypot(dx, dy);
       const overlap = a.radius + b.radius - distance;
       if (overlap <= 0) continue;
+      changed = true;
       const normal = distance > 0 ? { x: dx / distance, y: dy / distance } : { x: 1, y: 0 };
       const correction = (overlap + padding) / 2;
-      first.actor.setPosition?.({ x: first.actor.getPosition().x + normal.x * correction, y: first.actor.getPosition().y + normal.y * correction });
-      second.actor.setPosition?.({ x: second.actor.getPosition().x - normal.x * correction, y: second.actor.getPosition().y - normal.y * correction });
+      const firstPosition = first.actor.getPosition();
+      const secondPosition = second.actor.getPosition();
+      const firstCandidate = { x: firstPosition.x + normal.x * correction, y: firstPosition.y + normal.y * correction };
+      const secondCandidate = { x: secondPosition.x - normal.x * correction, y: secondPosition.y - normal.y * correction };
+      const canOccupy = (record, position) => {
+        const currentPosition = record.actor.getPosition();
+        const currentCollider = record.actor.getMovementCollider();
+        if (!currentCollider) return false;
+        const candidateCollider = {
+          ...currentCollider,
+          x: currentCollider.x + position.x - currentPosition.x,
+          y: currentCollider.y + position.y - currentPosition.y,
+        };
+        return !validObstacles.some((obstacle) => colliderOverlapsObstacle(candidateCollider, obstacle));
+      };
+      if (canOccupy(first, firstCandidate)) first.actor.setPosition?.(firstCandidate);
+      if (canOccupy(second, secondCandidate)) second.actor.setPosition?.(secondCandidate);
+      }
     }
+    if (!changed) break;
   }
 }
 
@@ -358,6 +384,21 @@ export function getOtherCharacterColliders(records, currentLabel, type) {
       type,
       collider: record.actor.getMovementCollider(),
     }));
+}
+
+export function getOtherCharacterGridOccupancyColliders(records, currentLabel, tileSize) {
+  return records
+    .filter((record) => record.combat?.isAlive && record.combat.label !== currentLabel)
+    .map((record) => {
+      const cell = getCharacterGridCell(record.actor.getMovementCollider(), tileSize);
+      return {
+        type: "enemy-grid-occupancy",
+        x: cell.x * tileSize,
+        y: cell.y * tileSize,
+        width: tileSize,
+        height: tileSize,
+      };
+    });
 }
 
 export function isAabbWithinBounds(aabb, maxX, maxY) {
@@ -387,13 +428,12 @@ export function moveWithCollisions(
   obstacles,
 ) {
   let nextPosition = { ...position };
+  const validObstacles = obstacles.filter(Boolean);
   const currentCollider = getCharacterCollider(position, character.frame, character.pivot, character.collider);
-  const overlappingCircles = obstacles.filter((obstacle) => (
-    currentCollider.type === "circle"
-    && obstacle.type === "circle"
-    && collidersOverlap(currentCollider, obstacle)
-  ));
-
+  const centerOf = (collider) => collider.type === "circle"
+    ? { x: collider.x, y: collider.y }
+    : { x: collider.x + collider.width / 2, y: collider.y + collider.height / 2 };
+  const currentCenter = centerOf(currentCollider);
   for (const axis of ["x", "y"]) {
     if (movement[axis] === 0) {
       continue;
@@ -405,7 +445,7 @@ export function moveWithCollisions(
     };
     let resolvedCandidate = candidate;
 
-    for (const obstacle of obstacles) {
+    for (const obstacle of validObstacles) {
       const collider = getCharacterCollider(
         resolvedCandidate,
         character.frame,
@@ -429,20 +469,26 @@ export function moveWithCollisions(
       character.pivot,
       character.collider,
     );
-    const separating = overlappingCircles.every((obstacle) => {
-      const dx = currentCollider.x - obstacle.x;
-      const dy = currentCollider.y - obstacle.y;
-      return movement.x * dx + movement.y * dy > 0;
-    });
-    if (overlappingCircles.length > 0 && !separating) {
-      continue;
-    }
-    const isBlocked = !isColliderWithinBounds(
-      resolvedCollider,
-      bounds.width,
-      bounds.height,
-    ) || obstacles.some((obstacle) => {
-      if (overlappingCircles.includes(obstacle) && separating) return false;
+    const isBlocked = validObstacles.some((obstacle) => {
+      if (obstacle.type === "enemy-grid-occupancy") {
+        const candidateCenter = centerOf(resolvedCollider);
+        const currentCell = {
+          x: Math.floor(currentCenter.x / obstacle.width),
+          y: Math.floor(currentCenter.y / obstacle.height),
+        };
+        const candidateCell = {
+          x: Math.floor(candidateCenter.x / obstacle.width),
+          y: Math.floor(candidateCenter.y / obstacle.height),
+        };
+        const occupiedCell = {
+          x: Math.floor(obstacle.x / obstacle.width),
+          y: Math.floor(obstacle.y / obstacle.height),
+        };
+        // A character may not continue moving toward an occupied green cell,
+        // including when a prior frame left the two green actors overlapping.
+        // Moving to a different cell remains possible so the actor can recover.
+        return candidateCell.x === occupiedCell.x && candidateCell.y === occupiedCell.y;
+      }
       return colliderOverlapsObstacle(resolvedCollider, obstacle);
     });
 
@@ -540,3 +586,4 @@ export function worldToGrid(position, tileSize, artwork) {
 export function formatPositionReadout(pixelPosition, gridPosition) {
   return `X ${Math.round(pixelPosition.x)} · Y ${Math.round(pixelPosition.y)}\nC ${gridPosition.x} · R ${gridPosition.y}`;
 }
+import { getCharacterGridCell } from "../characters/character-spatial.js";

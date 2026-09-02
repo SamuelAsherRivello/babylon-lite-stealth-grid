@@ -20,6 +20,11 @@ test("player uses a 70%-size circle collider with its body center unchanged", ()
   });
 });
 
+test("player position synchronization has a sprite update helper", async () => {
+  const playerSource = await readFile(new URL("../../src/characters/player/player.js", import.meta.url), "utf8");
+  assert.match(playerSource, /function updateSprites\(\)/);
+});
+
 test("arrow spawns close to the bow on the right", () => {
   assert.deepEqual(getArrowSpawnPosition({ x: 200, y: 300 }, { x: 1, y: 0 }), {
     x: 264,

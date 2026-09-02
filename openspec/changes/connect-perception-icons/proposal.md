@@ -9,6 +9,8 @@ Characters already have four perception-state icons available above them, and th
 - Hide the overhead icon for `NONE` and when the character has no active perception state.
 - Preserve the existing icon placement, fade, scale, flash, and debug-key behavior unless changed by the state-to-icon connection.
 - Ensure state transitions and clearing perception state update the icon on the next rendered frame.
+- Show a capital `H` over the player while the player's combat collider overlaps at least one living bush combat collider.
+- Fade all player artwork from 100% to 80% opacity on hidden entry and back to 100% on exit over the existing enemy expression animation duration, without the enemy white flash or jump.
 
 ## Capabilities
 
@@ -22,4 +24,4 @@ None.
 
 ## Impact
 
-Likely affects the main perception/update coordinator, character records, expression-icon rendering, and perception reaction tests. No new dependency or asset is required; the existing four icon mappings are reused.
+Likely affects the main update coordinator, player visual transforms, character records, expression-icon rendering, bush overlap checks, and perception/stealth tests. No new dependency or asset is required; the existing icon renderer is reused.

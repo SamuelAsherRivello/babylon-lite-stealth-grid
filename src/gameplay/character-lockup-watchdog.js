@@ -36,8 +36,6 @@ export function createCharacterLockupWatchdog({ stallSeconds = 0.35 } = {}) {
       const direction = Math.abs(dx) >= Math.abs(dy)
         ? { x: dx === 0 ? -1 : Math.sign(dx), y: 0 }
         : { x: 0, y: dy === 0 ? -1 : Math.sign(dy) };
-      second.actor.setMovementIntent?.({ x: 0, y: 0 });
-      first.actor.setMovementIntent?.(direction);
       stalledSeconds = 0;
       lastReport = [first.combat.label, second.combat.label];
       return { labels: lastReport, direction };

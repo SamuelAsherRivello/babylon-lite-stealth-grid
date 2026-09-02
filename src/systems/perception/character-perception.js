@@ -1,4 +1,5 @@
 export const PERCEPTION_TYPES = Object.freeze({ VISUAL: "visual", AUDIO: "audio" });
+export const PerceptionTargetState = Object.freeze({ Default: "default", Hidden: "hidden" });
 
 export const CARDINAL_DIRECTIONS = Object.freeze({
   up: Object.freeze({ x: 0, y: -1 }),
@@ -12,6 +13,12 @@ export const PERCEPTION_MEMORY_SECONDS = 5;
 
 function cellKey(cell) { return `${cell.x},${cell.y}`; }
 function copyCell(cell) { return { x: cell.x, y: cell.y }; }
+function sameCell(a, b) { return a?.x === b?.x && a?.y === b?.y; }
+function isLivingBlocker(actor, channel) {
+  if (!actor || actor.isAlive === false) return false;
+  if (channel === PERCEPTION_TYPES.AUDIO) return actor.type === "enemy";
+  return actor.type === "enemy" || actor.type === "bush";
+}
 
 export function getVisualCells(origin, heading, range = 4) {
   const direction = typeof heading === "string" ? CARDINAL_DIRECTIONS[heading] : heading;
@@ -38,22 +45,29 @@ export function getVisualStrength(distance) {
   return VISUAL_STRENGTHS[distance - 1] ?? 0;
 }
 
-export function evaluatePerception({ detector, target, isWalkable = () => true, visualRange = 4 }) {
+export function evaluatePerception({ detector, target, isWalkable = () => true, visualRange = 4, blockers = [] }) {
   const origin = detector.cell;
   const targetCell = target.cell;
   const visual = getVisualCells(origin, detector.heading, visualRange);
   const visualIndex = visual.findIndex((cell) => cellKey(cell) === cellKey(targetCell));
   const detections = [];
-  if (visualIndex >= 0 && visual.slice(0, visualIndex).every(isWalkable)) {
+  const visualBlockers = blockers.filter((blocker) => isLivingBlocker(blocker, PERCEPTION_TYPES.VISUAL));
+  const audioBlockers = blockers.filter((blocker) => isLivingBlocker(blocker, PERCEPTION_TYPES.AUDIO));
+  const visualTargetIsBlocked = visualBlockers.some(({ cell }) => sameCell(cell, targetCell));
+  const visualPathIsBlocked = visualIndex >= 0 && visual.slice(0, visualIndex).some((cell) => (
+    !isWalkable(cell) || visualBlockers.some((blocker) => sameCell(blocker.cell, cell))
+  ));
+  if (visualIndex >= 0 && isWalkable(targetCell) && !visualTargetIsBlocked && !visualPathIsBlocked) {
     detections.push({ type: PERCEPTION_TYPES.VISUAL, strength: getVisualStrength(visualIndex + 1), cell: copyCell(targetCell) });
   }
-  if (getAudioCells(origin).some((cell) => cellKey(cell) === cellKey(targetCell))) {
+  if (getAudioCells(origin).some((cell) => cellKey(cell) === cellKey(targetCell))
+    && !audioBlockers.some(({ cell }) => sameCell(cell, targetCell))) {
     detections.push({ type: PERCEPTION_TYPES.AUDIO, strength: 1, cell: copyCell(targetCell) });
   }
   return detections;
 }
 
-export function createCharacterPerception({ isWalkable = () => true, visualRange = 4, random = Math.random } = {}) {
+export function createCharacterPerception({ isWalkable = () => true, visualRange = 4, random = Math.random, getBlockers = () => [] } = {}) {
   const actors = new Map();
   const detections = [];
   const alertState = new Map();
@@ -79,11 +93,14 @@ export function createCharacterPerception({ isWalkable = () => true, visualRange
       if (known.remaining <= 0) knownCells.delete(detectorId);
     }
     detections.length = 0;
-    const player = [...actors.values()].find((actor) => actor.type === "player" && actor.isAlive !== false);
+    const player = [...actors.values()].find((actor) => (
+      actor.type === "player" && actor.isAlive !== false
+      && actor.targetState !== PerceptionTargetState.Hidden
+    ));
     if (!player) return [];
     for (const detector of actors.values()) {
       if (detector.type !== "enemy" || detector.isAlive === false) continue;
-      for (const detection of evaluatePerception({ detector, target: player, isWalkable, visualRange })) {
+      for (const detection of evaluatePerception({ detector, target: player, isWalkable, visualRange, blockers: getBlockers() })) {
         const event = Object.freeze({ detectorId: detector.id, ...detection });
         detections.push(event);
         knownCells.set(detector.id, {
@@ -91,10 +108,11 @@ export function createCharacterPerception({ isWalkable = () => true, visualRange
           remaining: PERCEPTION_MEMORY_SECONDS,
         });
         const state = alertState.get(detector.id) ?? { active: false };
-        if (!state.active && detector.onDetection) {
+        const wasActive = state.active;
+        if ((!wasActive || detector.acceptRepeatedDetections) && detector.onDetection) {
           state.active = true;
           alertState.set(detector.id, state);
-          detector.onDetection?.(event, { random });
+          detector.onDetection?.(event, { random, repeated: wasActive });
         }
       }
     }

@@ -30,6 +30,15 @@ test("vertical movement reaches its column center in 0.2 seconds", () => {
   assert.deepEqual(second, { x: 32, y: 52 });
 });
 
+test("enemy cardinal movement uses the same one-axis quantization contract", () => {
+  const controller = createController();
+  const vertical = controller.move({ x: 10, y: 10 }, { x: 0, y: 1 }, 21, 0.1, BOUNDS, []);
+  assert.equal(vertical.x, 21);
+  const horizontal = controller.move(vertical, { x: 1, y: 0 }, 21, 0.1, BOUNDS, []);
+  assert.equal(horizontal.y, 31.5);
+  assert.equal(horizontal.x, 42);
+});
+
 test("horizontal movement reaches its row center without changing requested travel", () => {
   const controller = createController();
   const result = controller.move(
@@ -113,7 +122,7 @@ test("blocked correction preserves main-axis travel and retries when clear", () 
   assert.deepEqual(clear, { x: 21, y: 50 });
 });
 
-test("alignment respects playfield bounds and dynamic collider geometry", () => {
+test("alignment preserves dynamic collider blocking beyond playfield bounds", () => {
   const controller = createController();
   const bounded = controller.move(
     { x: 1, y: 32 },
@@ -133,7 +142,7 @@ test("alignment respects playfield bounds and dynamic collider geometry", () => 
     [{ type: "circle", x: 21, y: 30, radius: 2 }],
   );
 
-  assert.deepEqual(bounded, { x: 1, y: 52 });
+  assert.deepEqual(bounded, { x: 32, y: 52 });
   assert.deepEqual(dynamicBlocked, { x: 10, y: 30 });
 });
 

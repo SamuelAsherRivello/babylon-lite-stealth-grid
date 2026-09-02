@@ -6,6 +6,12 @@ export const PERCEPTION_STATES = Object.freeze({
 });
 
 const TYPES = Object.freeze({ VISUAL: "visual", AUDIO: "audio" });
+const STATE_SEVERITY = Object.freeze({
+  [PERCEPTION_STATES.NONE]: 0,
+  [PERCEPTION_STATES.SUSPICIOUS]: 1,
+  [PERCEPTION_STATES.INVESTIGATING]: 2,
+  [PERCEPTION_STATES.ALERT]: 3,
+});
 const DEFAULT_PROFILE = Object.freeze({
   suspiciousDuration: Object.freeze([1, 3]),
   investigationDuration: 8,
@@ -81,23 +87,36 @@ export function createEnemyPerceptionReaction({ profile = {}, random = Math.rand
     if (type !== TYPES.VISUAL && type !== TYPES.AUDIO) throw new TypeError("unsupported detection type");
     const cell = copyCell(event.cell);
     const strength = Math.max(0, Math.min(1, event.strength));
-    lastKnownCell = cell;
-    if (state === PERCEPTION_STATES.ALERTED && type === TYPES.VISUAL) {
+    const candidate = strength >= config.alertedThreshold && (type === TYPES.VISUAL || config.audioCanAlert)
+      ? PERCEPTION_STATES.ALERT
+      : strength >= config.investigatingThreshold
+        ? PERCEPTION_STATES.INVESTIGATING
+        : strength >= config.suspiciousThreshold
+          ? PERCEPTION_STATES.SUSPICIOUS
+          : PERCEPTION_STATES.NONE;
+
+    if (state === PERCEPTION_STATES.ALERT && type === TYPES.VISUAL
+      && candidate === PERCEPTION_STATES.ALERT) {
+      lastKnownCell = cell;
       alertedCell = cell;
       remainingSeconds = durationFrom(config.alertedDuration, random);
       onMoveTo(cell);
       return snapshot();
     }
-    if (strength >= config.alertedThreshold && (type === TYPES.VISUAL || config.audioCanAlert)) {
+
+    if (STATE_SEVERITY[candidate] <= STATE_SEVERITY[state]) return snapshot();
+
+    lastKnownCell = cell;
+    if (candidate === PERCEPTION_STATES.ALERT) {
       alertedCell = cell;
-      setState(PERCEPTION_STATES.ALERTED, durationFrom(config.alertedDuration, random));
+      setState(PERCEPTION_STATES.ALERT, durationFrom(config.alertedDuration, random));
       onMoveTo(cell);
-    } else if (strength >= config.investigatingThreshold) {
+    } else if (candidate === PERCEPTION_STATES.INVESTIGATING) {
       suspicionCell = cell;
       searchDirectionIndex = 0;
       setState(PERCEPTION_STATES.INVESTIGATING, config.investigationDuration);
       onMoveTo(cell);
-    } else if (strength >= config.suspiciousThreshold) {
+    } else if (candidate === PERCEPTION_STATES.SUSPICIOUS) {
       suspicionCell = cell;
       setState(PERCEPTION_STATES.SUSPICIOUS, durationFrom(config.suspiciousDuration, random));
       onFace(cell);
@@ -117,7 +136,7 @@ export function createEnemyPerceptionReaction({ profile = {}, random = Math.rand
       }
     }
     if (remainingSeconds > 0) return snapshot();
-    if (state === PERCEPTION_STATES.ALERTED) {
+    if (state === PERCEPTION_STATES.ALERT) {
       setState(PERCEPTION_STATES.INVESTIGATING, config.investigationDuration);
       searchDirectionIndex = 0;
       if (lastKnownCell) onMoveTo(lastKnownCell);

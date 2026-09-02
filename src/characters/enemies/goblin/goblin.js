@@ -10,6 +10,7 @@ import {
 
 import {
   getCharacterCollider,
+  createGridAlignedMovementController,
   moveWithCollisions,
   worldToScreen,
 } from "../../../gameplay/game-logic.js";
@@ -92,6 +93,7 @@ export function createGoblin({
     pivot: GOBLIN_PIVOT,
     collider: GOBLIN_MOVEMENT_COLLIDER,
   };
+  const gridMovement = createGridAlignedMovementController(character, 64);
   const stateMachine = createEnemyStateMachine();
   let position = { ...initialPosition };
   let artYOffset = 0;
@@ -326,6 +328,7 @@ export function createGoblin({
       }
       const knockbackMovement = getKnockbackMovement(deltaSeconds);
       if (knockbackMovement) {
+        gridMovement.reset();
         position = moveWithCollisions(
           position,
           knockbackMovement,
@@ -353,12 +356,12 @@ export function createGoblin({
       const movement = stateMachine.movementLocked
         ? { x: 0, y: 0 }
         : movementIntent;
-      position = moveWithCollisions(
+      position = gridMovement.move(
         position,
         movement,
         movementSpeed * Math.max(0, deltaSeconds),
+        deltaSeconds,
         bounds,
-        character,
         [
           ...obstacles,
           ...dynamicColliders.map(({ collider }) => collider),
