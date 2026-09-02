@@ -18,7 +18,7 @@ prototype that runs with WebGPU.
 
 ## Live Demo
 
-[Play the live demo](https://samuelasherrivello.github.io/babylon-light-stealth-grid/)
+[Play the live demo](https://samuelasherrivello.github.io/babylon-lite-stealth-grid/)
 
 WebGPU not working? See [Troubleshooting](#troubleshooting).
 
