@@ -11,7 +11,8 @@ test("README screenshot links directly to the renamed live game", async () => {
   assert.ok(readme.includes(`[Play the live demo](${demoUrl})`));
   const image = await readFile(new URL("../../documentation/images/output-arrow-check.png", import.meta.url));
   assert.equal(image.subarray(1, 4).toString(), "PNG");
-  assert.ok(image.readUInt32BE(20) > image.readUInt32BE(16), "capture the portrait game, not the surrounding browser margins");
+  assert.deepEqual({ width: image.readUInt32BE(16), height: image.readUInt32BE(20) },
+    { width: 405, height: 720 }, "match the original portrait screenshot dimensions");
 });
 
 test("Pages assets remain relative so repository renames do not break the build", async () => {
