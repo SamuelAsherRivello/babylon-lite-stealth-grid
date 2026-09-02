@@ -4,7 +4,7 @@ import { createEnemyPatrolController } from "../../src/characters/enemies/enemy-
 
 function fakeActor() {
   const intents = [];
-  let position = { x: 0, y: 0 };
+  let position = { x: 32, y: 32 };
   return {
     intents,
     getPosition() { return { ...position }; },
@@ -55,6 +55,7 @@ test("enemy patrol controller chooses a different direction after movement is bl
   controller.update(0);
   assert.deepEqual(actor.intents.at(-1), { x: 1, y: 0 });
   controller.update(0.016);
+  controller.update(1.01);
   assert.deepEqual(actor.intents.at(-1), { x: 0, y: 1 });
 });
 

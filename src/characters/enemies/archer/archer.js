@@ -16,9 +16,9 @@ export async function loadArcherAtlases(engine) {
   return Object.fromEntries(await Promise.all(Object.entries(ANIMS).map(async ([name, [file]]) => [name, await loadSpriteAtlas(engine, `./assets/units/archer/${file}`, { gridSize: [192, 192], sampling: "nearest" })])));
 }
 
-export function createArcher({ atlases, initialPosition, bounds, obstacles = [], onShoot = () => {} }) {
+export function createArcher({ atlases, initialPosition, bounds, obstacles = [], onShoot = () => {}, calibrateArrow = false }) {
   let position = { ...initialPosition }; let artYOffset = 0; let disposed = false; let manager = null; let active = null; let state = "idle";
-  let facing = 1; let heading = "right"; let target = null; let recovery = 0; let released = false; let shootElapsed = 0;
+  let facing = 1; let target = null; let recovery = 0; let released = false; let shootElapsed = 0;
   let movementIntent = { x: 0, y: 0 };
   const gridMovement = createGridAlignedMovementController({ frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER }, 64);
   const layers = {}; const sprites = {};
@@ -48,6 +48,7 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
   }
   return {
     layers: Object.values(layers),
+    isMovementLocked() { return disposed || state === "shooting" || recovery > 0; },
     get state() {
       return state;
     },
@@ -55,7 +56,7 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
       return state === "shooting";
     },
     getHeading() {
-      return heading;
+      return facing < 0 ? "left" : "right";
     },
     getPosition() {
       return { ...position };
@@ -74,14 +75,14 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
     },
     setMovementIntent(movement) {
       movementIntent = { x: movement.x, y: movement.y };
-      if (Math.abs(movementIntent.y) > Math.abs(movementIntent.x) && movementIntent.y !== 0) {
-        heading = movementIntent.y < 0 ? "up" : "down";
-      } else if (movementIntent.x !== 0) {
-        heading = movementIntent.x < 0 ? "left" : "right";
-      }
     },
     update(deltaSeconds, _dynamic, _projectiles, player) {
       if (disposed) return;
+      if (calibrateArrow && released) return;
+      if (calibrateArrow && state !== "shooting") {
+        target = { x: position.x + 256 * facing, y: position.y };
+        play("shooting");
+      }
       const delta = Math.max(0, deltaSeconds);
       if (recovery > 0) {
         recovery = Math.max(0, recovery - delta);
@@ -92,6 +93,12 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
         shootElapsed += delta;
         if (!released && (active?.current >= 3 || shootElapsed >= 0.3) && target) {
           released = true;
+          if (calibrateArrow && active) {
+            active.stop?.();
+            removeSpriteAnimation(manager, active);
+            active = null;
+            updateSprite2D(sprites.shooting, { frame: 3 });
+          }
           const offsetX = ARROW_ATTACH_OFFSET.x * facing;
           const angle = facing < 0 ? ARROW_ATTACH_ANGLE : Math.PI - ARROW_ATTACH_ANGLE;
           onShoot(
@@ -107,8 +114,12 @@ export function createArcher({ atlases, initialPosition, bounds, obstacles = [],
       if (state !== locomotion) play(locomotion);
       updateSprites();
       const action = chooseArcherAction(position, player, "ready");
-      if (action.facing) {
-        facing = action.facing;
+      // Commit facing once per update, after shooting/recovery have returned.
+      // These animations have horizontal facing only; queued patrol requests
+      // must not rotate perception independently of the displayed sprite.
+      const nextFacing = action.facing || Math.sign(movementIntent.x) || facing;
+      if (nextFacing !== facing) {
+        facing = nextFacing;
         Object.values(sprites).forEach((sprite) => updateSprite2D(sprite, { flipX: facing < 0 }));
       }
       if (action.state === "shooting") {

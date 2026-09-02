@@ -94,9 +94,9 @@ export function createSharedCharacterActor({
       }
     },
     getHeading: () => heading,
-    update(deltaSeconds) {
+    update(deltaSeconds, dynamicColliders = []) {
       const movement = movementIntent;
-      position = gridMovement.move(position, movement, movementSpeed * Math.max(0, deltaSeconds), deltaSeconds, bounds, obstacles);
+      position = gridMovement.move(position, movement, movementSpeed * Math.max(0, deltaSeconds), deltaSeconds, bounds, [...obstacles, ...dynamicColliders.map(({ collider }) => collider)]);
       if (movement.x !== 0 || movement.y !== 0) {
         if (sprites.walking) this.playAnimation("walking");
       } else this.playAnimation("idle");

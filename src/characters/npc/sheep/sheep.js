@@ -1,3 +1,4 @@
+import { createMovementRecovery, reachableRoutes, chooseRoute, cardinalIntent } from "../../movement-recovery.js";
 import {
   addSprite2D,
   createSprite2DLayer,
@@ -110,6 +111,9 @@ export function createSheep({
   const stateMachine = createSheepStateMachine({ fearProfile });
   let position = { ...initialPosition };
   let route = [];
+  const recovery = createMovementRecovery();
+  let intent = { x: 0, y: 0 };
+  let disposed = false;
   let animationManager = null;
   let activeAnimation = null;
   let facing = 1;
@@ -175,6 +179,27 @@ export function createSheep({
     }
   }
 
+  const liveWalkable = cell => !dynamicColliders.some(({ collider }) => {
+    if (!collider) return false;
+    const spot = getCharacterGridCell(collider, grid.tileSizePx);
+    return spot.x === cell.x && spot.y === cell.y;
+  }) && isWalkable(cell, dynamicColliders);
+  liveWalkable.canTraverse = (from, to) => {
+    const current = getGridCell();
+    return liveWalkable(to) && isWalkable.canTraverse(from, to, dynamicColliders,
+      from.x === current.x && from.y === current.y ? getMovementCenter() : null, false);
+  };
+  function recover(reason, failed = route[0]) {
+    recovery.fail(reason); intent = { x: 0, y: 0 };
+    const excluded = failed ? { x: Math.floor(failed.x / grid.tileSizePx), y: Math.floor(failed.y / grid.tileSizePx) } : null;
+    const preferred = planRoute();
+    route = preferred.length && (!excluded || Math.floor(preferred[0].x / grid.tileSizePx) !== excluded.x
+      || Math.floor(preferred[0].y / grid.tileSizePx) !== excluded.y) ? preferred
+      : chooseRoute(reachableRoutes(getGridCell(), grid, liveWalkable, 1, excluded), random)
+        .map(cell => gridCellCenter(cell, grid.tileSizePx));
+    if (route.length) recovery.accept(); else recovery.wait();
+  }
+
   function planRoute() {
     const separationIntent = stateMachine.separationIntent;
     if (separationIntent) {
@@ -182,7 +207,7 @@ export function createSheep({
         start: getGridCell(),
         partner: separationIntent.partnerCell,
         preferredDirection: separationIntent.direction,
-        isWalkable: (cell) => isWalkable(cell, dynamicColliders),
+        isWalkable: liveWalkable,
       }).map((cell) => gridCellCenter(cell, grid.tileSizePx));
     }
     const threat = stateMachine.threat;
@@ -194,7 +219,7 @@ export function createSheep({
       threat: threat.cell,
       minimumSteps: minimumFleeDistanceCells,
       maximumSteps: maximumFleeDistanceCells,
-      isWalkable: (cell) => isWalkable(cell, dynamicColliders),
+      isWalkable: liveWalkable,
       random,
     }).map((cell) => gridCellCenter(cell, grid.tileSizePx));
   }
@@ -226,7 +251,9 @@ export function createSheep({
         ? {
             onEnd: () => {
               route = planRoute();
-              const transition = stateMachine.completeBouncing(route.length > 0);
+              if (!route.length) recover("no-route", null);
+              else recovery.accept();
+              const transition = stateMachine.completeBouncing(true);
               if (transition.changed) {
                 playStateAnimation(transition.state);
               }
@@ -238,6 +265,8 @@ export function createSheep({
 
   function stopRunning() {
     route = [];
+    intent = { x: 0, y: 0 };
+    recovery.cancel();
     const transition = stateMachine.completeRunning();
     if (transition.changed) {
       playStateAnimation(transition.state);
@@ -245,6 +274,11 @@ export function createSheep({
   }
 
   function updateRunning(deltaSeconds) {
+    if (deltaSeconds <= 0) { recovery.suspend(); return; }
+    if (recovery.snapshot().recoveryState === 'waiting') {
+      if (recovery.tickWait(deltaSeconds)) recover('retry', null);
+      return;
+    }
     const target = route[0];
     if (!target) {
       stopRunning();
@@ -258,11 +292,15 @@ export function createSheep({
       updateRunning(0);
       return;
     }
-    const movement = { x: offset.x / distance, y: offset.y / distance };
+    const cell = { x: Math.floor(target.x / grid.tileSizePx), y: Math.floor(target.y / grid.tileSizePx) };
+    if (!liveWalkable.canTraverse(getGridCell(), cell)) { recover('blocked-segment'); return; }
+    if (recovery.observe(movementCenter, target, deltaSeconds)) { recover('no-progress'); return; }
+    const movement = cardinalIntent(movementCenter, target);
+    intent = movement;
     if (movement.x !== 0) {
       facing = movement.x < 0 ? -1 : 1;
     }
-    const step = Math.min(movementSpeed * deltaSeconds, distance);
+    const step = Math.min(movementSpeed * deltaSeconds, Math.max(Math.abs(offset.x), Math.abs(offset.y)));
     const nextPosition = moveWithCollisions(
       position,
       movement,
@@ -275,7 +313,7 @@ export function createSheep({
       ],
     );
     if (nextPosition.x === position.x && nextPosition.y === position.y) {
-      stopRunning();
+      recover("blocked-step");
       return;
     }
     position = nextPosition;
@@ -365,6 +403,8 @@ export function createSheep({
       movementSpeed,
     }),
     layers: Object.values(layers),
+    getNavigationSnapshot() { return { ...recovery.snapshot(), mode: stateMachine.state, position: getMovementCenter(),
+      cell: getGridCell(), intent: { ...intent }, waypoint: route[0] ? { ...route[0] } : null }; },
     get state() {
       return stateMachine.state;
     },
@@ -419,9 +459,11 @@ export function createSheep({
     },
     setVisualTransform,
     update(deltaSeconds, characters = [], currentDynamicColliders = []) {
-      dynamicColliders = currentDynamicColliders;
+      if (disposed) return;
+      dynamicColliders = currentDynamicColliders.filter(({ collider }) => collider);
       const knockbackMovement = getKnockbackMovement(deltaSeconds);
       if (knockbackMovement) {
+        recovery.suspend();
         position = moveWithCollisions(
           position,
           knockbackMovement,
@@ -436,6 +478,7 @@ export function createSheep({
         updateSprites();
         return { position: { ...position }, state: stateMachine.state };
       }
+      stateMachine.updateCooldown(deltaSeconds);
       if (stateMachine.state === SheepState.IDLE) {
         const transition = stateMachine.updateFear(getGridCell(), characters);
         if (transition.changed) {
@@ -448,6 +491,8 @@ export function createSheep({
     },
     applyKnockback,
     beginContact(intent) {
+      if (stateMachine.state === SheepState.COOLDOWN || (stateMachine.separationIntent?.partnerId === intent.partnerId && stateMachine.state !== SheepState.IDLE)) return { changed: false, state: stateMachine.state };
+      recovery.cancel();
       route = [];
       const transition = stateMachine.beginContact(intent);
       if (transition.changed) {
@@ -456,6 +501,7 @@ export function createSheep({
       return transition;
     },
     dispose() {
+      disposed = true; recovery.cancel(); route = [];
       if (activeAnimation) {
         api.stopSpriteAnimation(activeAnimation);
         activeAnimation = null;

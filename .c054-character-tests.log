@@ -1,0 +1,550 @@
+✔ alert handler accepts first event only and recovers (2.1374ms)
+✔ alert responses cover 75 percent half-strength, weak face, and failed half-strength (0.357ms)
+✔ archer uses total 2D distance and starts a nearby shot (1.6108ms)
+✔ archer faces within five units but retains direction outside it (0.182ms)
+✔ archer neither faces nor shoots an undetected player (0.9325ms)
+✔ archer shoots a player only after perception marks that player detected (0.1565ms)
+✔ archer removes the previous animation before replaying another state (5.6444ms)
+✖ calibration forces one shot and holds the release pose indefinitely (11.576ms)
+✔ archer locks perception to shot facing despite changing movement requests, including recovery (7.0339ms)
+✔ archer perception follows displayed locomotion facing and preserves it when idle or moving vertically (0.8751ms)
+✔ movement collider is centered on the logical grid-center position (2.5833ms)
+✔ combat collider is one grid cell centered on the logical position (0.198ms)
+✔ default art transform bottom-aligns artwork to the occupied cell (0.22ms)
+✔ art offset changes visuals without changing logical collider geometry (0.1925ms)
+✔ invalid movement geometry is rejected (0.4572ms)
+✔ player grid cell and layer order use its real movement-collider center (2.0373ms)
+✔ sheep grid cell and layer order use its real movement-collider center (0.2361ms)
+✔ goblin grid cell and layer order use its real movement-collider center (0.1377ms)
+✔ warrior grid cell and layer order use its real movement-collider center (0.118ms)
+✔ enemy patrol controller holds a random idle, then a random patrol (3.9418ms)
+✔ enemy patrol controller clamps invalid random values and supports configured directions (0.5154ms)
+✔ enemy patrol controller chooses a different direction after movement is blocked (0.7437ms)
+✔ enemy patrol controller chooses only walkable next directions (0.5074ms)
+✔ enemy patrol controller remains stationary when every next direction is blocked (0.4412ms)
+✔ enemy transitions between idle and walking from movement intent (2.8842ms)
+✔ enemy attack locks movement, rejects re-entry, and recovers (0.6221ms)
+✔ goblin chooses vertical attacks by dominant axis (0.4608ms)
+✔ goblin mirrors horizontal attacks and preserves neutral facing (0.3268ms)
+✔ a bush burn is valid only from the four cardinal adjacent cells (3.0293ms)
+✔ route search turns through cardinal cells and selects nearest reachable bush (2.7086ms)
+✔ fire swing projects one grid cell toward the locked direction (0.2843ms)
+✔ the real goblin collider center, not its artwork anchor, determines adjacency (1.1973ms)
+✔ temporary QA mode walks to a cardinal adjacent cell and hits the bush twice (1.8505ms)
+✔ a collider center in a diagonal cell does not permit a corner burn (0.3578ms)
+✔ character priority avoids the bush roll (0.2683ms)
+✔ a stationary adjacent character triggers one attack rather than an endless attack loop (0.6793ms)
+✔ a diagonal character does not trap the goblin in repeated stationary attacks (0.351ms)
+✔ roll below 0.25 seeks a map-wide bush and applies one 50 damage event (0.3675ms)
+✔ exact 0.25 uses normal home-bounded patrol instead of bush search (0.2882ms)
+✔ goblin catalog matches the verified Torch tags (2.381ms)
+✔ goblin catalog rejects inconsistent descriptors (0.7299ms)
+✔ goblin remains idle for a random three to five seconds (2.1438ms)
+✔ goblin demo cycles through idle, walking, and directional attacks (1.8984ms)
+✔ main owns the complete spawner-managed goblin lifecycle (6.9933ms)
+✔ goblin movement collider retains its logical body geometry (1.0423ms)
+✔ goblin atlases load once as nearest 192 pixel grids (4.9998ms)
+✔ goblin starts idle, switches locomotion, and mirrors left (2.3244ms)
+✔ goblin attack is atomic and disposal removes every sprite (1.0591ms)
+✔ Monk catalog includes every supplied animation (2.8657ms)
+✔ Tiled loader accepts a Monk enemy spawner (7.667ms)
+✔ monk diagnostics do not draw a white artwork bounding box (4.5514ms)
+✔ Monk moves when given patrol intent and loops its walking animation (5.935ms)
+✔ goblin abandons a clear-endpoint route blocked by a thin corner wall (49.2047ms)
+✔ goblin waits while enclosed then takes the newly opened sole exit (12.7589ms)
+✔ vertical movement reaches its column center in 0.2 seconds (2.6052ms)
+✔ enemy cardinal movement uses the same one-axis quantization contract (0.3452ms)
+✔ horizontal movement reaches its row center without changing requested travel (0.1996ms)
+✔ already-centered cardinal movement has no orthogonal displacement (0.2071ms)
+✔ zero, diagonal, and axis-changing input cancel or replace correction immediately (0.289ms)
+✔ near-cardinal noise is replaced by correction while an intentional diagonal is not (0.2695ms)
+✔ blocked correction preserves main-axis travel and retries when clear (0.3786ms)
+✔ alignment preserves dynamic collider blocking beyond playfield bounds (0.2828ms)
+✔ reset suspends an old correction and fresh input targets the post-knockback cell (0.2233ms)
+✔ Pawn catalog exposes the expected loadout categories and frame sizes (2.8342ms)
+✔ Pawn weapon damage values are approved and bounded (0.4929ms)
+✔ loadout cycling wraps through none (3.2566ms)
+✔ number-row and numpad keys identify loadout cycling (0.2522ms)
+✔ PlayerState machine starts idle and transitions only when state changes (4.3543ms)
+✔ PlayerState shooting overrides locomotion until the sequence completes (0.704ms)
+✔ PlayerState machine releases one shot at the configured frame (0.6824ms)
+✔ player uses a 70%-size circle collider with its body center unchanged (1.8571ms)
+✔ player position synchronization has a sprite update helper (9.4986ms)
+✔ arrow spawns close to the bow on the right (0.6294ms)
+✔ arrow spawn mirrors horizontally without changing its height (0.3811ms)
+✔ arrow spawn positions cover straight up and down (0.3188ms)
+✔ player module owns pawn input and animation (3.3021ms)
+✔ shared actor owns transforms, animation lifecycle, and disposal (5.6933ms)
+✔ sheep exposes and validates its AI configuration (8.5195ms)
+✔ sheep retains its own typed NPC circle collider size (0.3708ms)
+✔ sheep remains stationary through the complete bounce before running (2.2516ms)
+✖ sheep moves without overshoot, faces travel, and returns idle on a cell center (2.2809ms)
+✖ sheep stops safely if a planned segment becomes blocked (1.4952ms)
+✔ player and NPC dynamic colliders both block fleeing (1.4785ms)
+✔ disposing stops the active sheep animation (0.3877ms)
+✔ contact command cancels running, bounces stationary, then separates (2.1612ms)
+✖ coincident contact partners can move apart without ignoring other sheep (1.829ms)
+✔ knockback cannot move through another living sheep (0.5677ms)
+✔ pair ordering and separation directions are stable across input order (27.1423ms)
+✔ coincident centers receive deterministic opposite cardinal directions (0.7025ms)
+✔ requested movement conflict detects a shared destination and a head-on crossing (0.6739ms)
+✔ one uninterrupted contact episode triggers once and rearms after separation (0.8745ms)
+✔ dead and absent sheep prune episodes and do not react (0.4401ms)
+✔ three-sheep contacts are ordered and start at most one response per sheep (0.5398ms)
+✔ main configures the current sheep to fear only the player at three cells (11.7811ms)
+✔ main supplies active player context to sheep only during active gameplay (3.6376ms)
+✔ main loads authored spawner positions and uses shared collider-role diagnostics (3.6756ms)
+✔ main coordinates reciprocal sheep contact before individual sheep updates (2.2684ms)
+✔ main supplies every sheep only the other living sheep colliders (1.8162ms)
+✖ sheep movement never exempts a touching partner walk collider (4.9763ms)
+✔ flock contact coordination remains inside active gameplay time (95.3707ms)
+✔ inclusive integer selection reaches one, two, and three (2.4618ms)
+✔ flee planner finds a straight three-step route away (10.1196ms)
+✔ flee planner can turn a three-step route around a corner (1.4621ms)
+✔ walkability rejects bounds, full colliders, and partial polygons (1.5176ms)
+✔ walkability rejects dynamic player and NPC colliders (0.5662ms)
+✔ planner still returns a valid one-step escape route (1.795ms)
+✔ planner prefers the farthest escape cell when tied on distance (0.7343ms)
+✔ planner falls back to the longest shorter safe route (0.4612ms)
+✔ planner returns no route when enclosed (0.6361ms)
+✔ separation route uses the preferred safe cardinal direction (1.4008ms)
+✔ separation route falls back to another safe step that increases distance (0.4308ms)
+✔ separation route remains stationary when no safe increasing step exists (0.3162ms)
+✔ fear profile validates character types and distance (5.5487ms)
+✔ Chebyshev distance includes horizontal, vertical, and diagonal boundaries (0.3084ms)
+✔ nearest threat filters disabled types and keeps stable tie order (0.4683ms)
+✔ sheep transitions through post-flee cooldown and retains its threat while running (0.8469ms)
+✔ no-route bounce returns idle and can immediately evaluate fear again (0.3421ms)
+✔ contact bounce cancels threat context and retains separation intent (0.3646ms)
+✔ contact bounce completes into running only when a separation route exists (0.3347ms)
+✔ enemy movement is not disabled by a temporary QA flag (12.7291ms)
+✔ temporary bush-burning QA mode is removed (3.1111ms)
+✔ bush sensor is not presented as a green walkability collider (4.2842ms)
+✔ warrior catalog preserves every supplied animation (1.9326ms)
+✔ warrior catalog rejects inconsistent descriptors (0.5921ms)
+✔ warrior defense defaults keep reaction timing and duration configurable (3.2054ms)
+✔ only a swept arrow trajectory that reaches the Warrior is eligible (1.0823ms)
+✔ front-facing arrows always defend and rear arrows always pass through (0.4072ms)
+✔ vertical arrows cannot be front-facing for a horizontally facing Warrior (0.3582ms)
+✔ warrior demo exposes idle, run, both attacks, and guard (3.9442ms)
+✔ main owns the spawner-managed Warrior lifecycle (9.6126ms)
+✔ warrior transitions between locomotion and guard (2.2824ms)
+✔ warrior attacks are distinct, atomic, and recover locomotion (0.4735ms)
+✔ warrior actions preserve or update horizontal facing (6.3321ms)
+✔ warrior shares all five atlases across actor instances (1.9766ms)
+✔ warrior renders every action and disposes completely (4.8365ms)
+✔ warrior automatically guards an eligible arrow for 0.25 seconds (0.666ms)
+✔ warrior ignores harmless and rear-facing arrows (0.3877ms)
+ℹ tests 137
+ℹ suites 0
+ℹ pass 132
+ℹ fail 5
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2115.4447
+
+✖ failing tests:
+
+test at test\characters\archer-calibration.test.js:6:1
+✖ calibration forces one shot and holds the release pose indefinitely (11.576ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  0 !== 1
+  
+      at TestContext.<anonymous> (file:///D:/Documents/Projects/VC/BabylonJS/babylon-lite-stealth-grid/test/characters/archer-calibration.test.js:17:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.start (node:internal/test_runner/test:1257:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:387:17) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\characters\sheep-controller.test.js:87:1
+✖ sheep moves without overshoot, faces travel, and returns idle on a cell center (2.2809ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'cooldown' !== 'idle'
+  
+      at TestContext.<anonymous> (file:///D:/Documents/Projects/VC/BabylonJS/babylon-lite-stealth-grid/test/characters/sheep-controller.test.js:96:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'cooldown',
+    expected: 'idle',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\characters\sheep-controller.test.js:102:1
+✖ sheep stops safely if a planned segment becomes blocked (1.4952ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  'cooldown' !== 'idle'
+  
+      at TestContext.<anonymous> (file:///D:/Documents/Projects/VC/BabylonJS/babylon-lite-stealth-grid/test/characters/sheep-controller.test.js:115:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'cooldown',
+    expected: 'idle',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test\characters\sheep-controller.test.js:169:1
+✖ coincident contact partners can move apart without ignoring other sheep (1.829ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+  
+    {
+  +   x: 224,
+  -   x: 160,
+      y: 224
+    }
+  
+      at TestContext.<anonymous> (file:///D:/Documents/Projects/VC/BabylonJS/babylon-lite-stealth-grid/test/characters/sheep-controller.test.js:185:10)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: { x: 224, y: 224 },
+    expected: { x: 160, y: 224 },
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at test\characters\sheep-integration.test.js:50:1
+✖ sheep movement never exempts a touching partner walk collider (4.9763ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /isWalkable: \(cell\) => isWalkable\(cell, dynamicColliders\)/. Input:
+  
+  'import { createMovementRecovery, reachableRoutes, chooseRoute, cardinalIntent } from "../../movement-recovery.js";\r\n' +
+    'import {\r\n' +
+    '  addSprite2D,\r\n' +
+    '  createSprite2DLayer,\r\n' +
+    '  loadSpriteAtlas,\r\n' +
+    '  playSprite2DAnimation,\r\n' +
+    '  stopSpriteAnimation,\r\n' +
+    '  updateSprite2D,\r\n' +
+    '} from "@babylonjs/lite";\r\n' +
+    '\r\n' +
+    'import {\r\n' +
+    '  getCharacterCollider,\r\n' +
+    '  moveWithCollisions,\r\n' +
+    '  worldToScreen,\r\n' +
+    '} from "../../../gameplay/game-logic.js";\r\n' +
+    'import {\r\n' +
+    '  CharacterType,\r\n' +
+    '  SheepState,\r\n' +
+    '  createFearProfile,\r\n' +
+    '  createSheepStateMachine,\r\n' +
+    '} from "./sheep-state.js";\r\n' +
+    'import {\r\n' +
+    '  createGridWalkability,\r\n' +
+    '  gridCellCenter,\r\n' +
+    '  planFleeRoute,\r\n' +
+    '  planSeparationRoute,\r\n' +
+    '} from "./sheep-navigation.js";\r\n' +
+    'import { getCharacterGridCell, getCharacterLayerOrder } from "../../character-spatial.js";\r\n' +
+    '\r\n' +
+    'export const SHEEP_FRAME_SIZE = 128;\r\n' +
+    'export const SHEEP_PIVOT = { x: 0.5, y: 0.84 };\r\n' +
+    'export const SHEEP_ART_OFFSET = Object.freeze({ x: 0, y: 0 });\r\n' +
+    'export const SHEEP_MOVEMENT_COLLIDER = {\r\n' +
+    '  type: "circle",\r\n' +
+    '  x: 64,\r\n' +
+    '  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y,\r\n' +
+    '  radius: 26,\r\n' +
+    '};\r\n' +
+    'export const SHEEP_COMBAT_COLLIDER = {\r\n' +
+    '  x: SHEEP_FRAME_SIZE * SHEEP_PIVOT.x - 64 / 2,\r\n' +
+    '  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y + 64 / 2 - 64,\r\n' +
+    '  width: 64,\r\n' +
+    '  height: 64,\r\n' +
+    '};\r\n' +
+    '\r\n' +
+    'const FRAME_DURATION_MS = 100;\r\n' +
+    'const ANIMATIONS = Object.freeze({\r\n' +
+    '  idle: { frameCount: 8, loop: true },\r\n' +
+    '  bouncing: { frameCount: 6, loop: false },\r\n' +
+    '});\r\n' +
+    'const DEFAULT_API = {\r\n' +
+    '  addSprite2D,\r\n' +
+    '  createSprite2DLayer,\r\n' +
+    '  playSprite2DAnimation,\r\n' +
+    '  stopSpriteAnimation,\r\n' +
+    '  updateSprite2D,\r\n' +
+    '};\r\n' +
+    'const DEFAULT_KNOCKBACK_DURATION_SECONDS = 0.15;\r\n' +
+    'const DEFAULT_KNOCKBACK_SPEED = 220;\r\n' +
+    '\r\n' +
+    'export async function loadSheepAtlases(engine) {\r\n' +
+    '  const options = {\r\n' +
+    '    gridSize: [SHEEP_FRAME_SIZE, SHEEP_FRAME_SIZE],\r\n' +
+    '    sampling: "nearest",\r\n' +
+    '  };\r\n' +
+    '  const [idle, bouncing] = await Promise.all([\r\n' +
+    '    loadSpriteAtlas(engine, "./assets/npc/sheep/happy-sheep-idle.png", options),\r\n' +
+    '    loadSpriteAtlas(engine, "./assets/npc/sheep/happy-sheep-bouncing.png", options),\r\n' +
+    '  ]);\r\n' +
+    '  return { idle, bouncing };\r\n' +
+    '}\r\n' +
+    '\r\n' +
+    'function validateFleeConfiguration(minimum, maximum, movementSpeed) {\r\n' +
+    '  if (\r\n' +
+    '    !Number.isInteger(minimum) || !Number.isInteger(maximum)\r\n' +
+    '    || minimum < 1 || minimum > maximum\r\n' +
+    '  ) {\r\n' +
+    '    throw new RangeError("Flee distances must be ordered positive integers.");\r\n' +
+    '  }\r\n' +
+    '  if (!Number.isFinite(movementSpeed) || movementSpeed <= 0) {\r\n' +
+    '    throw new RangeError("movementSpeed must be greater than zero.");\r\n' +
+    '  }\r\n' +
+    '}\r\n' +
+    '\r\n' +
+    'export function createSheep({\r\n' +
+    '  atlases,\r\n' +
+    '  initialPosition,\r\n' +
+    '  bounds,\r\n' +
+    '  obstacles,\r\n' +
+    '  grid,\r\n' +
+    '  scareDistanceCells = 3,\r\n' +
+    '  frighteningTypes = [CharacterType.PLAYER],\r\n' +
+    '  minimumFleeDistanceCells = 1,\r\n' +
+    '  maximumFleeDistanceCells = 3,\r\n' +
+    '  movementSpeed = 180,\r\n' +
+    '  random = Math.random,\r\n' +
+    '  api = DEFAULT_API,\r\n' +
+    '}) {\r\n' +
+    '  validateFleeConfiguration(\r\n' +
+    '    minimumFleeDistanceCells,\r\n' +
+    '    maximumFleeDistanceCells,\r\n' +
+    '    movementSpeed,\r\n' +
+    '  );\r\n' +
+    '  const fearProfile = createFearProfile({ scareDistanceCells, frighteningTypes });\r\n' +
+    '  const character = {\r\n' +
+    '    frame: { width: SHEEP_FRAME_SIZE, height: SHEEP_FRAME_SIZE },\r\n' +
+    '    pivot: SHEEP_PIVOT,\r\n' +
+    '    collider: SHEEP_MOVEMENT_COLLIDER,\r\n' +
+    '  };\r\n' +
+    '  const isWalkable = createGridWalkability({ bounds, character, grid, obstacles });\r\n' +
+    '  const stateMachine = createSheepStateMachine({ fearProfile });\r\n' +
+    '  let position = { ...initialPosition };\r\n' +
+    '  let route = [];\r\n' +
+    '  const recovery = createMovementRecovery();\r\n' +
+    '  let intent = { x: 0, y: 0 };\r\n' +
+    '  let disposed = false;\r\n' +
+    '  let animationManager = null;\r\n' +
+    '  let activeAnimation = null;\r\n' +
+    '  let facing = 1;\r\n' +
+    '  let dynamicColliders = [];\r\n' +
+    '  let knockback = { x: 0, y: 0 };\r\n' +
+    '  let knockbackTimer = 0;\r\n' +
+    '  let knockbackDuration = 0;\r\n' +
+    '\r\n' +
+    '  const layers = {};\r\n' +
+    '  const sprites = {};\r\n' +
+    '  const getArtScreenPosition = (worldPosition) => worldToScreen({ x: worldPosition.x + SHEEP_ART_OFFSET.x, y: worldPosition.y + SHEEP_ART_OFFSET.y }, 1, bounds.height);\r\n' +
+    '  const initialScreenPosition = getArtScreenPosition(position);\r\n' +
+    '  const initialOrder = getCharacterLayerOrder(\r\n' +
+    '    getCharacterCollider(position, character.frame, character.pivot, character.collider),\r\n' +
+    '    bounds.height,\r\n' +
+    '  );\r\n' +
+    '  for (const animationName of Object.keys(ANIMATIONS)) {\r\n' +
+    '    const layer = api.createSprite2DLayer(atlases[animationName], {\r\n' +
+    '      capacity: 1,\r\n' +
+    '      order: initialOrder,\r\n' +
+    '      pivot: [SHEEP_PIVOT.x, SHEEP_PIVOT.y],\r\n' +
+    '      visible: animationName === SheepState.IDLE,\r\n' +
+    '    });\r\n' +
+    '    layers[animationName] = layer;\r\n' +
+    '    sprites[animationName] = api.addSprite2D(layer, {\r\n' +
+    '      positionPx: [initialScreenPosition.x, initialScreenPosition.y],\r\n' +
+    '      sizePx: [SHEEP_FRAME_SIZE, SHEEP_FRAME_SIZE],\r\n' +
+    '      frame: 0,\r\n' +
+    '    });\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function getGridCell() {\r\n' +
+    '    return getCharacterGridCell(\r\n' +
+    '      getCharacterCollider(position, character.frame, character.pivot, character.collider),\r\n' +
+    '      grid.tileSizePx,\r\n' +
+    '    );\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function getMovementCenter() {\r\n' +
+    '    const collider = getCharacterCollider(\r\n' +
+    '      position,\r\n' +
+    '      character.frame,\r\n' +
+    '      character.pivot,\r\n' +
+    '      character.collider,\r\n' +
+    '    );\r\n' +
+    '    return { x: collider.x, y: collider.y };\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function updateSprites() {\r\n' +
+    '    const screenPosition = getArtScreenPosition(position);\r\n' +
+    '    const order = getCharacterLayerOrder(\r\n' +
+    '      getCharacterCollider(position, character.frame, character.pivot, character.collider),\r\n' +
+    '      bounds.height,\r\n' +
+    '    );\r\n' +
+    '    for (const layer of Object.values(layers)) {\r\n' +
+    '      layer.order = order;\r\n' +
+    '    }\r\n' +
+    '    for (const sprite of Object.values(sprites)) {\r\n' +
+    '      api.updateSprite2D(sprite, {\r\n' +
+    '        positionPx: [screenPosition.x, screenPosition.y],\r\n' +
+    '        flipX: facing < 0,\r\n' +
+    '      });\r\n' +
+    '    }\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  const liveWalkable = cell => !dynamicColliders.some(({ collider }) => {\r\n' +
+    '    if (!collider) return false;\r\n' +
+    '    const spot = getCharacterGridCell(collider, grid.tileSizePx);\r\n' +
+    '    return spot.x === cell.x && spot.y === cell.y;\r\n' +
+    '  }) && isWalkable(cell, dynamicColliders);\r\n' +
+    '  liveWalkable.canTraverse = (from, to) => {\r\n' +
+    '    const current = getGridCell();\r\n' +
+    '    return liveWalkable(to) && isWalkable.canTraverse(from, to, dynamicColliders,\r\n' +
+    '      from.x === current.x && from.y === current.y ? getMovementCenter() : null, false);\r\n' +
+    '  };\r\n' +
+    '  function recover(reason, failed = route[0]) {\r\n' +
+    '    recovery.fail(reason); intent = { x: 0, y: 0 };\r\n' +
+    '    const excluded = failed ? { x: Math.floor(failed.x / grid.tileSizePx), y: Math.floor(failed.y / grid.tileSizePx) } : null;\r\n' +
+    '    const preferred = planRoute();\r\n' +
+    '    route = preferred.length && (!excluded || Math.floor(preferred[0].x / grid.tileSizePx) !== excluded.x\r\n' +
+    '      || Math.floor(preferred[0].y / grid.tileSizePx) !== excluded.y) ? preferred\r\n' +
+    '      : chooseRoute(reachableRoutes(getGridCell(), grid, liveWalkable, 1, excluded), random)\r\n' +
+    '        .map(cell => gridCellCenter(cell, grid.tileSizePx));\r\n' +
+    '    if (route.length) recovery.accept(); else recovery.wait();\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function planRoute() {\r\n' +
+    '    const separationIntent = stateMachine.separationIntent;\r\n' +
+    '    if (separationIntent) {\r\n' +
+    '      return planSeparationRoute({\r\n' +
+    '        start: getGridCell(),\r\n' +
+    '        partner: separationIntent.partnerCell,\r\n' +
+    '        preferredDirection: separationIntent.direction,\r\n' +
+    '        isWalkable: liveWalkable,\r\n' +
+    '      }).map((cell) => gridCellCenter(cell, grid.tileSizePx));\r\n' +
+    '    }\r\n' +
+    '    const threat = stateMachine.threat;\r\n' +
+    '    if (!threat) {\r\n' +
+    '      return [];\r\n' +
+    '    }\r\n' +
+    '    return planFleeRoute({\r\n' +
+    '      start: getGridCell(),\r\n' +
+    '      threat: threat.cell,\r\n' +
+    '      minimumSteps: minimumFleeDistanceCells,\r\n' +
+    '      maximumSteps: maximumFleeDistanceCells,\r\n' +
+    '      isWalkable: liveWalkable,\r\n' +
+    '      random,\r\n' +
+    '    }).map((cell) => gridCellCenter(cell, grid.tileSizePx));\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function getAnimationName(state) {\r\n' +
+    '    return state === SheepState.BOUNCING ? "bouncing" : "idle";\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function playStateAnimation(state) {\r\n' +
+    '    if (!animationManager) {\r\n' +
+    '      return;\r\n' +
+    '    }\r\n' +
+    '    if (activeAnimation) {\r\n' +
+    '      api.stopSpriteAnimation(activeAnimation);\r\n' +
+    '    }\r\n' +
+    '    const animationName = getAnimationName(state);\r\n' +
+    '    for (const [name, layer] of Object.entries(layers)) {\r\n' +
+    '      layer.visible = name === animationName;\r\n' +
+    '    }\r\n' +
+    '    const descriptor = ANIMATIONS[animationName];\r\n' +
+    '    activeAnimation = api.playSprite2DAnimation(\r\n' +
+    '      animationManager,\r\n' +
+    '      sprites[animationName],\r\n' +
+    '      0,\r\n' +
+    '      descriptor.frameCount - 1,\r\n' +
+    '      descriptor.loop,\r\n' +
+    '      FRAME_DURATION_MS,\r\n' +
+    '      state === SheepState.BOUNCING\r\n' +
+    '        ? {\r\n' +
+    '            onEnd: () => {\r\n' +
+    '              route = planRoute();\r\n' +
+    '              if (!route.length) recover("no-route", null);\r\n' +
+    '              else recovery.accept();\r\n' +
+    '              const transition = stateMachine.completeBouncing(true);\r\n' +
+    '              if (transition.changed) {\r\n' +
+    '                playStateAnimation(transition.state);\r\n' +
+    '              }\r\n' +
+    '            },\r\n' +
+    '          }\r\n' +
+    '        : undefined,\r\n' +
+    '    );\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function stopRunning() {\r\n' +
+    '    route = [];\r\n' +
+    '    intent = { x: 0, y: 0 };\r\n' +
+    '    recovery.cancel();\r\n' +
+    '    const transition = stateMachine.completeRunning();\r\n' +
+    '    if (transition.changed) {\r\n' +
+    '      playStateAnimation(transition.state);\r\n' +
+    '    }\r\n' +
+    '  }\r\n' +
+    '\r\n' +
+    '  function updateRunning(deltaSeconds) {\r\n' +
+    '    if (deltaSeconds <= 0) { recovery.suspend(); return; }\r\n' +
+    "    if (recovery.snapshot().recoveryState === 'waiting') {\r\n" +
+    "      if (recovery.tickWait(deltaSeconds)) recover('retry', null);\r\n" +
+    '      return;\r\n' +
+    '    }\r\n' +
+    '    const target = route[0];\r\n' +
+    '    if (!target) {\r\n' +
+    '      stopRunning();\r\n' +
+    '      return;\r\n' +
+    '    }\r\n' +
+    '    const movementCenter = getMovementCenter();\r\n' +
+    '    const offset = { x: target.x - movementCenter.x, y: target.y - movementCenter.y };\r\n' +
+    '    const distance = Math.hypot(offset.x, offset.y);\r\n' +
+    '    if (distance === 0) {\r\n' +
+    '      route.shift();\r\n' +
+    '      updateRunning(0);\r\n' +
+    '      return;\r\n' +
+    '    }\r\n' +
+    '    const cell = { x: Math.floor(target.x / grid.tileSizePx), y: Math.floor(target.y / grid.tileSizePx) };\r\n' +
+    "    if (!liveWalkable.canTraverse(getGridCell(), cell)) { recover('blocked-segment'); return; }\r\n" +
+    "    if (recovery.observe(movementCenter, target, deltaSeconds)) { recover('no-progress'); return; }\r\n" +
+    '    const movement = cardinalIntent(movementCenter, target);\r\n' +
+    '    intent = movement;\r\n' +
+    '    if (mo'... 6722 more characters
+  
+      at TestContext.<anonymous> (file:///D:/Documents/Projects/VC/BabylonJS/babylon-lite-stealth-grid/test/characters/sheep-integration.test.js:52:10)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: `import { createMovementRecovery, reachableRoutes, chooseRoute, cardinalIntent } from "../../movement-recovery.js";\r\nimport {\r\n  addSprite2D,\r\n  createSprite2DLayer,\r\n  loadSpriteAtlas,\r\n  playSprite2DAnimation,\r\n  stopSpriteAnimation,\r\n  updateSprite2D,\r\n} from "@babylonjs/lite";\r\n\r\nimport {\r\n  getCharacterCollider,\r\n  moveWithCollisions,\r\n  worldToScreen,\r\n} from "../../../gameplay/game-logic.js";\r\nimport {\r\n  CharacterType,\r\n  SheepState,\r\n  createFearProfile,\r\n  createSheepStateMachine,\r\n} from "./sheep-state.js";\r\nimport {\r\n  createGridWalkability,\r\n  gridCellCenter,\r\n  planFleeRoute,\r\n  planSeparationRoute,\r\n} from "./sheep-navigation.js";\r\nimport { getCharacterGridCell, getCharacterLayerOrder } from "../../character-spatial.js";\r\n\r\nexport const SHEEP_FRAME_SIZE = 128;\r\nexport const SHEEP_PIVOT = { x: 0.5, y: 0.84 };\r\nexport const SHEEP_ART_OFFSET = Object.freeze({ x: 0, y: 0 });\r\nexport const SHEEP_MOVEMENT_COLLIDER = {\r\n  type: "circle",\r\n  x: 64,\r\n  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y,\r\n  radius: 26,\r\n};\r\nexport const SHEEP_COMBAT_COLLIDER = {\r\n  x: SHEEP_FRAME_SIZE * SHEEP_PIVOT.x - 64 / 2,\r\n  y: SHEEP_FRAME_SIZE * SHEEP_PIVOT.y + 64 / 2 - 64,\r\n  width: 64,\r\n  height: 64,\r\n};\r\n\r\nconst FRAME_DURATION_MS = 100;\r\nconst ANIMATIONS = Object.freeze({\r\n  idle: { frameCount: 8, loop: true },\r\n  bouncing: { frameCount: 6, loop: false },\r\n});\r\nconst DEFAULT_API = {\r\n  addSprite2D,\r\n  createSprite2DLayer,\r\n  playSprite2DAnimation,\r\n  stopSpriteAnimation,\r\n  updateSprite2D,\r\n};\r\nconst DEFAULT_KNOCKBACK_DURATION_SECONDS = 0.15;\r\nconst DEFAULT_KNOCKBACK_SPEED = 220;\r\n\r\nexport async function loadSheepAtlases(engine) {\r\n  const options = {\r\n    gridSize: [SHEEP_FRAME_SIZE, SHEEP_FRAME_SIZE],\r\n    sampling: "nearest",\r\n  };\r\n  const [idle, bouncing] = await Promise.all([\r\n    loadSpriteAtlas(engine, "./assets/npc/sheep/happy-sheep-idle.png", options),\r\n    loadSpriteAtlas(engine, "./assets/npc/sheep/happy-sheep-bouncing.png", options),\r\n  ]);\r\n  return { idle, bouncing };\r\n}\r\n\r\nfunction validateFleeConfiguration(minimum, maximum, movementSpeed) {\r\n  if (\r\n    !Number.isInteger(minimum) || !Number.isInteger(maximum)\r\n    || minimum < 1 || minimum > maximum\r\n  ) {\r\n    throw new RangeError("Flee distances must be ordered positive integers.");\r\n  }\r\n  if (!Number.isFinite(movementSpeed) || movementSpeed <= 0) {\r\n    throw new RangeError("movementSpeed must be greater than zero.");\r\n  }\r\n}\r\n\r\nexport function createSheep({\r\n  atlases,\r\n  initialPosition,\r\n  bounds,\r\n  obstacles,\r\n  grid,\r\n  scareDistanceCells = 3,\r\n  frighteningTypes = [CharacterType.PLAYER],\r\n  minimumFleeDistanceCells = 1,\r\n  maximumFleeDistanceCells = 3,\r\n  movementSpeed = 180,\r\n  random = Math.random,\r\n  api = DEFAULT_API,\r\n}) {\r\n  validateFleeConfiguration(\r\n    minimumFleeDistanceCells,\r\n    maximumFleeDistanceCells,\r\n    movementSpeed,\r\n  );\r\n  const fearProfile = createFearProfile({ scareDistanceCells, frighteningTypes });\r\n  const character = {\r\n    frame: { width: SHEEP_FRAME_SIZE, height: SHEEP_FRAME_SIZE },\r\n    pivot: SHEEP_PIVOT,\r\n    collider: SHEEP_MOVEMENT_COLLIDER,\r\n  };\r\n  const isWalkable = createGridWalkability({ bounds, character, grid, obstacles });\r\n  const stateMachine = createSheepStateMachine({ fearProfile });\r\n  let position = { ...initialPosition };\r\n  let route = [];\r\n  const recovery = createMovementRecovery();\r\n  let intent = { x: 0, y: 0 };\r\n  let disposed = false;\r\n  let animationManager = null;\r\n  let activeAnimation = null;\r\n  let facing = 1;\r\n  let dynamicColliders = [];\r\n  let knockback = { x: 0, y: 0 };\r\n  let knockbackTimer = 0;\r\n  let knockbackDuration = 0;\r\n\r\n  const layers = {};\r\n  const sprites = {};\r\n  const getArtScreenPosition = (worldPosition) => worldToScreen({ x: worldPosition.x + SHEEP_ART_OFFSET.x, y: worldPosition.y + SHEEP_ART_OFFSET.y }, 1, bounds.height);\r\n  const initialScreenPosition = getArtScreenPosition(position);\r\n  const initialOrder = getCharacterLayerOrder(\r\n    getCharacterCollider(position, character.frame, character.pivot, character.collider),\r\n    bounds.height,\r\n  );\r\n  for (const animationName of Object.keys(ANIMATIONS)) {\r\n    const layer = api.createSprite2DLayer(atlases[animationName], {\r\n      capacity: 1,\r\n      order: initialOrder,\r\n      pivot: [SHEEP_PIVOT.x, SHEEP_PIVOT.y],\r\n      visible: animationName === SheepState.IDLE,\r\n    });\r\n    layers[animationName] = layer;\r\n    sprites[animationName] = api.addSprite2D(layer, {\r\n      positionPx: [initialScreenPosition.x, initialScreenPosition.y],\r\n      sizePx: [SHEEP_FRAME_SIZE, SHEEP_FRAME_SIZE],\r\n      frame: 0,\r\n    });\r\n  }\r\n\r\n  function getGridCell() {\r\n    return getCharacterGridCell(\r\n      getCharacterCollider(position, character.frame, character.pivot, character.collider),\r\n      grid.tileSizePx,\r\n    );\r\n  }\r\n\r\n  function getMovementCenter() {\r\n    const collider = getCharacterCollider(\r\n      position,\r\n      character.frame,\r\n      character.pivot,\r\n      character.collider,\r\n    );\r\n    return { x: collider.x, y: collider.y };\r\n  }\r\n\r\n  function updateSprites() {\r\n    const screenPosition = getArtScreenPosition(position);\r\n    const order = getCharacterLayerOrder(\r\n      getCharacterCollider(position, character.frame, character.pivot, character.collider),\r\n      bounds.height,\r\n    );\r\n    for (const layer of Object.values(layers)) {\r\n      layer.order = order;\r\n    }\r\n    for (const sprite of Object.values(sprites)) {\r\n      api.updateSprite2D(sprite, {\r\n        positionPx: [screenPosition.x, screenPosition.y],\r\n        flipX: facing < 0,\r\n      });\r\n    }\r\n  }\r\n\r\n  const liveWalkable = cell => !dynamicColliders.some(({ collider }) => {\r\n    if (!collider) return false;\r\n    const spot = getCharacterGridCell(collider, grid.tileSizePx);\r\n    return spot.x === cell.x && spot.y === cell.y;\r\n  }) && isWalkable(cell, dynamicColliders);\r\n  liveWalkable.canTraverse = (from, to) => {\r\n    const current = getGridCell();\r\n    return liveWalkable(to) && isWalkable.canTraverse(from, to, dynamicColliders,\r\n      from.x === current.x && from.y === current.y ? getMovementCenter() : null, false);\r\n  };\r\n  function recover(reason, failed = route[0]) {\r\n    recovery.fail(reason); intent = { x: 0, y: 0 };\r\n    const excluded = failed ? { x: Math.floor(failed.x / grid.tileSizePx), y: Math.floor(failed.y / grid.tileSizePx) } : null;\r\n    const preferred = planRoute();\r\n    route = preferred.length && (!excluded || Math.floor(preferred[0].x / grid.tileSizePx) !== excluded.x\r\n      || Math.floor(preferred[0].y / grid.tileSizePx) !== excluded.y) ? preferred\r\n      : chooseRoute(reachableRoutes(getGridCell(), grid, liveWalkable, 1, excluded), random)\r\n        .map(cell => gridCellCenter(cell, grid.tileSizePx));\r\n    if (route.length) recovery.accept(); else recovery.wait();\r\n  }\r\n\r\n  function planRoute() {\r\n    const separationIntent = stateMachine.separationIntent;\r\n    if (separationIntent) {\r\n      return planSeparationRoute({\r\n        start: getGridCell(),\r\n        partner: separationIntent.partnerCell,\r\n        preferredDirection: separationIntent.direction,\r\n        isWalkable: liveWalkable,\r\n      }).map((cell) => gridCellCenter(cell, grid.tileSizePx));\r\n    }\r\n    const threat = stateMachine.threat;\r\n    if (!threat) {\r\n      return [];\r\n    }\r\n    return planFleeRoute({\r\n      start: getGridCell(),\r\n      threat: threat.cell,\r\n      minimumSteps: minimumFleeDistanceCells,\r\n      maximumSteps: maximumFleeDistanceCells,\r\n      isWalkable: liveWalkable,\r\n      random,\r\n    }).map((cell) => gridCellCenter(cell, grid.tileSizePx));\r\n  }\r\n\r\n  function getAnimationName(state) {\r\n    return state === SheepState.BOUNCING ? "bouncing" : "idle";\r\n  }\r\n\r\n  function playStateAnimation(state) {\r\n    if (!animationManager) {\r\n      return;\r\n    }\r\n    if (activeAnimation) {\r\n      api.stopSpriteAnimation(activeAnimation);\r\n    }\r\n    const animationName = getAnimationName(state);\r\n    for (const [name, layer] of Object.entries(layers)) {\r\n      layer.visible = name === animationName;\r\n    }\r\n    const descriptor = ANIMATIONS[animationName];\r\n    activeAnimation = api.playSprite2DAnimation(\r\n      animationManager,\r\n      sprites[animationName],\r\n      0,\r\n      descriptor.frameCount - 1,\r\n      descriptor.loop,\r\n      FRAME_DURATION_MS,\r\n      state === SheepState.BOUNCING\r\n        ? {\r\n            onEnd: () => {\r\n              route = planRoute();\r\n              if (!route.length) recover("no-route", null);\r\n              else recovery.accept();\r\n              const transition = stateMachine.completeBouncing(true);\r\n              if (transition.changed) {\r\n                playStateAnimation(transition.state);\r\n              }\r\n            },\r\n          }\r\n        : undefined,\r\n    );\r\n  }\r\n\r\n  function stopRunning() {\r\n    route = [];\r\n    intent = { x: 0, y: 0 };\r\n    recovery.cancel();\r\n    const transition = stateMachine.completeRunning();\r\n    if (transition.changed) {\r\n      playStateAnimation(transition.state);\r\n    }\r\n  }\r\n\r\n  function updateRunning(deltaSeconds) {\r\n    if (deltaSeconds <= 0) { recovery.suspend(); return; }\r\n    if (recovery.snapshot().recoveryState === 'waiting') {\r\n      if (recovery.tickWait(deltaSeconds)) recover('retry', null);\r\n      return;\r\n    }\r\n    const target = route[0];\r\n    if (!target) {\r\n      stopRunning();\r\n      return;\r\n    }\r\n    const movementCenter = getMovementCenter();\r\n    const offset = { x: target.x - movementCenter.x, y: target.y - movementCenter.y };\r\n    const distance = Math.hypot(offset.x, offset.y);\r\n    if (distance === 0) {\r\n      route.shift();\r\n      updateRunning(0);\r\n      return;\r\n    }\r\n    const cell = { x: Math.floor(target.x / grid.tileSizePx), y: Math.floor(target.y / grid.tileSizePx) };\r\n    if (!liveWalkable.canTraverse(getGridCell(), cell)) { recover('blocked-segment'); return; }\r\n    if (recovery.observe(movementCenter, target, deltaSeconds)) { recover('no-progress'); return; }\r\n    const movement = cardinalIntent(movementCenter, target);\r\n    intent = movement;\r\n    if (mo`... 6722 more characters,
+    expected: /isWalkable: \(cell\) => isWalkable\(cell, dynamicColliders\)/,
+    operator: 'match',
+    diff: 'simple'
+  }

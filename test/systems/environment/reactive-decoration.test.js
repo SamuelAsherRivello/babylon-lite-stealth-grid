@@ -8,7 +8,7 @@ import {
 import { getYSortedLayerOrder } from "../../../src/systems/environment/render-depth.js";
 
 function createHarness(position = { x: 100, y: 200 }, withFire = false) {
-  const calls = { animations: [], stopped: [], updates: [], removed: [] };
+  const calls = { animations: [], stopped: [], updates: [], removed: [], entries: [] };
   const api = {
     createSprite2DLayer(atlas, options) { return { atlas, ...options, view: {} }; },
     addSprite2D(layer, props) { return { layer, ...props }; },
@@ -45,13 +45,27 @@ function createHarness(position = { x: 100, y: 200 }, withFire = false) {
     calls,
     decoration: createReactiveDecoration({
       object, atlas: { name: "bush" }, animationManager: {}, screenHeight: 1024,
-      fireEffect: fire, api,
+      fireEffect: fire, api, onCharacterEnter: (character) => calls.entries.push(character),
     }),
   };
 }
 
 const character = (id, type = "player", x = 90) => ({
   id, type, collider: { x, y: 215, width: 20, height: 20 },
+});
+
+test("bush entry hook fires once per contact and rearms after leaving", () => {
+  const { decoration, calls } = createHarness();
+  const player = character("player-1");
+  decoration.update([player]);
+  decoration.update([player]);
+  assert.deepEqual(calls.entries, [player]);
+  decoration.update([]);
+  decoration.update([player]);
+  assert.deepEqual(calls.entries, [player, player]);
+  decoration.dispose();
+  decoration.update([character("player-2")]);
+  assert.equal(calls.entries.length, 2);
 });
 
 test("fire effect is centered over the bush artwork", () => {

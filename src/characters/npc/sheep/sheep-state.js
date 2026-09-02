@@ -7,6 +7,7 @@ export const SheepState = Object.freeze({
   IDLE: "idle",
   BOUNCING: "bouncing",
   RUNNING: "running",
+  COOLDOWN: "cooldown",
 });
 
 const VALID_CHARACTER_TYPES = new Set(Object.values(CharacterType));
@@ -47,6 +48,7 @@ export function findNearestThreat(sheepCell, characters, fearProfile) {
 
 export function createSheepStateMachine({ fearProfile = createFearProfile() } = {}) {
   let state = SheepState.IDLE;
+  let cooldownRemaining = 0;
   let threat = null;
   let bounceReason = null;
   let separationIntent = null;
@@ -97,11 +99,17 @@ export function createSheepStateMachine({ fearProfile = createFearProfile() } = 
       }
       return { changed: true, state };
     },
+    updateCooldown(delta) {
+      if (state !== SheepState.COOLDOWN) return;
+      cooldownRemaining = Math.max(0, cooldownRemaining - Math.max(0, delta));
+      if (cooldownRemaining <= 1e-9) state = SheepState.IDLE;
+    },
     completeRunning() {
       if (state !== SheepState.RUNNING) {
         return { changed: false, state };
       }
-      state = SheepState.IDLE;
+      state = SheepState.COOLDOWN;
+      cooldownRemaining = 1;
       threat = null;
       bounceReason = null;
       separationIntent = null;

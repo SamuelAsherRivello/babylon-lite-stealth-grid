@@ -1,5 +1,7 @@
 import {
   colliderOverlapsObstacle,
+  createGridAlignedMovementController,
+  moveWithCollisions,
   getCharacterCollider,
   isColliderWithinBounds,
 } from "../../../gameplay/game-logic.js";
@@ -27,7 +29,7 @@ export function gridCellCenter(cell, tileSize) {
 }
 
 export function createGridWalkability({ bounds, character, grid, obstacles }) {
-  return (cell, dynamicColliders = []) => {
+  const walkable = (cell, dynamicColliders = []) => {
     if (
       cell.x < 0 || cell.x >= grid.columns
       || cell.y < 0 || cell.y >= grid.rows
@@ -58,6 +60,32 @@ export function createGridWalkability({ bounds, character, grid, obstacles }) {
         (obstacle) => colliderOverlapsObstacle(collider, obstacle),
       );
   };
+  // Use the same mover as execution, with small bounded steps so a thin obstacle
+  // cannot disappear between two clear endpoints. Only the first edge starts
+  // from the actor's actual (possibly off-center) position.
+  walkable.canTraverse = (from, to, dynamicColliders = [], actualCenter = null, aligned = true) => {
+    if (!walkable(to, dynamicColliders)) return false;
+    const localCenter = getColliderCenter(getCharacterCollider({ x: 0, y: 0 }, character.frame, character.pivot, character.collider));
+    const center = actualCenter ?? gridCellCenter(from, grid.tileSizePx);
+    let position = { x: center.x - localCenter.x, y: center.y - localCenter.y };
+    const target = gridCellCenter(to, grid.tileSizePx);
+    const mover = createGridAlignedMovementController(character, grid.tileSizePx);
+    const blockers = [...obstacles, ...dynamicColliders.map(({ collider }) => collider)];
+    const limit = Math.ceil(grid.tileSizePx * 4);
+    for (let i = 0; i < limit; i++) {
+      const current = getColliderCenter(getCharacterCollider(position, character.frame, character.pivot, character.collider));
+      const dx = target.x - current.x, dy = target.y - current.y;
+      if (Math.hypot(dx, dy) <= 1) return true;
+      const intent = Math.abs(dx) >= Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) };
+      const step = Math.min(2, Math.max(Math.abs(dx), Math.abs(dy)));
+      const next = aligned ? mover.move(position, intent, step, step / 120, bounds, blockers)
+        : moveWithCollisions(position, intent, step, bounds, character, blockers);
+      if (Math.hypot(next.x - position.x, next.y - position.y) < 1e-7) return false;
+      position = next;
+    }
+    return false;
+  };
+  return walkable;
 }
 
 function reconstructRoute(nodes, destinationKey) {
@@ -92,7 +120,7 @@ export function planFleeRoute({
     for (const offset of CARDINAL_NEIGHBORS) {
       const cell = { x: node.cell.x + offset.x, y: node.cell.y + offset.y };
       const neighborKey = cellKey(cell);
-      if (nodes.has(neighborKey) || !isWalkable(cell)) {
+      if (nodes.has(neighborKey) || !isWalkable(cell) || isWalkable.canTraverse?.(node.cell, cell) === false) {
         continue;
       }
       nodes.set(neighborKey, { cell, depth: node.depth + 1, parent: key });
@@ -151,6 +179,7 @@ export function planSeparationRoute({
   ];
   const safe = candidates.filter((cell) => (
     isWalkable(cell)
+    && isWalkable.canTraverse?.(start, cell) !== false
     && (cell.x - partner.x) ** 2 + (cell.y - partner.y) ** 2 > startingDistance
   ));
   return safe.length > 0 ? [safe[0]] : [];

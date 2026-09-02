@@ -25,7 +25,7 @@ export async function loadMonkAtlases(engine, api = DEFAULT_API) {
   ])));
 }
 
-export function createMonk({ atlases, initialPosition, bounds, obstacles = [], runtimeApi }) {
+export function createMonk({ atlases, initialPosition, bounds, obstacles = [], runtimeApi, onHeal = () => {} }) {
   const actor = createSharedCharacterActor({
     definition: MONK_DEFINITION, atlases, initialPosition, bounds,
     tileSize: 64, obstacles, api: runtimeApi,
@@ -35,9 +35,9 @@ export function createMonk({ atlases, initialPosition, bounds, obstacles = [], r
     get state() { return "idle"; },
     get isAttacking() { return false; },
     getHeading() { return actor.getHeading(); },
-    update(deltaSeconds) { return actor.update(deltaSeconds); },
+    update(deltaSeconds, dynamicColliders) { return actor.update(deltaSeconds, dynamicColliders); },
     playAnimation(manager) { actor.setAnimationManager(manager); actor.playAnimation("idle"); },
-    playHeal() { actor.playAnimation("heal"); },
+    playHeal() { actor.playAnimation("heal"); onHeal(); },
     playHealEffect() { actor.playAnimation("heal-effect"); },
     applyKnockback() {},
   };

@@ -83,6 +83,7 @@ export function createLancer({
   initialPosition,
   bounds,
   obstacles,
+  onAttack = () => {},
   movementSpeed = 120,
   defenseConfig = {},
   api = DEFAULT_API,
@@ -236,6 +237,7 @@ export function createLancer({
 
   return {
     layers: Object.values(layers),
+    isMovementLocked() { return stateMachine.movementLocked || knockbackTimer > 0; },
     get state() {
       return stateMachine.state;
     },
@@ -254,6 +256,7 @@ export function createLancer({
       facing = selection.facing;
       currentFlipX = selection.flipX;
       playStateAnimation(selection.name);
+      onAttack();
       return true;
     },
     setGuarding(enabled, direction = { x: 0, y: 0 }) {

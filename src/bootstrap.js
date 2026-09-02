@@ -1,3 +1,6 @@
+import { installSfx } from "./audio/sfx.js";
+
+installSfx();
 import { loadWithPreloader } from "./ui/startup-preloader.js";
 
 await loadWithPreloader({

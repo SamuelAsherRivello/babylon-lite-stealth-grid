@@ -45,7 +45,7 @@ test("nearest threat filters disabled types and keeps stable tie order", () => {
   assert.equal(findNearestThreat({ x: 1, y: 1 }, [player(5, 1)], profile), null);
 });
 
-test("sheep transitions idle to bounce to running to idle and retains its threat", () => {
+test("sheep transitions through post-flee cooldown and retains its threat while running", () => {
   const machine = createSheepStateMachine();
   const threat = player(3, 3);
 
@@ -66,8 +66,12 @@ test("sheep transitions idle to bounce to running to idle and retains its threat
   });
   assert.deepEqual(machine.completeRunning(), {
     changed: true,
-    state: SheepState.IDLE,
+    state: SheepState.COOLDOWN,
   });
+  machine.updateCooldown(0.5);
+  assert.equal(machine.state, SheepState.COOLDOWN);
+  machine.updateCooldown(0.5);
+  assert.equal(machine.state, SheepState.IDLE);
   assert.equal(machine.threat, null);
 });
 

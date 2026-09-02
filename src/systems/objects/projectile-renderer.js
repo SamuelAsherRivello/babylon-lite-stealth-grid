@@ -88,8 +88,17 @@ export function createProjectileRenderer({ atlas, bounds, obstacles, api = DEFAU
         sprite,
         hit: false,
         deflection: null,
+        frozen: options.frozen === true,
       });
       nextProjectileId += 1;
+      return true;
+    },
+    setFrozenPosition(id, position) {
+      const record = active.find(entry => entry.id === id && entry.frozen);
+      if (!record) return false;
+      record.projectile.position = { ...position };
+      const screen = worldToScreen(position, 1, bounds.height);
+      api.updateSprite2D(record.sprite, { positionPx: [screen.x, screen.y] });
       return true;
     },
     removeProjectiles(ids) {
@@ -138,6 +147,7 @@ export function createProjectileRenderer({ atlas, bounds, obstacles, api = DEFAU
     update(deltaSeconds, dynamicColliders = []) {
       for (let index = active.length - 1; index >= 0; index -= 1) {
         const record = active[index];
+        if (record.frozen) continue;
         if (record.deflection) {
           const activeDelta = Math.max(0, deltaSeconds);
           record.deflection.elapsedSeconds = Math.min(

@@ -85,6 +85,7 @@ export function createGoblin({
   initialPosition,
   bounds,
   obstacles,
+  onAttack = () => {},
   movementSpeed = 120,
   api = DEFAULT_API,
 }) {
@@ -249,6 +250,7 @@ export function createGoblin({
 
   return {
     layers: Object.values(layers),
+    isMovementLocked() { return stateMachine.movementLocked || knockbackTimer > 0; },
     get state() {
       return stateMachine.state;
     },
@@ -264,6 +266,7 @@ export function createGoblin({
       facing = selection.facing;
       currentFlipX = selection.flipX;
       playStateAnimation(selection.name);
+      onAttack();
       return true;
     },
     dispose() {

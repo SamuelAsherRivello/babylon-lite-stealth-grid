@@ -1,3 +1,5 @@
+import { getColliderCenter } from "./characters/character-spatial.js";
+import { playSfx, playPerceptionSfx } from "./audio/sfx.js";
 import {
   addSpriteRendererLayer,
   addSprite2D,
@@ -463,7 +465,7 @@ export async function start({ showStartPrompt = true } = {}) {
   const goldStoneAtlases = new Map(await Promise.all([...goldStoneImages].map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [128, 128], sampling: "nearest" })])));
   const goldPickupAtlases = new Map(await Promise.all(goldPickupImages.map(async (image) => [image, await loadSpriteAtlas(engine, image, { gridSize: [64, 64], sampling: "nearest" })])));
   let goldCounter;
-  const pickupSystem = createPickupSystem({ onCollect: () => goldCounter?.increment() });
+  const pickupSystem = createPickupSystem({ onCollect: () => { goldCounter?.increment(); playSfx("pickup"); } });
   const goldPickupDefinition = {
     create: ({ position, index }) => {
       const image = goldPickupImages[Math.floor(Math.random() * goldPickupImages.length)];
@@ -512,6 +514,9 @@ export async function start({ showStartPrompt = true } = {}) {
       screenHeight: SCREEN_HEIGHT,
       tileSize: TILE_SIZE,
       fireEffect: bushFireEffects[index],
+      onCharacterEnter: (character) => {
+        if (character.type === CharacterType.PLAYER) playSfx("bush");
+      },
     })
   ));
 
@@ -615,6 +620,7 @@ export async function start({ showStartPrompt = true } = {}) {
     record.combat.beginSpawn();
     if (record.type === SpawnerType.ENEMY && !record.reaction) {
       record.reaction = createEnemyPerceptionReaction({
+        onStateChange: (state) => playPerceptionSfx(state),
         onFace: () => record.actor.setMovementIntent?.({ x: 0, y: 0 }),
         onMoveTo: (cell) => {
           const current = record.actor.getGridPosition(TILE_SIZE);
@@ -687,7 +693,7 @@ export async function start({ showStartPrompt = true } = {}) {
       }),
       onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }),
       onKnockback: (direction, options) => actor.applyKnockback(direction, options),
-      onDeathStart: () => actor.setInputEnabled(false),
+      onDeathStart: () => { actor.setInputEnabled(false); playSfx("lose"); },
     });
     return attachActor({ type: SpawnerType.PLAYER, actor, combat });
   }
@@ -722,44 +728,51 @@ export async function start({ showStartPrompt = true } = {}) {
     return attachActor({ type: SpawnerType.SHEEP, actor, combat });
   }
 
-  function createEnemyPatrolWalkability(actor, character) {
-    const terrainWalkable = createGridWalkability({
-      bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
-      character,
-      grid: GRID,
-      obstacles: obstacleColliders,
+  function getNavigationColliders(actor) {
+    return [SpawnerType.PLAYER, SpawnerType.SHEEP, SpawnerType.ENEMY]
+      .flatMap(type => getRecordsByType(type))
+      .filter(record => record.combat.isAlive && record.actor !== actor)
+      .map(record => ({ id: record.combat.label, collider: record.actor.getMovementCollider() }));
+  }
+
+  function createActorWalkability(actor, character) {
+    const terrain = createGridWalkability({
+      bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, character, grid: GRID, obstacles: obstacleColliders,
     });
-    return (direction) => {
-      const currentCell = getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE);
-      const cell = { x: currentCell.x + direction.x, y: currentCell.y + direction.y };
-      const player = getRecordsByType(SpawnerType.PLAYER)[0];
-      const playerCell = player?.combat.isAlive
-        ? getCharacterGridCell(player.actor.getMovementCollider(), TILE_SIZE)
-        : null;
-      const bushOccupiesCell = reactiveDecorations.some((decoration) => (
-        decoration.isAlive
-        && decoration.cell.x === cell.x
-        && decoration.cell.y === cell.y
-      ));
-      if (playerCell && playerCell.x === cell.x && playerCell.y === cell.y && bushOccupiesCell) {
-        return false;
-      }
-      const enemyColliders = getRecordsByType(SpawnerType.ENEMY)
-        .filter((record) => record.combat.isAlive && record.actor !== actor)
-        .map((record) => ({ collider: record.actor.getMovementCollider() }));
-      return terrainWalkable(cell, enemyColliders);
+    const walkable = cell => {
+      const blockers = getNavigationColliders(actor);
+      return !blockers.some(({ collider }) => {
+        const occupied = getCharacterGridCell(collider, TILE_SIZE);
+        return occupied.x === cell.x && occupied.y === cell.y;
+      }) && terrain(cell, blockers);
+    };
+    walkable.canTraverse = (from, to) => {
+      const current = getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE);
+      return walkable(to) && terrain.canTraverse(from, to, getNavigationColliders(actor),
+        from.x === current.x && from.y === current.y ? getColliderCenter(actor.getMovementCollider()) : null);
+    };
+    return walkable;
+  }
+
+  function createEnemyPatrolWalkability(actor, character) {
+    const walkable = createActorWalkability(actor, character);
+    return (direction, _position, targetCell) => {
+      const current = getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE);
+      const target = targetCell ?? { x: current.x + direction.x, y: current.y + direction.y };
+      return walkable.canTraverse(current, target);
     };
   }
 
   function createArcherRecord(position) {
     const ownerId = `archer-${nextActorId++}`;
-    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders, onShoot: (spawnPosition, target, options) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
+    const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders, onShoot: (spawnPosition, target, options) => { playSfx("archer"); const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
     const combat = createCombatActorState({ label: ownerId, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
     return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER }) }) });
   }
 
   function createGoblinRecord(position) {
     const actor = createGoblin({
+      onAttack: () => playSfx("goblin"),
       atlases: goblinAtlases,
       initialPosition: position,
       bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
@@ -787,11 +800,8 @@ export async function start({ showStartPrompt = true } = {}) {
       combat,
       controller: null,
     };
-    const isWalkable = createGridWalkability({
-      bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
-      character: { frame: GOBLIN_FRAME, pivot: GOBLIN_PIVOT, collider: GOBLIN_MOVEMENT_COLLIDER },
-      grid: GRID,
-      obstacles: obstacleColliders,
+    const isWalkable = createActorWalkability(actor, {
+      frame: GOBLIN_FRAME, pivot: GOBLIN_PIVOT, collider: GOBLIN_MOVEMENT_COLLIDER,
     });
     record.controller = createGoblinBehaviorController(actor, {
       grid: GRID,
@@ -819,6 +829,7 @@ export async function start({ showStartPrompt = true } = {}) {
 
   function createWarriorRecord(position) {
     const actor = createWarrior({
+      onAttack: () => playSfx("warrior"),
       atlases: warriorAtlases,
       initialPosition: position,
       bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
@@ -853,13 +864,13 @@ export async function start({ showStartPrompt = true } = {}) {
   }
 
   function createLancerRecord(position) {
-    const actor = createLancer({ atlases: lancerAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
+    const actor = createLancer({ onAttack: () => playSfx("lancer"), atlases: lancerAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
     const combat = createCombatActorState({ label: `lancer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, LANCER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [LANCER_FRAME.width * value, LANCER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: (direction, options) => actor.applyKnockback(direction, options) });
     return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.LANCER, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: LANCER_FRAME, pivot: LANCER_PIVOT, collider: LANCER_MOVEMENT_COLLIDER }) }) });
   }
 
   function createMonkRecord(position) {
-    const actor = createMonk({ atlases: monkAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
+    const actor = createMonk({ onHeal: () => playSfx("monk"), atlases: monkAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
     const combat = createCombatActorState({ label: `monk-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, MONK_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [MONK_FRAME.width * value, MONK_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
     return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: MONK_FRAME, pivot: MONK_PIVOT, collider: MONK_MOVEMENT_COLLIDER }) }) });
   }
@@ -978,6 +989,7 @@ export async function start({ showStartPrompt = true } = {}) {
         .map(({ actor, combat, controller }) => ({
           id: combat.label,
           mode: controller.mode,
+          navigation: controller.getNavigationSnapshot?.(),
           cell: getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE),
         })),
     });
@@ -1050,7 +1062,7 @@ export async function start({ showStartPrompt = true } = {}) {
       const collider = pickup.getCombatCollider();
       if (collider && x >= collider.x && x <= collider.x + collider.width
         && y >= collider.y && y <= collider.y + collider.height) {
-        pickup.pickup();
+        if (pickup.pickup()) playSfx("pickup");
         break;
       }
     }
@@ -1299,13 +1311,14 @@ export async function start({ showStartPrompt = true } = {}) {
           currentRecord.actor.update(
             activeDelta,
             playerRecord?.combat.isAlive && playerSnapshot ? [playerSnapshot] : [],
-            [...sheepDynamicColliders, ...otherSheepColliders, ...projectileState],
+            [...getNavigationColliders(currentRecord.actor), ...projectileState],
           );
         }
       }
 
       for (const record of enemyRecords) {
         if (!record.combat.isAlive) {
+          record.controller.cancel?.();
           continue;
         }
         if (TEMPORARILY_DISABLE_ENEMY_UPDATES) {
@@ -1316,23 +1329,7 @@ export async function start({ showStartPrompt = true } = {}) {
         } else {
           record.controller.update(activeDelta);
         }
-        record.actor.update(activeDelta, [
-          // Player-only cells are strategically reachable so the enemy can
-          // enter and let its AI attack on the following update. A concealed
-          // player is rejected by createEnemyPatrolWalkability instead.
-          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : sheepMovementColliders.filter(({ collider }) => collider))
-            .map(({ collider }) => ({ type: "npc", collider })),
-          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : getOtherCharacterColliders(
-            enemyRecords,
-            record.combat.label,
-            CharacterType.ENEMY,
-          )),
-          ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : getOtherCharacterGridOccupancyColliders(
-            enemyRecords,
-            record.combat.label,
-            TILE_SIZE,
-          )),
-        ], record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot
+        record.actor.update(activeDelta, getNavigationColliders(record.actor), record.character === SpawnerCharacter.WARRIOR ? projectileState : [], playerSnapshot
           ? { ...playerSnapshot, detected: playerSnapshot.detectedBy.includes(record.combat.label) }
           : null);
       }
@@ -1340,7 +1337,12 @@ export async function start({ showStartPrompt = true } = {}) {
       if (playerRecord?.combat.isAlive && playerCombatCollider) {
         const hidingBush = getPlayerHidingBush(playerCombatCollider, reactiveDecorations);
         const hidden = hidingBush !== null;
-        playerRecord.actor.setRenderOrder(hidden ? hidingBush.layer.order - 0.01 : null);
+        const depthBush = getPlayerHidingBush(
+          playerCombatCollider,
+          reactiveDecorations,
+          getCharacterGridCell(playerRecord.actor.getMovementCollider(), TILE_SIZE),
+        );
+        playerRecord.actor.setRenderOrder(depthBush ? depthBush.layer.order - 0.01 : null);
         if (playerRecord.targetState === undefined) playerRecord.targetState = PerceptionTargetState.Default;
         if (playerRecord.hiddenOpacity === undefined) playerRecord.hiddenOpacity = 1;
         const nextTargetState = hidden ? PerceptionTargetState.Hidden : PerceptionTargetState.Default;
@@ -1574,6 +1576,7 @@ export async function start({ showStartPrompt = true } = {}) {
         if (gameStateMachine.state === GameState.LEVEL_PLAYING && playerRecord.combat.isAlive
           && playerCombatCollider && collidersOverlap(playerCombatCollider, goal.combatCollider)) {
           gameStateMachine.goalReached();
+          playSfx("win");
           playerRecord.actor.setInputEnabled(false);
           pauseController.pause();
           levelCompleteUi.show();
@@ -1648,6 +1651,12 @@ export async function start({ showStartPrompt = true } = {}) {
       selectionSystem.getSelectedGridSpot(),
     );
     canvas.dataset.bushDebug = JSON.stringify(getBushBurningSnapshot());
+    if (import.meta.env.DEV) canvas.dataset.navigationDebug = JSON.stringify(
+      [SpawnerType.ENEMY, SpawnerType.SHEEP].flatMap(type => getRecordsByType(type))
+        .filter(record => record.combat.isAlive)
+        .map(record => ({ id: record.combat.label, character: record.character ?? record.type,
+          ...(record.controller ?? record.actor).getNavigationSnapshot?.() })),
+    );
 
     requestAnimationFrame(update);
   }

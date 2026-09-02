@@ -44,6 +44,7 @@ export function createReactiveDecoration({
   screenHeight,
   tileSize = 64,
   fireEffect = null,
+  onCharacterEnter = () => {},
   api = DEFAULT_API,
 }) {
   const descriptor = object.decoration;
@@ -186,6 +187,7 @@ export function createReactiveDecoration({
         if (!acceptedTypes.has(character.type) || !character.collider) continue;
         if (api.collidersOverlap(descriptor.sensor, character.collider)) {
           nextOccupants.add(character.id);
+          if (!occupants.has(character.id)) onCharacterEnter(character);
         }
       }
       const entered = [...nextOccupants].some((id) => !occupants.has(id));

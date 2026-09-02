@@ -25,6 +25,22 @@ test("hidden opacity animates from one to point six over 0.2 seconds in both dir
   assert.equal(stepHiddenOpacity(0.6, false, 0.2, 0.2), 1);
 });
 
+test("bush depth selection requires overlap and the same grid cell", () => {
+  const player = { x: 60, y: 60, width: 16, height: 16 };
+  const cell = { x: 1, y: 1 };
+  const adjacent = { ...bush(player), cell: { x: 0, y: 1 } };
+  const adjacentRow = { ...bush(player), cell: { x: 1, y: 0 } };
+  const sameCell = { ...bush(player), cell };
+  const separated = { ...bush({ x: 90, y: 90, width: 8, height: 8 }), cell };
+  assert.equal(getPlayerHidingBush(player, [adjacent], cell), null);
+  assert.equal(getPlayerHidingBush(player, [adjacentRow], cell), null);
+  assert.equal(getPlayerHidingBush(player, [separated], cell), null);
+  assert.equal(getPlayerHidingBush(player, [adjacent, sameCell], cell), sameCell);
+  assert.equal(getPlayerHidingBush(player, [{ ...sameCell, isAlive: false }], cell), null);
+  assert.equal(getPlayerHidingBush(player, [bush(player)], cell), null);
+  assert.equal(isPlayerHidden(player, [adjacent]), true);
+});
+
 test("perception target state distinguishes default from hidden", () => {
   assert.equal(PerceptionTargetState.Default, "default");
   assert.equal(PerceptionTargetState.Hidden, "hidden");

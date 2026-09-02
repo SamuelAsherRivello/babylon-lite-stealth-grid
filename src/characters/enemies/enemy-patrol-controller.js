@@ -1,59 +1,59 @@
-const DEFAULT_DIRECTIONS = Object.freeze([
-  Object.freeze({ x: 1, y: 0 }), Object.freeze({ x: -1, y: 0 }),
-  Object.freeze({ x: 0, y: 1 }), Object.freeze({ x: 0, y: -1 }),
-]);
+import { createMovementRecovery, CARDINAL_STEPS, cellCenter, cardinalIntent, chooseRoute } from '../movement-recovery.js';
+import { getColliderCenter, getCharacterGridCell } from '../character-spatial.js';
 
 function randomDuration(range, random) {
   const [minimum, maximum] = range;
-  const value = Math.max(0, Math.min(1, random()));
-  return minimum + (maximum - minimum) * value;
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum < 0 || maximum < minimum) throw new RangeError('Invalid duration range');
+  return minimum + (maximum - minimum) * Math.max(0, Math.min(1, random()));
 }
-
 export function createEnemyPatrolController(actor, {
   random = Math.random, idleRange = [3, 5], patrolRange = [2, 5],
-  directions = DEFAULT_DIRECTIONS,
-  isDirectionWalkable = () => true,
+  directions = CARDINAL_STEPS, isDirectionWalkable = () => true, tileSize = 64, retrySeconds = 3,
 } = {}) {
-  let mode = "idle";
-  let remaining = randomDuration(idleRange, random);
-  let currentDirection = null;
-  let lastPosition = typeof actor.getPosition === "function" ? actor.getPosition() : null;
-  function enterIdle() {
-    mode = "idle";
-    remaining = randomDuration(idleRange, random);
-    actor.setMovementIntent({ x: 0, y: 0 });
+  const recovery = createMovementRecovery({ retrySeconds });
+  let mode = 'idle', remaining = randomDuration(idleRange, random), direction = null, targetCell = null;
+  let intent = { x: 0, y: 0 };
+  const position = () => actor.getMovementCollider ? getColliderCenter(actor.getMovementCollider()) : actor.getPosition();
+  const currentCell = () => actor.getMovementCollider ? getCharacterGridCell(actor.getMovementCollider(), tileSize)
+    : { x: Math.floor(position().x / tileSize), y: Math.floor(position().y / tileSize) };
+  const move = value => { intent = value; actor.setMovementIntent(value); };
+  function idle() { mode = 'idle'; remaining = randomDuration(idleRange, random); targetCell = null; move({ x: 0, y: 0 }); recovery.cancel(); }
+  function select(reason = null, failed = null) {
+    if (reason) recovery.fail(reason);
+    move({ x: 0, y: 0 });
+    const start = currentCell();
+    const options = directions.map(step => ({ step, cell: { x: start.x + step.x, y: start.y + step.y } }))
+      .filter(({ step, cell }) => (!failed || cell.x !== failed.x || cell.y !== failed.y)
+        && isDirectionWalkable(step, position(), cell));
+    const preferred = options.filter(({ step }) => !direction || step.x !== direction.x || step.y !== direction.y);
+    const selected = chooseRoute(preferred.length ? preferred : options, random);
+    if (!selected.cell) { mode = 'waiting'; targetCell = null; recovery.wait(); return; }
+    direction = selected.step; targetCell = selected.cell;
+    mode = 'patrolling'; remaining = randomDuration(patrolRange, random); recovery.accept();
+    move(cardinalIntent(position(), cellCenter(targetCell, tileSize)));
   }
-  function enterPatrol() {
-    mode = "patrolling";
-    remaining = randomDuration(patrolRange, random);
-    const availableDirections = directions.filter((direction) => (
-      (!currentDirection || direction.x !== currentDirection.x || direction.y !== currentDirection.y)
-      && isDirectionWalkable(direction, actor.getPosition?.())
-    ));
-    const value = Math.max(0, Math.min(1, random()));
-    currentDirection = availableDirections[Math.min(
-      Math.floor(value * availableDirections.length), availableDirections.length - 1,
-    )] ?? null;
-    if (!currentDirection) {
-      actor.setMovementIntent({ x: 0, y: 0 });
-      remaining = Math.min(0.1, patrolRange[0]);
-      return;
-    }
-    actor.setMovementIntent(currentDirection);
-  }
-  actor.setMovementIntent({ x: 0, y: 0 });
+  move({ x: 0, y: 0 });
   return {
     get mode() { return mode; },
+    cancel: idle,
+    getNavigationSnapshot() { return { ...recovery.snapshot(), mode, position: position(), cell: currentCell(),
+      intent: { ...intent }, waypoint: targetCell ? cellCenter(targetCell, tileSize) : null }; },
     update(deltaSeconds) {
-      const position = typeof actor.getPosition === "function" ? actor.getPosition() : null;
-      const movementStalled = mode === "patrolling" && currentDirection
-        && lastPosition && position
-        && position.x === lastPosition.x && position.y === lastPosition.y;
-      if (movementStalled) enterPatrol();
-      lastPosition = position;
-      remaining -= Math.max(0, deltaSeconds);
-      if (remaining > 0) return;
-      if (mode === "idle") enterPatrol(); else enterIdle();
+      const delta = Math.max(0, deltaSeconds);
+      if (actor.isMovementLocked?.()) { recovery.suspend(); return; }
+      if (mode === 'waiting') { if (recovery.tickWait(delta)) select('retry'); return; }
+      if (mode === 'idle') { remaining -= delta; if (remaining <= 0) select(); return; }
+      if (delta <= 0) { recovery.suspend(); return; }
+      remaining -= delta;
+      if (remaining <= 0) { idle(); return; }
+      let target = cellCenter(targetCell, tileSize);
+      if (Math.hypot(target.x - position().x, target.y - position().y) <= 3) {
+        targetCell = { x: targetCell.x + direction.x, y: targetCell.y + direction.y };
+        target = cellCenter(targetCell, tileSize); recovery.accept();
+      }
+      if (!isDirectionWalkable(direction, position(), targetCell)) { select('blocked-segment', targetCell); return; }
+      if (recovery.observe(position(), target, delta)) { select('no-progress', targetCell); return; }
+      move(cardinalIntent(position(), target));
     },
   };
 }

@@ -1,3 +1,4 @@
+import { createMovementRecovery, reachableRoutes, chooseRoute, cardinalIntent } from "../../movement-recovery.js";
 import { gridCellCenter } from "../../npc/sheep/sheep-navigation.js";
 import { collidersOverlap } from "../../../gameplay/game-logic.js";
 import { getCharacterGridCell, getColliderCenter } from "../../character-spatial.js";
@@ -38,7 +39,7 @@ export function findRoute(start, goals, isWalkable, maximumDepth = Infinity) {
     for (const offset of NEIGHBORS) {
       const cell = { x: current.cell.x + offset.x, y: current.cell.y + offset.y };
       const cellKey = key(cell);
-      if (nodes.has(cellKey) || !isWalkable(cell)) continue;
+      if (nodes.has(cellKey) || !isWalkable(cell) || isWalkable.canTraverse?.(current.cell, cell) === false) continue;
       nodes.set(cellKey, { cell, parent: currentKey, depth: current.depth + 1 });
       queue.push(cellKey);
     }
@@ -99,7 +100,10 @@ export function createGoblinBehaviorController(goblin, {
   recoverySeconds = 1.25,
   bushChance = 0.25,
   prioritizeBushes = false,
+  retrySeconds = 3,
 } = {}) {
+  const recovery = createMovementRecovery({ retrySeconds });
+  let intent = { x: 0, y: 0 };
   let mode = "idle";
   let idleRemaining = idleRange[0] + (idleRange[1] - idleRange[0]) * random();
   let recoveryRemaining = 0;
@@ -107,7 +111,8 @@ export function createGoblinBehaviorController(goblin, {
   let bushTargetId = null;
   let characterTargetId = null;
 
-  function stop() { goblin.setMovementIntent({ x: 0, y: 0 }); }
+  function move(value) { intent = value; goblin.setMovementIntent(value); }
+  function stop() { move({ x: 0, y: 0 }); }
   function currentCell() {
     return getCharacterGridCell(goblin.getMovementCollider(), grid.tileSizePx);
   }
@@ -135,6 +140,8 @@ export function createGoblinBehaviorController(goblin, {
       : { x: target.position.x - from.x, y: target.position.y - from.y };
     stop();
     if (goblin.attack(direction)) {
+      recovery.cancel();
+      route = [];
       mode = "recovering";
       recoveryRemaining = recoverySeconds;
       if (type === "character") characterTargetId = target.id;
@@ -186,38 +193,61 @@ export function createGoblinBehaviorController(goblin, {
     const character = nearbyCharacter(world);
     if (character) { startAttack(character, "character"); return; }
     if (!prioritizeBushes && beginBushDecision(world)) return;
-    const minimum = patrolRange[0];
-    const maximum = patrolRange[1];
-    const candidates = [];
-    for (let y = 0; y < grid.rows; y += 1) for (let x = 0; x < grid.columns; x += 1) {
-      const cell = { x, y };
-      if (distance(cell, spawnCell) > homeRadius || !isWalkable(cell)) continue;
-      const candidateRoute = findRoute(currentCell(), [cell], isWalkable, maximum);
-      if (candidateRoute.length >= minimum && candidateRoute.length <= maximum) candidates.push(candidateRoute);
-    }
-    route = candidates.length > 0
-      ? candidates[Math.min(Math.floor(random() * candidates.length), candidates.length - 1)]
-      : [];
-    mode = route.length > 0 ? "walking" : "idle";
-    if (mode === "idle") idleRemaining = idleRange[0];
+    const candidates = patrolCandidates();
+    route = chooseRoute(candidates, random);
+    recovery.accept();
+    if (route.length > 0) mode = "walking";
+    else recover("no-route");
   }
-  function followRoute() {
-    if (route.length === 0) return false;
-    const waypoint = gridCellCenter(route[0], grid.tileSizePx);
+  function patrolCandidates(excluded = null) {
+    return reachableRoutes(currentCell(), grid, isWalkable, patrolRange[1], excluded).filter(candidate => (
+      candidate.length >= patrolRange[0]
+      && distance(candidate.at(-1), spawnCell) <= homeRadius
+    ));
+  }
+  function recover(reason, failed = route[0]) {
+    stop();
+    recovery.fail(reason);
+    route = [];
+    bushTargetId = null;
+    const preferred = patrolCandidates(failed);
+    route = chooseRoute(preferred.length ? preferred : reachableRoutes(currentCell(), grid, isWalkable, 1, failed), random);
+    if (route.length) { mode = "walking"; recovery.accept(); }
+    else { mode = "waiting"; recovery.wait(); }
+  }
+  function followRoute(delta) {
     const position = getColliderCenter(goblin.getMovementCollider());
-    const dx = waypoint.x - position.x;
-    const dy = waypoint.y - position.y;
-    if (Math.hypot(dx, dy) <= 5) route.shift();
-    else goblin.setMovementIntent(Math.abs(dx) >= Math.abs(dy)
-      ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) });
-    return route.length > 0;
+    while (route.length && Math.hypot(gridCellCenter(route[0], grid.tileSizePx).x - position.x,
+      gridCellCenter(route[0], grid.tileSizePx).y - position.y) <= 3) {
+      route.shift(); recovery.accept();
+    }
+    if (!route.length) return false;
+    const waypoint = gridCellCenter(route[0], grid.tileSizePx);
+    if (!isWalkable(route[0]) || isWalkable.canTraverse?.(currentCell(), route[0]) === false) {
+      recover("blocked-segment"); return true;
+    }
+    if (recovery.observe(position, waypoint, delta)) { recover("no-progress"); return true; }
+    move(cardinalIntent(position, waypoint));
+    return true;
   }
+
 
   stop();
   return {
     get mode() { return mode; },
+    cancel() { stop(); route = []; recovery.cancel(); mode = "idle"; },
+    getNavigationSnapshot() { return { ...recovery.snapshot(), mode, intent: { ...intent },
+      position: getColliderCenter(goblin.getMovementCollider()), cell: currentCell(),
+      waypoint: route[0] ? gridCellCenter(route[0], grid.tileSizePx) : null }; },
     update(deltaSeconds) {
       const delta = Math.max(0, deltaSeconds);
+      if (goblin.isMovementLocked?.() || delta <= 0) { recovery.suspend(); return; }
+      if (mode === "waiting") {
+        const target = nearbyCharacter(getWorld());
+        if (target && startAttack(target, "character")) return;
+        if (recovery.tickWait(delta)) recover("retry", null);
+        return;
+      }
       if (mode === "recovering") {
         recoveryRemaining -= delta;
         if (recoveryRemaining > 0) return;
@@ -231,8 +261,9 @@ export function createGoblinBehaviorController(goblin, {
           const target = getWorld().bushes.find(({ id, isAlive }) => id === bushTargetId && isAlive);
           if (!target) { route = []; bushTargetId = null; mode = "idle"; stop(); return; }
         }
-        if (followRoute()) return;
+        if (followRoute(delta)) return;
         stop();
+        recovery.cancel();
         if (mode === "walking-bush") {
           const target = getWorld().bushes.find(({ id, isAlive }) => id === bushTargetId && isAlive);
           if (target && canStartBushAttack(target)) {

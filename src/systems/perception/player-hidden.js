@@ -6,10 +6,11 @@ export function isPlayerHidden(playerCombatCollider, bushes) {
   return getPlayerHidingBush(playerCombatCollider, bushes) !== null;
 }
 
-export function getPlayerHidingBush(playerCombatCollider, bushes) {
+export function getPlayerHidingBush(playerCombatCollider, bushes, requiredCell = null) {
   if (!playerCombatCollider) return null;
   return bushes.find((bush) => (
     bush?.isAlive !== false
+    && (!requiredCell || (bush?.cell?.x === requiredCell.x && bush?.cell?.y === requiredCell.y))
     && bush?.getCombatCollider?.()
     && collidersOverlap(playerCombatCollider, bush.getCombatCollider())
   )) ?? null;
