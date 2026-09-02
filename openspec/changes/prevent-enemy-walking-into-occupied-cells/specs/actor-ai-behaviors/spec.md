@@ -1,7 +1,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Enemy alternates between idle and patrol decisions
-An enemy with no attackable target in range SHALL remain idle for a randomly selected duration within its configured inclusive idle range, then SHALL choose a reachable patrol destination within its configured inclusive path-distance range and spawn-centered home radius. The initial goblin SHALL use a home radius of four grid cells, equivalent to 256 pixels on the current 64-pixel grid. It SHALL enter `walking` while following the safe route and SHALL return to `idle` to choose a new duration after arriving, failing to obtain or continue a route, or detecting that its requested next cell is blocked. When a requested next cell is blocked, the enemy SHALL stop pursuing that cell and choose a different reachable cardinal direction rather than repeatedly issuing the blocked movement intent.
+An enemy with no attackable target in range SHALL remain idle for a randomly selected duration within its configured inclusive idle range, then SHALL choose a reachable patrol destination within its configured inclusive path-distance range and spawn-centered home radius. The initial goblin SHALL use a home radius of four grid cells, equivalent to 256 pixels on the current 64-pixel grid. It SHALL enter `walking` while following the safe route and SHALL return to `idle` to choose a new duration after arriving, failing to obtain or continue a route, or finding no valid next cell. Before each patrol step, it SHALL evaluate the next grid cell using current terrain and character occupancy. Terrain and living enemy occupancy SHALL make a cell invalid. A cell containing only the player or only a bush SHALL remain valid; a cell containing both the player and a bush SHALL be invalid. If the player-only cell is entered, the enemy SHALL attack on the following AI update. If every neighboring cell is invalid, the enemy SHALL remain stationary.
 
 #### Scenario: Idle timer expires
 - **WHEN** the enemy's selected idle duration elapses and no attackable target is in range
@@ -21,4 +21,20 @@ An enemy with no attackable target in range SHALL remain idle for a randomly sel
 
 #### Scenario: Patrol next cell becomes occupied
 - **WHEN** collision or occupancy checks reject the enemy's requested next cell during patrol
-- **THEN** the enemy stops pursuing that cell and selects a different reachable cardinal direction without entering the occupied cell
+- **THEN** the enemy stops pursuing that cell and selects a different currently reachable cardinal direction without entering the occupied cell
+
+#### Scenario: Player-only next cell
+- **WHEN** the next grid cell contains the player and no bush
+- **THEN** the enemy may enter the cell and attacks the player on the following AI update
+
+#### Scenario: Player concealed by bush
+- **WHEN** the next grid cell contains both the player and a living bush
+- **THEN** the enemy treats the cell as invalid and does not enter it
+
+#### Scenario: Bush-only next cell
+- **WHEN** the next grid cell contains a bush but no player
+- **THEN** the enemy treats the cell as walkable
+
+#### Scenario: No valid neighboring cell
+- **WHEN** terrain, living enemies, or concealed-player occupancy invalidate every neighboring cell
+- **THEN** the enemy remains stationary until a valid neighboring cell becomes available

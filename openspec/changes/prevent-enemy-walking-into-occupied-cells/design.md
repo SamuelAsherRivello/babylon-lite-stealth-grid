@@ -8,8 +8,10 @@ observe the result, so a blocked intent can be retained indefinitely.
 
 **Goals:**
 
-- Connect blocked/no-progress movement feedback to patrol direction selection.
-- Ensure a replacement direction is not the direction just rejected.
+- Evaluate the actual next grid cell before issuing a patrol movement intent.
+- Filter replacement directions using current terrain, living-enemy, and
+  player-plus-bush occupancy.
+- Allow a player-only cell for the existing next-update attack flow.
 - Preserve existing collision authority and enemy state transitions.
 
 **Non-Goals:**
@@ -19,25 +21,28 @@ observe the result, so a blocked intent can be retained indefinitely.
 
 ## Decisions
 
-The patrol controller will compare the actor's current position with its
-position at the previous patrol decision tick. A patrolling actor that has a
-non-zero intent but made no progress is treated as blocked, and the controller
-immediately selects from the other configured cardinal directions. This keeps
-the movement layer authoritative and works for enemy implementations that share
-the patrol controller without duplicating terrain-collider tests.
+The patrol controller will receive an authoritative next-cell walkability
+callback backed by current terrain and character snapshots. It will evaluate
+all cardinal candidates, reject terrain and living-enemy cells, reject a cell
+where the player and a living bush coexist, and retain player-only and bush-only
+cells. It will choose only from the remaining candidates; if none remain it
+will issue a zero intent.
 
-A direction different from the rejected direction will be selected before the
-normal patrol timer is allowed to continue. A new obstacle-aware route planner
-was considered, but rejected because it would duplicate the existing collision
-and occupancy rules and could diverge from actual collider resolution.
+The player-only exception is strategic rather than a new combat trigger: the
+enemy may enter that cell, and the existing AI reevaluates on the next update.
+A no-progress fallback remains as a defensive guard for changes between the
+precheck and movement resolution. A new obstacle-aware route planner was
+considered, but rejected because it would duplicate the existing navigation
+rules and could diverge from actual collider resolution.
 
 ## Risks / Trade-offs
 
-- [An actor may be blocked by all neighboring directions] -> Retry directions
-  through the existing patrol decision loop while retaining the collision guard;
-  no movement is permitted into a rejected cell.
+- [An actor may be blocked by all neighboring directions] -> Issue zero movement
+  and retry when the next update observes a newly valid candidate.
 - [A stationary actor may be intentionally idle] -> Only a patrolling actor
   with a non-zero movement intent is eligible for blocked-step recovery.
+- [The player/bush state changes between precheck and movement] -> Retain the
+  movement collision guard and re-evaluate on the next update.
 
 ## Migration Plan
 

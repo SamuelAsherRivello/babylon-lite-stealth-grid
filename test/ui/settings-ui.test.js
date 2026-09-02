@@ -118,7 +118,7 @@ test("preview debug controls use exact labels and write independent keys", () =>
   assert.equal(animatedTile.checkbox.checked, false);
 });
 
-test("game window provides dialog labelling, focus, and closes on any click", () => {
+test("game window closes only when the backdrop itself is clicked", () => {
   const documentRef = createDocument();
   const host = new FakeElement();
   host.isConnected = true;
@@ -136,6 +136,9 @@ test("game window provides dialog labelling, focus, and closes on any click", ()
   assert.equal(gameWindow.closeButton.focused, true);
 
   click(gameWindow.backdrop, gameWindow.panel);
+  assert.equal(closed, 0);
+  assert.equal(gameWindow.backdrop.isConnected, true);
+  click(gameWindow.backdrop, gameWindow.backdrop);
   assert.equal(closed, 1);
   assert.equal(opener.focused, true);
   gameWindow.close();

@@ -11,8 +11,8 @@ export function createLevelCompleteUi({ host, onContinue, documentRef = globalTh
   const button = documentRef.createElement("button");
   button.type = "button"; button.className = "level-complete-continue menu-button-text"; button.textContent = "Continue";
   button.addEventListener("click", onContinue);
-  const closeOnClick = () => backdrop.remove();
+  const closeOnClick = (event) => { if (event.target === backdrop) backdrop.remove(); };
   backdrop.addEventListener("click", closeOnClick);
   panel.append(title, body, button); backdrop.append(panel); host.append(backdrop);
-  return { show() { backdrop.hidden = false; button.focus(); }, dispose() { button.removeEventListener("click", onContinue); backdrop.removeEventListener("click", closeOnClick); backdrop.remove(); } };
+  return { backdrop, panel, button, show() { backdrop.hidden = false; button.focus(); }, dispose() { button.removeEventListener("click", onContinue); backdrop.removeEventListener("click", closeOnClick); backdrop.remove(); } };
 }

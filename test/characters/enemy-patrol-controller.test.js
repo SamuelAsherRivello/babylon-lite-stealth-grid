@@ -57,3 +57,30 @@ test("enemy patrol controller chooses a different direction after movement is bl
   controller.update(0.016);
   assert.deepEqual(actor.intents.at(-1), { x: 0, y: 1 });
 });
+
+test("enemy patrol controller chooses only walkable next directions", () => {
+  const actor = fakeActor();
+  const controller = createEnemyPatrolController(actor, {
+    random: () => 0,
+    idleRange: [0, 0],
+    patrolRange: [10, 10],
+    directions: [{ x: 1, y: 0 }, { x: 0, y: 1 }],
+    isDirectionWalkable: (direction) => direction.y === 1,
+  });
+
+  controller.update(0);
+  assert.deepEqual(actor.intents.at(-1), { x: 0, y: 1 });
+});
+
+test("enemy patrol controller remains stationary when every next direction is blocked", () => {
+  const actor = fakeActor();
+  const controller = createEnemyPatrolController(actor, {
+    random: () => 0,
+    idleRange: [0, 0],
+    patrolRange: [10, 10],
+    isDirectionWalkable: () => false,
+  });
+
+  controller.update(0);
+  assert.deepEqual(actor.intents.at(-1), { x: 0, y: 0 });
+});

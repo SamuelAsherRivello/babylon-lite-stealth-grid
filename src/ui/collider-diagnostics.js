@@ -75,6 +75,36 @@ export function createPerceptionDrawCommands(snapshot, tileSize, now = 0) {
   }));
 }
 
+export function getVisibleVisualCells(actor, tileSize, { isWalkable = () => true, blockers = [] } = {}) {
+  if (actor?.isAlive === false || !hasValidVisualGeometry(actor) || !Number.isFinite(tileSize) || tileSize <= 0) return [];
+  const cells = getVisualCells(actor.cell, actor.heading, actor.visualRange ?? 4);
+  const blocked = (cell) => !isWalkable(cell) || blockers.some((blocker) => blocker?.x === cell.x && blocker?.y === cell.y);
+  const visible = [];
+  for (const cell of cells) {
+    if (blocked(cell)) break;
+    visible.push(cell);
+  }
+  return visible;
+}
+
+export function createEnemyVisionShadowDrawCommands(snapshot, tileSize, options = {}) {
+  const actors = Array.isArray(snapshot) ? snapshot : (snapshot?.actors ?? []);
+  return actors
+    .filter((actor) => actor?.type === "enemy" && actor.isAlive !== false)
+    .flatMap((actor) => getVisibleVisualCells(actor, tileSize, options).map((cell, index) => ({
+      detectorId: actor.id,
+      cell: { ...cell },
+      positionPx: [
+        (cell.x + 0.5) * tileSize,
+        (options.screenHeight ?? 1024) - (cell.y + 0.5) * tileSize,
+      ],
+      sizePx: [tileSize, tileSize],
+      frame: 0,
+      opacity: 0.4 - index * 0.1,
+      color: [1, 1, 1, 0.4 - index * 0.1],
+    })));
+}
+
 export function createActivePerceptionMarkerCommands(snapshot, tileSize = 64) {
   const detections = snapshot?.knownDetections ?? snapshot?.detections ?? [];
   const seen = new Set();

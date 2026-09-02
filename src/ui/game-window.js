@@ -46,7 +46,9 @@ export class GameWindow {
     this.panel.append(heading, this.closeButton, body);
     this.backdrop.append(this.panel);
 
-    this.handleBackdrop = () => this.close();
+    this.handleBackdrop = (event) => {
+      if (event.target === this.backdrop) this.close();
+    };
     this.handleClose = () => this.close();
     this.backdrop.addEventListener("click", this.handleBackdrop);
     this.closeButton.addEventListener("click", this.handleClose);

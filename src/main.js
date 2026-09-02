@@ -6,6 +6,7 @@ import {
   createSpriteAnimationManager,
   createSpriteRenderer,
   loadSpriteAtlas,
+  removeSprite2D,
   playSprite2DAnimation,
   registerSpriteRenderer,
   removeSpriteRendererLayer,
@@ -70,7 +71,7 @@ import { CharacterType } from "./characters/npc/sheep/sheep-state.js";
 import { createSheepContactCoordinator } from "./characters/npc/sheep/sheep-flock.js";
 import { createCharacterPerception, PerceptionTargetState } from "./systems/perception/character-perception.js";
 import { createEnemyPerceptionReaction } from "./systems/perception/enemy-perception-reaction.js";
-import { getDebugExpressionState, getEnemyExpression } from "./systems/perception/enemy-expression.js";
+import { getEnemyExpression } from "./systems/perception/enemy-expression.js";
 import { getPlayerHidingBush, isPlayerHidden, stepHiddenOpacity } from "./systems/perception/player-hidden.js";
 import { EnemyState } from "./characters/enemies/enemy-state.js";
 import {
@@ -79,7 +80,7 @@ import {
 } from "./systems/objects/projectile-renderer.js";
 import { resolveProjectileHit } from "./systems/objects/projectile-combat.js";
 import { createPauseController } from "./ui/pause-controller.js";
-import { createStartGamePrompt, shouldShowStartGamePrompt } from "./ui/start-game-prompt.js";
+import { createStartGamePrompt, shouldShowStartGamePrompt, shouldSkipIntro } from "./ui/start-game-prompt.js";
 import {
   applyAnimatedTilePreviewSetting,
   applyParticleFxPreviewSetting,
@@ -122,6 +123,7 @@ import {
   createCharacterColliderDrawCommands,
   createActivePerceptionMarkerCommands,
   createPerceptionDrawCommands,
+  createEnemyVisionShadowDrawCommands,
   TERRAIN_COLLIDER_STYLE,
 } from "./ui/collider-diagnostics.js";
 
@@ -164,6 +166,14 @@ const errorOutput = document.querySelector("#error");
   const gameUi = document.querySelector("#gameUi");
   const domBody = document.querySelector("#dom-body");
   const domScreen = document.querySelector(".dom-screen");
+  const updatePromptBodyCenter = () => {
+    const bodyBounds = domBody.getBoundingClientRect();
+    const offset = bodyBounds.top + bodyBounds.height / 2 - window.innerHeight / 2;
+    domBody.style.setProperty("--prompt-body-center-offset-y", `${offset}px`);
+  };
+  const promptBodyResizeObserver = new ResizeObserver(updatePromptBodyCenter);
+  promptBodyResizeObserver.observe(domBody);
+  updatePromptBodyCenter();
 const uiLayer = document.querySelector("#uiLayer");
 const gameFrame = document.querySelector(".game-frame");
 const viewportSafeArea = createViewportSafeArea({ element: uiLayer, frameElement: gameFrame });
@@ -391,6 +401,7 @@ export async function start({ showStartPrompt = true } = {}) {
     archerEnemyAtlases,
     arrowAtlas,
     waterFoamAtlas,
+    visionShadowAtlas,
     sheepAtlases,
     goblinAtlases,
     warriorAtlases,
@@ -410,6 +421,10 @@ export async function start({ showStartPrompt = true } = {}) {
     loadArrowAtlas(engine),
     loadSpriteAtlas(engine, "./assets/terrain/Water Foam.png", {
       gridSize: [WATER_FOAM_FRAME_SIZE, WATER_FOAM_FRAME_SIZE],
+      sampling: "nearest",
+    }),
+    loadSpriteAtlas(engine, `${import.meta.env.BASE_URL}assets/terrain/tile-shadow.png`, {
+      gridSize: [TILE_SIZE, TILE_SIZE],
       sampling: "nearest",
     }),
     loadSheepAtlases(engine),
@@ -509,6 +524,35 @@ export async function start({ showStartPrompt = true } = {}) {
     }),
   ]));
   const terrainLayers = [...terrainLayerByImage.values()];
+  const visionShadowLayer = createSprite2DLayer(visionShadowAtlas, {
+    capacity: 64,
+    order: TILE_MAP_SUB_Z.ground + 1,
+    pivot: [0.5, 0.5],
+  });
+  let visionShadowSprites = [];
+  function syncVisionShadows(snapshot) {
+    for (const sprite of visionShadowSprites) removeSprite2D(sprite);
+    const terrainBlockers = obstacleColliders.map((collider) => ({
+      x: Math.floor(collider.x / TILE_SIZE),
+      y: Math.floor(collider.y / TILE_SIZE),
+    }));
+    const characterBlockers = snapshot.actors
+      .filter((actor) => actor.isAlive !== false && actor.type !== "player")
+      .map((actor) => actor.cell);
+    const bushBlockers = reactiveDecorations
+      .filter((decoration) => !decoration.isDead)
+      .map((decoration) => decoration.cell);
+    const commands = createEnemyVisionShadowDrawCommands(snapshot, TILE_SIZE, {
+      blockers: [...terrainBlockers, ...characterBlockers, ...bushBlockers],
+      screenHeight: SCREEN_HEIGHT,
+    });
+    visionShadowSprites = commands.map((command) => addSprite2D(visionShadowLayer, {
+      positionPx: command.positionPx,
+      sizePx: command.sizePx,
+      frame: command.frame,
+      color: command.color,
+    }));
+  }
 
   for (const tile of terrainTiles) {
     if (!tile.valid) {
@@ -678,11 +722,40 @@ export async function start({ showStartPrompt = true } = {}) {
     return attachActor({ type: SpawnerType.SHEEP, actor, combat });
   }
 
+  function createEnemyPatrolWalkability(actor, character) {
+    const terrainWalkable = createGridWalkability({
+      bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+      character,
+      grid: GRID,
+      obstacles: obstacleColliders,
+    });
+    return (direction) => {
+      const currentCell = getCharacterGridCell(actor.getMovementCollider(), TILE_SIZE);
+      const cell = { x: currentCell.x + direction.x, y: currentCell.y + direction.y };
+      const player = getRecordsByType(SpawnerType.PLAYER)[0];
+      const playerCell = player?.combat.isAlive
+        ? getCharacterGridCell(player.actor.getMovementCollider(), TILE_SIZE)
+        : null;
+      const bushOccupiesCell = reactiveDecorations.some((decoration) => (
+        decoration.isAlive
+        && decoration.cell.x === cell.x
+        && decoration.cell.y === cell.y
+      ));
+      if (playerCell && playerCell.x === cell.x && playerCell.y === cell.y && bushOccupiesCell) {
+        return false;
+      }
+      const enemyColliders = getRecordsByType(SpawnerType.ENEMY)
+        .filter((record) => record.combat.isAlive && record.actor !== actor)
+        .map((record) => ({ collider: record.actor.getMovementCollider() }));
+      return terrainWalkable(cell, enemyColliders);
+    };
+  }
+
   function createArcherRecord(position) {
     const ownerId = `archer-${nextActorId++}`;
     const actor = createArcher({ atlases: archerEnemyAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders, onShoot: (spawnPosition, target, options) => { const dx = target.x - spawnPosition.x; const dy = target.y - spawnPosition.y; const length = Math.hypot(dx, dy) || 1; return projectiles.shoot(spawnPosition, options.initialVelocityDirection ?? { x: dx / length, y: dy / length }, ownerId, { target, speedMultiplier: 0.5, initialVelocityMultiplier: 2, collisionEnabled: false, rotationEnabled: false, ...options }); } });
     const combat = createCombatActorState({ label: ownerId, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, ARCHER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [ARCHER_FRAME.width * value, ARCHER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
-    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: createEnemyPatrolController(actor) });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.ARCHER, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: ARCHER_FRAME, pivot: ARCHER_PIVOT, collider: ARCHER_MOVEMENT_COLLIDER }) }) });
   }
 
   function createGoblinRecord(position) {
@@ -775,20 +848,20 @@ export async function start({ showStartPrompt = true } = {}) {
       character: SpawnerCharacter.WARRIOR,
       actor,
       combat,
-      controller: createEnemyPatrolController(actor),
+      controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: WARRIOR_FRAME, pivot: WARRIOR_PIVOT, collider: WARRIOR_MOVEMENT_COLLIDER }) }),
     });
   }
 
   function createLancerRecord(position) {
     const actor = createLancer({ atlases: lancerAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
     const combat = createCombatActorState({ label: `lancer-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, LANCER_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [LANCER_FRAME.width * value, LANCER_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: (direction, options) => actor.applyKnockback(direction, options) });
-    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.LANCER, actor, combat, controller: createEnemyPatrolController(actor) });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.LANCER, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: LANCER_FRAME, pivot: LANCER_PIVOT, collider: LANCER_MOVEMENT_COLLIDER }) }) });
   }
 
   function createMonkRecord(position) {
     const actor = createMonk({ atlases: monkAtlases, initialPosition: position, bounds: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }, obstacles: obstacleColliders });
     const combat = createCombatActorState({ label: `monk-${nextActorId++}`, getCombatCollider: () => actor.getCombatCollider(), setVisualTransform: (transform) => actor.setVisualTransform(transform), onSpawnProgress: (progress) => setCharacterSpawnProgress(actor, MONK_FRAME.width, progress), onDeathProgress: (value) => actor.setVisualTransform({ sizePx: [MONK_FRAME.width * value, MONK_FRAME.height * value] }), onHitFlashStart: () => actor.setVisualTransform({ color: [1.6, 1.6, 1.6, 1] }), onKnockback: () => {} });
-    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, actor, combat, controller: createEnemyPatrolController(actor) });
+    return attachActor({ type: SpawnerType.ENEMY, character: SpawnerCharacter.MONK, actor, combat, controller: createEnemyPatrolController(actor, { isDirectionWalkable: createEnemyPatrolWalkability(actor, { frame: MONK_FRAME, pivot: MONK_PIVOT, collider: MONK_MOVEMENT_COLLIDER }) }) });
   }
 
   const spawnerConfigs = createInitialSpawnerConfigs({
@@ -890,21 +963,6 @@ export async function start({ showStartPrompt = true } = {}) {
     .filter((spawner) => spawner.config.type === type)
     .flatMap((spawner) => spawner.actors);
   globalThis.characterPerceptionDebug = Object.freeze({ snapshot: () => characterPerception.getSnapshot() });
-  const handlePerceptionDebugKey = (event) => {
-    const state = getDebugExpressionState(event.key);
-    if (!state) return;
-    for (const record of getRecordsByType(SpawnerType.ENEMY)) {
-      if (record.combat.isAlive) {
-        record.reaction?.forceState(state);
-        record.expressionFlashRemaining = state === "SUSPICIOUS" ? 0.25
-          : state === "INVESTIGATING" ? 0.25 : state === "ALERT" ? 0.25 : 0;
-        record.expressionFlashColor = state === "SUSPICIOUS" ? [1.8, 1.8, 1.8, 1]
-          : state === "INVESTIGATING" ? [1.8, 1.8, 0.3, 1]
-          : state === "ALERT" ? [1.8, 0.3, 0.3, 1] : null;
-      }
-    }
-  };
-  window.addEventListener("keydown", handlePerceptionDebugKey);
   const getBushBurningSnapshot = () => ({
       bushes: reactiveDecorations.map((decoration) => ({
         id: decoration.id,
@@ -965,6 +1023,7 @@ export async function start({ showStartPrompt = true } = {}) {
   renderer = createSpriteRenderer(engine, {
     layers: [
       ...terrainLayers,
+      visionShadowLayer,
       ...reactiveDecorations.map((decoration) => decoration.layer),
       ...goldStoneObjects.map((object) => object.layer),
       ...pickupSystem.pickups.map((pickup) => pickup.layer),
@@ -1258,9 +1317,9 @@ export async function start({ showStartPrompt = true } = {}) {
           record.controller.update(activeDelta);
         }
         record.actor.update(activeDelta, [
-          ...(playerMovementCollider && !TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS
-            ? [{ type: CharacterType.PLAYER, collider: playerMovementCollider }]
-            : []),
+          // Player-only cells are strategically reachable so the enemy can
+          // enter and let its AI attack on the following update. A concealed
+          // player is rejected by createEnemyPatrolWalkability instead.
           ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : sheepMovementColliders.filter(({ collider }) => collider))
             .map(({ collider }) => ({ type: "npc", collider })),
           ...(TEMPORARILY_DISABLE_GREEN_GREEN_COLLISIONS ? [] : getOtherCharacterColliders(
@@ -1521,6 +1580,7 @@ export async function start({ showStartPrompt = true } = {}) {
         }
       }
     }
+    syncVisionShadows(characterPerception.getSnapshot());
     const diagnosticCharacters = [
       ...spawnerByType.get(SpawnerType.PLAYER).actors,
       ...getRecordsByType(SpawnerType.SHEEP),
@@ -1596,9 +1656,9 @@ export async function start({ showStartPrompt = true } = {}) {
   window.addEventListener("pagehide", () => {
     canvas.removeEventListener("pointerup", handleGoldPickupClick);
     canvas.removeEventListener("pointerup", handleGridSelection);
-    window.removeEventListener("keydown", handlePerceptionDebugKey);
     viewportSafeArea.dispose();
     viewportResizeObserver.disconnect();
+    promptBodyResizeObserver.disconnect();
     window.removeEventListener("resize", refreshGameViewportDiagnostics);
     unsubscribeCropMarks();
     unsubscribeColliders();
@@ -1898,7 +1958,13 @@ function formatStartupError(error) {
   return `The game could not start. Refresh the page and check the browser console for more details. Details: ${detail}`;
 }
 
-start(globalThis.stealthGridStartupOptions ?? {}).catch((error) => {
+const startupOptions = globalThis.stealthGridStartupOptions ?? {};
+const skipIntro = shouldSkipIntro({
+  isDevelopment: import.meta.env.DEV,
+  search: globalThis.location?.search,
+});
+
+start({ ...startupOptions, showStartPrompt: startupOptions.showStartPrompt !== false && !skipIntro }).catch((error) => {
   console.error(error);
   errorOutput.textContent = formatStartupError(error);
 });

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createStartGamePrompt, shouldShowStartGamePrompt, START_PROMPT_BODY } from "../../src/ui/start-game-prompt.js";
+import { createStartGamePrompt, shouldShowStartGamePrompt, shouldSkipIntro, START_PROMPT_BODY } from "../../src/ui/start-game-prompt.js";
 
 class FakeElement extends EventTarget {
   children = [];
@@ -14,7 +14,11 @@ class FakeElement extends EventTarget {
 }
 
 const documentRef = { createElement: () => new FakeElement() };
-const click = (element) => element.dispatchEvent(new Event("click", { bubbles: true }));
+const click = (element, eventTarget = element) => {
+  const event = new Event("click", { bubbles: true });
+  Object.defineProperty(event, "target", { value: eventTarget });
+  element.dispatchEvent(event);
+};
 
 test("start prompt is enabled by default and can be suppressed", () => {
   assert.equal(shouldShowStartGamePrompt(), true);
@@ -22,7 +26,13 @@ test("start prompt is enabled by default and can be suppressed", () => {
   assert.equal(shouldShowStartGamePrompt({ showStartPrompt: false }), false);
 });
 
-test("start prompt has exact content and closes on any click", () => {
+test("skipIntro is enabled only for the exact development query flag", () => {
+  assert.equal(shouldSkipIntro({ isDevelopment: true, search: "?skipIntro=true" }), true);
+  assert.equal(shouldSkipIntro({ isDevelopment: true, search: "?skipIntro=false" }), false);
+  assert.equal(shouldSkipIntro({ isDevelopment: false, search: "?skipIntro=true" }), false);
+});
+
+test("start prompt closes only when the backdrop itself is clicked", () => {
   const host = new FakeElement();
   let starts = 0;
   const prompt = createStartGamePrompt({ host, onStart: () => { starts += 1; }, documentRef });
@@ -31,10 +41,16 @@ test("start prompt has exact content and closes on any click", () => {
   assert.equal(prompt.startButton.textContent, "Start");
   assert.equal(prompt.panel.children.length, 3);
   assert.equal(prompt.startButton.focused, true);
+  click(prompt.backdrop, prompt.panel);
+  assert.equal(host.children.length, 1);
+  assert.equal(starts, 0);
   click(prompt.startButton);
+  click(prompt.backdrop);
   assert.equal(starts, 1);
   assert.equal(host.children.length, 0);
   const secondPrompt = createStartGamePrompt({ host, onStart: () => {}, documentRef });
   click(secondPrompt.backdrop, secondPrompt.panel);
+  assert.equal(host.children.length, 1);
+  click(secondPrompt.backdrop);
   assert.equal(host.children.length, 0);
 });

@@ -13,7 +13,32 @@ import {
   createPerceptionDrawCommands,
   createActivePerceptionMarkerCommands,
   getPerceptionBlinkState,
+  getVisibleVisualCells,
+  createEnemyVisionShadowDrawCommands,
 } from "../../src/ui/collider-diagnostics.js";
+
+test("visible visual cells stop before terrain and living blockers", () => {
+  const actor = { id: "enemy", type: "enemy", isAlive: true, cell: { x: 2, y: 2 }, heading: "right", visualRange: 4 };
+  assert.deepEqual(getVisibleVisualCells(actor, 64, { blockers: [{ x: 4, y: 2 }] }), [
+    { x: 3, y: 2 },
+  ]);
+  assert.deepEqual(getVisibleVisualCells({ ...actor, heading: "up" }, 64, { blockers: [{ x: 2, y: 0 }] }), [
+    { x: 2, y: 1 },
+  ]);
+  assert.deepEqual(getVisibleVisualCells({ ...actor, isAlive: false }, 64), []);
+});
+
+test("enemy vision shadow commands use tile positions and 40/30/20/10 opacity", () => {
+  const commands = createEnemyVisionShadowDrawCommands({ actors: [
+    { id: "enemy", type: "enemy", isAlive: true, cell: { x: 1, y: 1 }, heading: "right", visualRange: 4 },
+  ] }, 64, { screenHeight: 1024 });
+  assert.deepEqual(commands.map(({ positionPx, color }) => ({ positionPx, color })), [
+    { positionPx: [160, 928], color: [1, 1, 1, 0.4] },
+    { positionPx: [224, 928], color: [1, 1, 1, 0.30000000000000004] },
+    { positionPx: [288, 928], color: [1, 1, 1, 0.2] },
+    { positionPx: [352, 928], color: [1, 1, 1, 0.09999999999999998] },
+  ]);
+});
 
 test("active perception markers are red 20px crosses centered on detected cells", () => {
   const markers = createActivePerceptionMarkerCommands({ detections: [

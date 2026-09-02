@@ -1,7 +1,11 @@
-const START_PROMPT_BODY = "Reach the flag to win. Avoid audio/visual detection of enemies. Currently pointless gameplay is: gold, attack, items.";
+const START_PROMPT_BODY = "Reach the flag to win. Avoid audio/visual detection of enemies. Currently pointless gameplay is: gold, attack, items. tap 1/2 keys for pointless fun.";
 
 export function shouldShowStartGamePrompt({ showStartPrompt = true } = {}) {
   return showStartPrompt !== false;
+}
+
+export function shouldSkipIntro({ isDevelopment = false, search = "" } = {}) {
+  return isDevelopment && new URLSearchParams(search).get("skipIntro") === "true";
 }
 
 export function createStartGamePrompt({ host, onStart, documentRef = globalThis.document }) {
@@ -37,8 +41,8 @@ export function createStartGamePrompt({ host, onStart, documentRef = globalThis.
 
   panel.append(title, body, startButton);
   backdrop.append(panel);
-  const closeOnClick = () => {
-    prompt.close();
+  const closeOnClick = (event) => {
+    if (event.target === backdrop) prompt.close();
   };
   backdrop.addEventListener("click", closeOnClick);
   host.append(backdrop);
