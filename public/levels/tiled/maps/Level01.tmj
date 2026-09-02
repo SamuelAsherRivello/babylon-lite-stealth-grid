@@ -8,40 +8,40 @@
          "name":"Spawners",
          "objects":[
                 {
-                 "height":64,
+                 "height":34,
                  "id":8,
                  "name":"Gold Pickup Spawner 1",
                  "opacity":1,
                  "rotation":0,
                  "type":"GoldPickupSpawner",
                  "visible":true,
-                 "width":64,
-                 "x":190,
-                 "y":642
+                 "width":35,
+                 "x":336,
+                 "y":652
                 }, 
                 {
-                 "height":64,
+                 "height":34,
                  "id":12,
                  "name":"Gold Pickup Spawner 2",
                  "opacity":1,
                  "rotation":0,
                  "type":"GoldPickupSpawner",
                  "visible":true,
-                 "width":64,
-                 "x":320,
-                 "y":640
+                 "width":33,
+                 "x":461,
+                 "y":650
                 }, 
                 {
-                 "height":64,
+                 "height":29,
                  "id":13,
                  "name":"Gold Pickup Spawner 3",
                  "opacity":1,
                  "rotation":0,
                  "type":"GoldPickupSpawner",
                  "visible":true,
-                 "width":64,
-                 "x":256,
-                 "y":642
+                 "width":31,
+                 "x":399,
+                 "y":655
                 }, 
                 {
                  "gid":60,
@@ -72,8 +72,8 @@
                  "type":"",
                  "visible":true,
                  "width":64,
-                 "x":544,
-                 "y":768.333333333333
+                 "x":546,
+                 "y":576.333333333333
                 }, 
                 {
                  "gid":58,

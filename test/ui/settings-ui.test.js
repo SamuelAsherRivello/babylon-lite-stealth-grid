@@ -165,7 +165,8 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(source, /gear\.setAttribute\("aria-label", "Open settings"\)/);
   assert.match(source, /icon\.src = `\$\{ASSET_BASE\}ui\/gear\.svg`/);
   assert.match(source, /title:\s*"Settings Menu"/);
-  assert.match(source, /developerTitle\.textContent = "Developer"/);
+  assert.match(source, /developerButton\.textContent = "Developer Settings"/);
+  assert.match(source, /title: "Developer Settings"/);
   assert.match(source, /"Music", RUNTIME_AUDIO_SETTING_KEYS\.music/);
   assert.match(source, /"SFX", RUNTIME_AUDIO_SETTING_KEYS\.sfx/);
   assert.match(source, /"Collider\?"/);
@@ -183,7 +184,7 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.match(source, /pauseController\.pause\(\)/);
   assert.match(source, /pauseController\.resume\(\)/);
   assert.doesNotMatch(source, /Skip Start Menu/);
-  assert.match(main, /createSettingsUi\(\{ host: gameUi, pauseController \}\)/);
+  assert.match(main, /createSettingsUi\(\{ host: gameUi, modalHost: domBody, screenLayer: domScreen, pauseController \}\)/);
   assert.match(main, /updateSpriteAnimationManager\(animationManager, activeDelta \* 1000\)/);
   assert.match(main, /playerRecord\.actor\.update\(activeDelta, dynamicColliders\)/);
   assert.match(main, /showColliders = runtimeSettingsStore\.get\(RUNTIME_DEBUG_SETTING_KEYS\.showColliders\)/);
@@ -194,10 +195,44 @@ test("settings source composes required controls, persistence, and pause lifecyc
   assert.doesNotMatch(main, /DISPLAY_SETTING_KEYS|applyFullscreenPreference/);
 });
 
+test("developer settings opens above the main settings window and closes back to it", () => {
+  const documentRef = createDocument();
+  const host = new FakeElement();
+  host.isConnected = true;
+  const values = new Map();
+  const store = {
+    get: (key) => values.get(key) ?? (key.includes("show") ? false : 100),
+    set: (key, value) => values.set(key, value),
+    reset: () => values.clear(),
+  };
+  const pauseCalls = [];
+  const settingsUi = createSettingsUi({
+    host,
+    pauseController: { pause: () => pauseCalls.push("pause"), resume: () => pauseCalls.push("resume") },
+    store,
+    documentRef,
+  });
+
+  settingsUi.open();
+  const developerButton = settingsUi.activeWindow.panel.children[2].children[0].children[3];
+  assert.equal(developerButton.textContent, "Developer Settings");
+  click(developerButton);
+  assert.equal(settingsUi.developerWindow.panel.children[0].textContent, "Developer Settings");
+  assert.equal(settingsUi.developerWindow.backdrop.classList.values.has("developer-settings-backdrop"), true);
+  assert.equal(pauseCalls.join(","), "pause");
+
+  click(settingsUi.developerWindow.closeButton);
+  assert.equal(settingsUi.developerWindow, null);
+  assert.equal(settingsUi.activeWindow.backdrop.isConnected, true);
+  assert.equal(pauseCalls.join(","), "pause");
+  click(settingsUi.activeWindow.closeButton);
+  assert.equal(pauseCalls.join(","), "pause,resume");
+});
+
 test("settings chrome follows inspiration frame-relative measurements", async () => {
   const styles = await readFile(new URL("../../src/ui/style.css", import.meta.url), "utf8");
   for (const selector of [
-    ".settings-gear", ".game-window-backdrop", ".game-window",
+    ".settings-gear", ".game-window-backdrop",
     ".game-window-title", ".game-window-close", ".settings-controls",
     ".volume-control", ".volume-scale", ".settings-reset", ".collider-control",
   ]) {
@@ -206,10 +241,12 @@ test("settings chrome follows inspiration frame-relative measurements", async ()
     assert.ok(declarations, `missing ${selector}`);
     assert.doesNotMatch(declarations, /(?:\d|\.)(?:px|vw|vh)\b/);
   }
-  assert.match(styles, /--screen-margin:\s*30px/);
+  assert.match(styles, /--screen-margin:\s*20px/);
   assert.match(styles, /\.settings-gear\s*\{[^}]*top:\s*var\(--ui-safe-top\);[^}]*right:\s*var\(--ui-safe-right\);[^}]*width:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*height:\s*clamp\(1\.375rem, 4cqw, 2rem\);[^}]*padding:\s*0\.35cqw;[^}]*border:\s*0\.175cqw solid/s);
-  assert.match(styles, /\.game-window-backdrop\s*\{[^}]*inset:\s*0;[^}]*padding:\s*var\(--ui-safe-top\) var\(--ui-safe-right\) var\(--ui-safe-bottom\) var\(--ui-safe-left\);[^}]*place-items:\s*center;[^}]*rgb\(0 0 0 \/ 50%\)/s);
-  assert.match(styles, /\.game-window\s*\{[^}]*max-height:\s*100%;[^}]*overflow:\s*auto;/s);
+  assert.match(styles, /\.game-window-backdrop\s*\{[^}]*position:\s*absolute;[^}]*inset:\s*0;[^}]*background:\s*transparent;/s);
+  assert.match(styles, /\.game-window-dimmer\s*\{[^}]*inset:\s*0;[^}]*rgb\(0 0 0 \/ 20%\)/s);
+  assert.match(styles, /\.developer-settings-dimmer\s*\{[^}]*background:\s*rgb\(0 0 0 \/ 20%\)/s);
+  assert.match(styles, /\.game-window\s*\{[^}]*margin-bottom:\s*50px;[^}]*max-height:\s*100%;[^}]*box-shadow:\s*5px 5px 5px rgb\(0 0 0 \/ 32\.5%\);[^}]*overflow:\s*auto;/s);
 });
 
 test("gear icon is transparent vector artwork", async () => {

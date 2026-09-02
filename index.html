@@ -26,12 +26,18 @@
         ></canvas>
       </div>
     <div id="uiLayer" class="ui-layer">
-      <section id="gameUi" class="game-ui" aria-live="polite"></section>
-        <div id="coordinates-ui" class="coordinates-ui" aria-label="Archer coordinates" hidden>
-          <output id="coordinates-ui-pixel">X 288 · Y 512</output>
-          <output id="coordinates-ui-grid">C 3 · R 7</output>
-        </div>
-        <div class="virtual-controller" aria-label="Virtual controller">
+      <div class="dom-screen">
+        <div class="dom-hud">
+          <header class="dom-slice dom-header">
+            <section id="gameUi" class="game-ui" aria-live="polite"></section>
+            <div id="coordinates-ui" class="coordinates-ui" aria-label="Archer coordinates" hidden>
+              <output id="coordinates-ui-pixel">X 288 · Y 512</output>
+              <output id="coordinates-ui-grid">C 3 · R 7</output>
+            </div>
+          </header>
+          <section id="dom-body" class="dom-slice dom-body" aria-label="DOM layer body"></section>
+          <footer class="dom-slice dom-footer">
+            <div class="virtual-controller" aria-label="Virtual controller">
           <div class="movement-control action-control-layout">
             <button
               id="movement-joystick"
@@ -53,9 +59,12 @@
               <span class="control-label">Attack (V)</span>
             </button>
           </div>
+            </div>
+          </footer>
         </div>
         <p id="error" class="error" role="alert"></p>
       </div>
+    </div>
     </main>
     <script type="module" src="./src/main.js"></script>
   </body>

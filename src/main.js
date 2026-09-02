@@ -13,12 +13,10 @@ import {
   updateSpriteAnimationManager,
 } from "@babylonjs/lite";
 
-import {
-  gridCellToScreenForFrame,
-  getLogicalViewportScale,
-  collidersOverlap,
-} from "./gameplay/game-logic.js";
+import { gridCellToScreenForFrame, collidersOverlap } from "./gameplay/game-logic.js";
 import { createGameStateMachine, GameState } from "./gameplay/game-state.js";
+import { gridCellToWorldCenter } from "./gameplay/world-viewport.js";
+import { GAME_VIEWPORT, formatViewportDiagnostics, logicalPointFromClient, measureGameViewport, renderViewportQaMarkers } from "./gameplay/game-viewport.js";
 import {
   collectTiledLayerTiles,
   formatLevelCellLabel,
@@ -121,9 +119,9 @@ import {
   TERRAIN_COLLIDER_STYLE,
 } from "./ui/collider-diagnostics.js";
 
-const SCREEN_WIDTH = GRID.widthPx;
-const SCREEN_HEIGHT = GRID.heightPx;
-const TILE_SIZE = GRID.tileSizePx;
+const SCREEN_WIDTH = GAME_VIEWPORT.referenceResolution.width;
+const SCREEN_HEIGHT = GAME_VIEWPORT.referenceResolution.height;
+const TILE_SIZE = GAME_VIEWPORT.referenceGridSize.width;
 const WATER_FOAM_FRAME_SIZE = 192;
 const WATER_FOAM_FRAME_COUNT = 16;
 const WATER_FOAM_FRAME_DURATION_MS = 100;
@@ -155,11 +153,30 @@ const canvas = document.querySelector("#renderCanvas");
 const debugCanvas = document.querySelector("#debugCanvas");
 const debugContext = debugCanvas.getContext("2d");
 const errorOutput = document.querySelector("#error");
-const gameUi = document.querySelector("#gameUi");
+  const gameUi = document.querySelector("#gameUi");
+  const domBody = document.querySelector("#dom-body");
+  const domScreen = document.querySelector(".dom-screen");
 const uiLayer = document.querySelector("#uiLayer");
 const gameFrame = document.querySelector(".game-frame");
 const viewportSafeArea = createViewportSafeArea({ element: uiLayer, frameElement: gameFrame });
 const coordinatesUi = createCoordinatesUi();
+let latestGameViewport = null;
+let showCropMarks = false;
+
+function refreshGameViewportDiagnostics() {
+  latestGameViewport = measureGameViewport(GAME_VIEWPORT);
+  canvas.dataset.viewport = formatViewportDiagnostics(latestGameViewport);
+  debugCanvas.dataset.viewport = formatViewportDiagnostics(latestGameViewport);
+  if (GAME_VIEWPORT.qaDiagnostics) {
+    console.info(`[viewport-qa] ${formatViewportDiagnostics(latestGameViewport)}`);
+    renderViewportQaMarkers(latestGameViewport, showCropMarks);
+  }
+  return latestGameViewport;
+}
+
+const viewportResizeObserver = new ResizeObserver(refreshGameViewportDiagnostics);
+viewportResizeObserver.observe(gameFrame);
+window.addEventListener("resize", refreshGameViewportDiagnostics);
 
 function createCombatActorState({
   label,
@@ -345,7 +362,18 @@ async function start() {
     throw new Error("This Babylon Lite demo requires a browser with WebGPU enabled.");
   }
 
-  const engine = await createEngine(canvas);
+  const engine = await createEngine(canvas, {
+    // All world coordinates are authored in the 576x1024 logical space.
+    // Do not let DPR enlarge Babylon's projection space; CSS scales this
+    // single logical surface as one unit with the debug and DOM layers.
+    maxDevicePixelRatio: 1,
+  });
+  // Babylon Lite's automatic surface observer otherwise replaces the logical
+  // render size with the CSS size on every engine frame. Keep the render
+  // surface fixed; CSS scales the complete canvas as the viewport root.
+  engine._w = GAME_VIEWPORT.referenceResolution.width;
+  engine._h = GAME_VIEWPORT.referenceResolution.height;
+  refreshGameViewportDiagnostics();
   const animationManager = createSpriteAnimationManager();
   const level = await loadTiledMap(`${import.meta.env.BASE_URL}levels/tiled/maps/Level01.tmj`);
   const terrainImages = new Set(collectTiledLayerTiles(level).map(({ image }) => image));
@@ -421,7 +449,7 @@ async function start() {
     },
   };
   for (const spawner of level.goldPickupSpawners ?? []) {
-    const position = { x: (spawner.gameCell.x + 0.5) * TILE_SIZE, y: (spawner.gameCell.y + 0.5) * TILE_SIZE };
+    const position = gridCellToWorldCenter(spawner.gameCell, TILE_SIZE);
     const pickup = pickupSystem.spawn(goldPickupDefinition, { start: position, cell: spawner.gameCell, destination: position });
     console.log(`Gold pickup spawned: spawner=${spawner.id} tiledCell=(${spawner.tiledCell.x},${spawner.tiledCell.y}) gameCell=(${spawner.gameCell.x},${spawner.gameCell.y}) position=(${position.x},${position.y}) pickup=${pickup?.id}`);
     pickup?.update(0.35);
@@ -931,9 +959,10 @@ async function start() {
   pickupSystem.setRenderer({ add: (layer) => addSpriteRendererLayer(renderer, layer), remove: (layer) => removeSpriteRendererLayer(renderer, layer) });
 
   const handleGoldPickupClick = (event) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = (event.clientX - rect.left) * SCREEN_WIDTH / rect.width;
-    const y = SCREEN_HEIGHT - (event.clientY - rect.top) * SCREEN_HEIGHT / rect.height;
+    const viewport = latestGameViewport ?? refreshGameViewportDiagnostics();
+    const point = logicalPointFromClient({ x: event.clientX, y: event.clientY }, viewport);
+    const x = point.x;
+    const y = SCREEN_HEIGHT - point.y;
     for (const pickup of pickupSystem.pickups) {
       const collider = pickup.getCombatCollider();
       if (collider && x >= collider.x && x <= collider.x + collider.width
@@ -1021,10 +1050,19 @@ async function start() {
       previousTime = performance.now();
     },
   });
-  createSettingsUi({ host: gameUi, pauseController });
+  createSettingsUi({ host: gameUi, modalHost: domBody, screenLayer: domScreen, pauseController });
+  showCropMarks = runtimeSettingsStore.get(RUNTIME_DEBUG_SETTING_KEYS.showCropMarks);
+  if (latestGameViewport) renderViewportQaMarkers(latestGameViewport, showCropMarks);
+  const unsubscribeCropMarks = runtimeSettingsStore.subscribe(
+    RUNTIME_DEBUG_SETTING_KEYS.showCropMarks,
+    (value) => {
+      showCropMarks = value;
+      if (latestGameViewport) renderViewportQaMarkers(latestGameViewport, value);
+    },
+  );
   createReleaseMetadataUi({ host: gameUi, metadata: releaseMetadata });
   const goal = createGoal({ host: gameUi, artworkUrl: "./assets/goals/Goal.png", position: { x: (level.goals[0].gameCell.x + 0.5) * TILE_SIZE, y: (level.goals[0].gameCell.y + 0.5) * TILE_SIZE }, screenWidth: SCREEN_WIDTH, screenHeight: SCREEN_HEIGHT });
-  const levelCompleteUi = createLevelCompleteUi({ host: gameUi, onContinue: () => window.location.reload() });
+  const levelCompleteUi = createLevelCompleteUi({ host: domBody, onContinue: () => window.location.reload() });
   const gameStateMachine = createGameStateMachine();
 
   function update(currentTime) {
@@ -1033,44 +1071,6 @@ async function start() {
     const activeDelta = pauseController.getDelta(deltaSeconds);
     if (gameStateMachine.state === GameState.LEVEL_START) {
       gameStateMachine.assetsLoaded();
-    }
-
-    const viewportScale = getLogicalViewportScale(
-      canvas.width,
-      canvas.height,
-      SCREEN_WIDTH,
-      SCREEN_HEIGHT,
-    );
-    for (const layer of terrainLayers) {
-      layer.view.zoom = viewportScale;
-    }
-    for (const decoration of reactiveDecorations) {
-      decoration.setViewportScale(viewportScale);
-    }
-    for (const object of goldStoneObjects) object.layer.view.zoom = viewportScale;
-    for (const pickup of pickupSystem.pickups) {
-      pickup.layer.view.zoom = viewportScale;
-      pickup.layer.order = getYSortedLayerOrder(pickup.position.y, SCREEN_HEIGHT);
-    }
-    for (const spawner of spawners) {
-      for (const record of spawner.actors) {
-        const ySortedOrder = getCharacterLayerOrder(
-          record.actor.getMovementCollider(),
-          SCREEN_HEIGHT,
-        );
-        for (const layer of record.actor.layers) {
-          layer.view.zoom = viewportScale;
-          layer.order = ySortedOrder;
-        }
-      }
-    }
-    for (const marker of spawnerMarkers) {
-      marker.setViewportScale(viewportScale);
-    }
-    projectiles.layer.view.zoom = viewportScale;
-    animatedTerrainLayer.view.zoom = viewportScale;
-    for (const effect of particleEffects) {
-      effect.layer.view.zoom = viewportScale;
     }
 
     updateSpriteAnimationManager(animationManager, activeDelta * 1000);
@@ -1451,6 +1451,7 @@ async function start() {
       projectiles.getColliders(),
       showColliders,
       characterPerception.getSnapshot(),
+      pickupSystem.pickups,
     );
     canvas.dataset.bushDebug = JSON.stringify(getBushBurningSnapshot());
 
@@ -1462,6 +1463,9 @@ async function start() {
     canvas.removeEventListener("pointerup", handleGoldPickupClick);
     window.removeEventListener("keydown", handlePerceptionDebugKey);
     viewportSafeArea.dispose();
+    viewportResizeObserver.disconnect();
+    window.removeEventListener("resize", refreshGameViewportDiagnostics);
+    unsubscribeCropMarks();
     unsubscribeColliders();
     unsubscribeParticleFxPreview();
     unsubscribeAnimatedTilePreview();
@@ -1594,8 +1598,28 @@ function drawDiagnostics(
   projectileColliders,
   enabled,
   perceptionSnapshot = [],
+  goldPickups = [],
 ) {
   debugContext.clearRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+  for (const pickup of goldPickups) {
+    if (!pickup.isAlive) continue;
+    const center = pickup.position;
+    const screenX = center.x - TILE_SIZE / 2;
+    const screenY = SCREEN_HEIGHT - center.y - TILE_SIZE / 2;
+
+    // Yellow marks the PNG render frame; green marks the complete grid cell.
+    debugContext.strokeStyle = "#ffe600";
+    debugContext.lineWidth = 3;
+    debugContext.strokeRect(
+      screenX + 3,
+      screenY + 3,
+      TILE_SIZE - 6,
+      TILE_SIZE - 6,
+    );
+    debugContext.strokeStyle = "#20e060";
+    debugContext.lineWidth = 2;
+    debugContext.strokeRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+  }
   for (const character of diagnosticCharacters) {
     if (!character.movementCollider || !Array.isArray(character.expressionInstances)) continue;
     const collider = character.movementCollider;
@@ -1662,7 +1686,7 @@ function drawDiagnostics(
     return;
   }
   drawGridLines();
-  debugContext.font = "700 7px system-ui, sans-serif";
+  debugContext.font = "700 8px system-ui, sans-serif";
   debugContext.textBaseline = "middle";
 
   for (const tile of terrainTiles) {
@@ -1671,20 +1695,21 @@ function drawDiagnostics(
     }
 
     const label = formatLevelCellLabel(tile.gameCell);
-    const labelWidth = debugContext.measureText(label).width + 5;
-    const labelX = tile.screenPosition.x + TILE_SIZE - labelWidth - 3;
+    const labelWidth = debugContext.measureText(label).width + 8;
+    const labelX = tile.screenPosition.x + TILE_SIZE - labelWidth;
     const labelY = tile.screenPosition.y + 8;
     debugContext.fillStyle = "rgb(5 10 18 / 78%)";
     debugContext.fillRect(
       labelX,
-      labelY - 6,
+      labelY - 8,
       labelWidth,
-      12,
+      16,
     );
     debugContext.fillStyle = tile.valid ? "#ffffff" : "#8f969f";
+    debugContext.textAlign = "center";
     debugContext.fillText(
       label,
-      labelX + 2.5,
+      labelX + labelWidth / 2,
       labelY,
     );
   }

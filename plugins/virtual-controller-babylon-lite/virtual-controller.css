@@ -80,10 +80,6 @@
   background: transparent;
 }
 
-.action-control:last-child {
-  transform: translateX(10px);
-}
-
 .action-control-layout {
   display: grid;
   place-items: center;

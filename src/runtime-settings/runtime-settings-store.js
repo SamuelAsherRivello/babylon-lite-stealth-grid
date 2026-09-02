@@ -8,6 +8,7 @@ export const RUNTIME_AUDIO_SETTING_KEYS = Object.freeze({
 
 export const RUNTIME_DEBUG_SETTING_KEYS = Object.freeze({
   showColliders: "debug.showColliders",
+  showCropMarks: "debug.showCropMarks",
   showParticleFxPreview: "debug.showParticleFxPreview",
   showAnimatedTilePreview: "debug.showAnimatedTilePreview",
 });

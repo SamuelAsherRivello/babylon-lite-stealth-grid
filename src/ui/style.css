@@ -1,5 +1,5 @@
 :root {
-  --screen-margin: 30px;
+  --screen-margin: 20px;
   --ui-safe-top: calc(env(safe-area-inset-top, 0px) + var(--screen-margin));
   --ui-safe-right: calc(env(safe-area-inset-right, 0px) + var(--screen-margin));
   --ui-safe-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--screen-margin));
@@ -12,6 +12,8 @@
   --z-settings-backdrop: 2000;
   --z-settings-window: 2010;
   --z-settings-close: 2020;
+  --z-developer-settings-backdrop: 2050;
+  --z-developer-settings-window: 2060;
   --z-error: 3000;
   background: #090c16;
   color-scheme: dark;
@@ -56,6 +58,7 @@ body {
   height: 100dvh;
   min-width: 0;
   aspect-ratio: 9 / 16;
+  --game-logical-aspect-ratio: 9 / 16;
   overflow: hidden;
   background: #72a94f;
   box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
@@ -75,6 +78,73 @@ body {
   pointer-events: none;
 }
 
+.dom-screen {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.dom-hud {
+  position: absolute;
+  inset: var(--ui-safe-top) var(--ui-safe-right) var(--ui-safe-bottom) var(--ui-safe-left);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.dom-slice {
+  min-width: 0;
+  min-height: 0;
+}
+
+.dom-header,
+.dom-body,
+.dom-footer {
+  position: relative;
+}
+
+.dom-header {
+  min-height: 2.5rem;
+  --ui-safe-top: 0px;
+  --ui-safe-right: 0px;
+  --ui-safe-bottom: 0px;
+  --ui-safe-left: 0px;
+}
+
+.ui-layer .dom-footer .virtual-controller {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  left: auto;
+}
+
+.dom-body {
+  pointer-events: none;
+  overflow: visible;
+}
+
+.dom-body .game-window-backdrop,
+.dom-body .level-complete-backdrop {
+  padding: 0;
+}
+
+.dom-body .game-window,
+.dom-body .level-complete-panel {
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  min-height: 0;
+  border-radius: 0;
+  transform: none;
+}
+
+.dom-body .game-window {
+  height: calc(100% - 50px);
+}
+
+.dom-body .level-complete-panel {
+  height: calc(100% - 50px);
+}
+
 .ui-layer:not(.is-viewport-ready) {
   visibility: hidden;
 }
@@ -91,6 +161,45 @@ body {
   height: 100%;
   image-rendering: pixelated;
   outline: none;
+  aspect-ratio: var(--game-logical-aspect-ratio);
+}
+
+#viewportQaMarkers {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+.viewport-qa-marker {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: 2px solid #090c16;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 80%);
+}
+
+.viewport-qa-marker[data-layer="tilemap"] {
+  width: 16px;
+  height: 16px;
+  background: transparent !important;
+  border-color: #22d3ee;
+}
+
+.viewport-qa-marker[data-layer="debug"] {
+  width: 22px;
+  height: 22px;
+  background: transparent !important;
+  border-color: #fb7185;
+}
+
+.viewport-qa-marker[data-layer="dom"] {
+  width: 28px;
+  height: 28px;
+  background: transparent !important;
+  border-color: #c084fc;
 }
 
 .coordinate-guide {
@@ -138,10 +247,30 @@ body {
 .runtime-goal-marker img { display:block; width:32px; height:32px; image-rendering:pixelated; }
 .level-complete-backdrop { position:absolute; inset:0; z-index:2500; display:grid; place-items:center; padding:24px; background:rgb(0 0 0 / 62%); pointer-events:auto; }
 .level-complete-backdrop[hidden] { display:none; }
-.level-complete-panel { width:min(86%,360px); padding:34px 28px 28px; border:2px solid rgb(255 255 255 / 75%); border-radius:22px; background:linear-gradient(155deg,#17213b,#0b1020); box-shadow:0 20px 60px rgb(0 0 0 / 60%); text-align:center; color:#eef6ff; }
-.level-complete-panel h2 { margin:0 0 12px; font:800 2rem/1.1 system-ui,sans-serif; }
-.level-complete-panel p { margin:0 0 26px; font:500 1.1rem/1.4 system-ui,sans-serif; color:#cbd5e1; }
-.level-complete-continue { padding:12px 28px; border:0; border-radius:999px; background:#facc15; color:#422006; font:800 1rem system-ui,sans-serif; cursor:pointer; }
+.level-complete-panel { width:min(86%,360px); margin-bottom:50px; padding:34px 28px 28px; border:2px solid rgb(255 255 255 / 75%); border-radius:22px; background:linear-gradient(155deg,#17213b,#0b1020); box-shadow:0 20px 60px rgb(0 0 0 / 60%); text-align:center; color:#eef6ff; }
+.level-complete-panel h2 { margin:0 0 12px; }
+.level-complete-panel p { margin:0 0 26px; color:#cbd5e1; }
+.level-complete-continue { padding:12px 28px; border:0; border-radius:999px; background:#facc15; color:#422006; cursor:pointer; }
+
+.menu-title-text {
+  font: 750 10cqw/1.05 system-ui, sans-serif;
+}
+
+.menu-subtitle-text {
+  font: 500 1.1rem/1.4 system-ui, sans-serif;
+}
+
+.menu-body-text {
+  font: 650 6cqw/1 system-ui, sans-serif;
+}
+
+.menu-label-text {
+  font: 750 8cqw/1.2 system-ui, sans-serif;
+}
+
+.menu-button-text {
+  font: 750 8cqw/1 system-ui, sans-serif;
+}
 
 .release-metadata {
   position: absolute;
@@ -197,12 +326,26 @@ body {
   display: grid;
   padding: var(--ui-safe-top) var(--ui-safe-right) var(--ui-safe-bottom) var(--ui-safe-left);
   place-items: center;
-  background: rgb(0 0 0 / 50%);
+  background: transparent;
   pointer-events: auto;
+}
+
+.game-window-dimmer {
+  position: absolute;
+  inset: 0;
+  z-index: calc(var(--z-settings-backdrop) - 10);
+  background: rgb(0 0 0 / 20%);
+  pointer-events: auto;
+}
+
+.game-window-dimmer[hidden],
+.game-window-backdrop[hidden] {
+  display: none;
 }
 
 .game-window {
   position: relative;
+  margin-bottom: 50px;
   width: min(83.6cqw, 33rem, 100%);
   max-height: 100%;
   min-height: min(54.45cqw, 33.66rem, 90%);
@@ -210,7 +353,7 @@ body {
   border: 0.65cqw solid rgb(255 255 255 / 78%);
   border-radius: 3cqw;
   background: linear-gradient(155deg, #17213b, #0b1020);
-  box-shadow: 0 3cqw 9cqw rgb(0 0 0 / 55%);
+  box-shadow: 5px 5px 5px rgb(0 0 0 / 32.5%);
   color: #eef6ff;
   overflow: auto;
   container-type: inline-size;
@@ -225,13 +368,13 @@ body {
 
 .game-window-close {
   position: absolute;
-  top: 3cqw;
-  right: 3cqw;
+  top: 0;
+  right: 0;
   display: grid;
-  width: 8cqw;
-  height: 8cqw;
-  padding: 0;
-  border: 0.4cqw solid rgb(255 255 255 / 65%);
+  width: clamp(1.375rem, 4cqw, 2rem);
+  height: clamp(1.375rem, 4cqw, 2rem);
+  padding: 0.35cqw;
+  border: 0.175cqw solid rgb(255 255 255 / 72%);
   border-radius: 50%;
   background: #273654;
   color: #fff;
@@ -246,9 +389,9 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 4cqw;
-  height: 0.55cqw;
-  border-radius: 0.3cqw;
+  width: 5.2cqw;
+  height: 0.715cqw;
+  border-radius: 0.39cqw;
   background: currentColor;
   content: "";
   transform-origin: center;
@@ -280,7 +423,6 @@ body {
 .volume-control {
   display: grid;
   gap: 2cqw;
-  font: 750 8cqw/1.2 system-ui, sans-serif;
 }
 
 .volume-label {
@@ -292,7 +434,6 @@ body {
   align-items: center;
   grid-template-columns: 5cqw 1fr 9cqw;
   gap: 2cqw;
-  font: 650 6cqw/1 system-ui, sans-serif;
 }
 
 .volume-scale input[type="range"] {
@@ -305,7 +446,6 @@ body {
 
 .settings-section-title {
   margin: 4cqw 0 2cqw;
-  font: 750 8cqw/1.2 system-ui, sans-serif;
 }
 
 .collider-control {
@@ -313,7 +453,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 3cqw;
-  font: 750 8cqw/1.2 system-ui, sans-serif;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -323,7 +462,6 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 3cqw;
-  font: 750 8cqw/1.2 system-ui, sans-serif;
   cursor: pointer;
   touch-action: manipulation;
 }
@@ -351,7 +489,6 @@ body {
   border-radius: 1.8cqw;
   background: #273654;
   color: #fff;
-  font: 750 8cqw/1 system-ui, sans-serif;
   cursor: pointer;
   justify-self: center;
   touch-action: manipulation;
@@ -361,6 +498,36 @@ body {
 .settings-reset:focus-visible {
   border-color: #fff;
   outline: 0.55cqw solid #2563eb;
+}
+
+.developer-settings-button {
+  width: 100%;
+  padding: 2.5cqw 3cqw;
+  border: 0.4cqw solid rgb(255 255 255 / 68%);
+  border-radius: 1.8cqw;
+  background: #273654;
+  color: #fff;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.developer-settings-button:hover,
+.developer-settings-button:focus-visible {
+  border-color: #fff;
+  outline: 0.55cqw solid #2563eb;
+}
+
+.developer-settings-backdrop {
+  z-index: var(--z-developer-settings-backdrop);
+}
+
+.developer-settings-dimmer {
+  z-index: calc(var(--z-developer-settings-backdrop) - 10);
+  background: rgb(0 0 0 / 20%);
+}
+
+.developer-settings-backdrop .game-window {
+  z-index: var(--z-developer-settings-window);
 }
 
 .coordinates-ui output {

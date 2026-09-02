@@ -8,12 +8,19 @@ export class GameWindow {
     onClose,
     opener = null,
     closeLabel = "Close window",
+    screenLayer = null,
     documentRef = globalThis.document,
   }) {
     this.onClose = onClose;
     this.opener = opener;
     this.backdrop = documentRef.createElement("div");
     this.backdrop.className = "game-window-backdrop";
+    this.dimmer = screenLayer ? documentRef.createElement("div") : null;
+    if (this.dimmer) {
+      this.dimmer.className = "game-window-dimmer";
+      this.dimmer.addEventListener("click", this.handleDimmer = () => this.close());
+      screenLayer.append(this.dimmer);
+    }
 
     this.panel = documentRef.createElement("section");
     this.panel.className = "game-window";
@@ -23,7 +30,7 @@ export class GameWindow {
     const titleId = `game-window-title-${windowSequence += 1}`;
     const heading = documentRef.createElement("h2");
     heading.id = titleId;
-    heading.className = "game-window-title";
+    heading.className = "game-window-title menu-title-text";
     heading.textContent = title;
     this.panel.setAttribute("aria-labelledby", titleId);
 
@@ -57,8 +64,15 @@ export class GameWindow {
     }
     this.backdrop.removeEventListener("click", this.handleBackdrop);
     this.closeButton.removeEventListener("click", this.handleClose);
+    this.dimmer?.removeEventListener("click", this.handleDimmer);
+    this.dimmer?.remove();
     this.backdrop.remove();
     this.onClose?.();
     this.opener?.focus?.();
+  }
+
+  setVisible(visible) {
+    this.backdrop.hidden = !visible;
+    if (this.dimmer) this.dimmer.hidden = !visible;
   }
 }
