@@ -27,6 +27,10 @@ Babylon Lite does not ship the full engine's default loading UI.
 
 [Play the live demo](https://samuelasherrivello.github.io/babylon-lite-stealth-grid/)
 
+Current release: **v0.1.8**. Open the link without query parameters: the preloader
+finishes, then the Start menu appears. No extra build arguments are needed;
+GitHub Actions runs plain `npm run build`.
+
 WebGPU not working? See [Troubleshooting](#troubleshooting).
 
 ## Table of Contents

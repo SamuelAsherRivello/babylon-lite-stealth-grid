@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test",
+    "test": "node scripts/run-tests.mjs",
     "test:publish": "node --test test/release/pages-publishing.test.js test/release/release-metadata.test.js"
   },
   "devDependencies": {

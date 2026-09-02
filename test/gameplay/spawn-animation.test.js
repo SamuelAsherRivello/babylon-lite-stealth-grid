@@ -22,9 +22,12 @@ test("spawn animation begins even when actors attach before renderer creation", 
   const attachActor = source.match(/function attachActor\(record\) \{[\s\S]*?\n  \}/)?.[0];
 
   assert.ok(attachActor);
-  assert.match(attachActor, /if \(renderer\) \{[\s\S]*?\n    \}\n    \/\/ Initial actors/);
-  assert.match(attachActor, /\n    record\.combat\.beginSpawn\(\);/);
-  assert.ok(attachActor.indexOf("record.combat.beginSpawn();") > attachActor.indexOf("if (renderer)"));
+  let spawnCount = 0;
+  const attach = new Function("renderer", "SpawnerType", "getEnemyExpression",
+    `return (${attachActor});`)(null, { ENEMY: "enemy" }, () => ({}));
+  const record = { type: "player", actor: {}, combat: { beginSpawn() { spawnCount += 1; } } };
+  assert.equal(attach(record), record);
+  assert.equal(spawnCount, 1);
 });
 
 test("all character renderers keep spawn scaling centered on the sprite", async () => {

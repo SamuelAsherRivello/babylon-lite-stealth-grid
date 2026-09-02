@@ -3,3 +3,4 @@ dist/
 .playwright-cli/
 output/
 assets/local-imports/
+.c060-focused.log
