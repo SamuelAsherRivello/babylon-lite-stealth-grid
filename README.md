@@ -1,8 +1,8 @@
 <!-- ai may update existing content, but only add/remove content if requrested by user -->
 
-# Babylon Light Stealth Grid
+# Babylon Lite Stealth Grid
 
-Babylon Light Stealth Grid is a portrait-oriented Babylon Lite sprite game
+Babylon Lite Stealth Grid is a portrait-oriented Babylon Lite sprite game
 prototype that runs with WebGPU.
 
 A Babylon-branded startup preloader appears before the first game graphics,
