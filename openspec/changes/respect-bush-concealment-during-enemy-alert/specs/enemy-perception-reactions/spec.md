@@ -18,3 +18,18 @@ An enemy SHALL maintain a suspicious cell, an alerted cell, and a last-known cel
 #### Scenario: Exposed player is confirmed again
 - **WHEN** the player leaves concealment and an enemy receives fresh alert-level visual evidence
 - **THEN** normal confirmation updates the location and refreshes the configured alert duration
+
+### Requirement: Perception reactions de-escalate and use configurable durations
+Reaction durations SHALL be configurable per enemy profile. Without stronger evidence, an enemy SHALL de-escalate from ALERT to INVESTIGATING, then SUSPICIOUS, and finally NONE. Hidden tracking SHALL consume the remaining configured alert duration without extending it.
+
+#### Scenario: Alert loses direct sight
+- **WHEN** an alerted enemy loses direct visual perception
+- **THEN** it retains its remaining alert duration, tracks hidden movement only under the visually confirmed bush exception, and otherwise freezes the last-known cell before entering investigation on expiry
+
+#### Scenario: Investigation completes
+- **WHEN** the enemy searches each configured facing direction for its configured duration without new evidence
+- **THEN** it becomes SUSPICIOUS while retaining the remembered cell
+
+#### Scenario: Suspicion expires
+- **WHEN** the configurable suspicion duration expires without new evidence
+- **THEN** the enemy becomes NONE and clears its perception marker

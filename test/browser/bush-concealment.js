@@ -44,6 +44,7 @@ for (const [row, state] of states.entries()) for (const [column, character] of t
   const player = { layers: [playerLayer, bushLayer], getPosition: () => ({ ...playerPosition }), getGridPosition: () => playerSpot.cell };
   const target = () => ({ id: 'player', character: 'player', isAlive: true, hidden: true,
     position: player.getPosition(), cell: player.getGridPosition(64) });
+  const isWalkable = cell => cell.x !== playerSpot.cell.x || cell.y !== playerSpot.cell.y;
   const initial = { x: origin.x + startOffset.x, y: origin.y + startOffset.y };
   const record = { character, awarenessState: state, origin, starts: 0, shots: 0, heals: 0, movedDuringAttack: false, firstAttack: false, attackCenters: [], aimCenters: [] };
   Object.assign(record, { afterExpiry: 0, enteredProtectedBush: false, bush });
@@ -56,10 +57,10 @@ for (const [row, state] of states.entries()) for (const [column, character] of t
   const face = actor.faceDirection.bind(actor);
   actor.faceDirection = direction => { record.aimCenters.push(actor.getPosition()); return face(direction); };
   const controller = character === 'goblin'
-    ? createGoblinBehaviorController(actor, { grid, spawnCell: actor.getGridPosition(64), isWalkable: () => true,
+    ? createGoblinBehaviorController(actor, { grid, spawnCell: actor.getGridPosition(64), isWalkable,
       getWorld: () => ({ characters: [{ ...target(), targetable: canEnemyTargetPlayer(target(), record.awareness?.reaction) }], bushes: [] }), random: () => 0, idleRange: [0, 0], bushChance: 0 })
     : createEnemyPatrolController(actor, { random: () => 0, idleRange: [0, 0] });
-  const awareness = createEnemyAwarenessController({ character, actor, controller, grid, isWalkable: () => true,
+  const awareness = createEnemyAwarenessController({ character, actor, controller, grid, isWalkable,
     random: () => 0, getPlayer: target });
   if (state === 'ALERT' || state === 'EXPIRED') {
     awareness.reaction.acceptDetection({ type: 'visual', strength: 1, cell: playerSpot.cell });
@@ -81,6 +82,7 @@ function frame(now) {
     r.awareness.update(delta);
     const permitted = canEnemyTargetPlayer(r.target(), r.awareness.reaction);
     const blockers = getOccupiedBushBlockers(r.bush.getCombatCollider(), [r.bush], 64, permitted);
+    blockers.push({ collider: { type: 'circle', ...r.player.getPosition(), radius: 24 } });
     r.actor.update(delta, blockers, [], { ...r.target(), targetable: permitted, detected: permitted });
     if (!wasAttacking && attacking(r.actor)) {
       r.starts++; r.attackCenters.push(r.actor.getPosition());

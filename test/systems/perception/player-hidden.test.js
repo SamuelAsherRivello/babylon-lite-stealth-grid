@@ -2,9 +2,27 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { getPlayerHidingBush, isPlayerHidden, stepHiddenOpacity, canEnemyTargetPlayer, getOccupiedBushBlockers } from "../../../src/systems/perception/player-hidden.js";
 import { createEnemyPerceptionReaction } from '../../../src/systems/perception/enemy-perception-reaction.js';
+import { createGridWalkability } from '../../../src/characters/npc/sheep/sheep-navigation.js';
+import { createGridAlignedMovementController } from '../../../src/gameplay/game-logic.js';
 import { PerceptionTargetState } from "../../../src/systems/perception/character-perception.js";
 
 const bush = (collider, isAlive = true) => ({ isAlive, getCombatCollider: () => collider });
+
+test('occupied bush blocks both route segments and physical entry until the player leaves', () => {
+  const grid = { columns: 5, rows: 5, tileSizePx: 64 }, bounds = { width: 320, height: 320 };
+  const character = { frame: { width: 0, height: 0 }, pivot: { x: 0, y: 0 },
+    collider: { type: 'circle', x: 0, y: 0, radius: 24 } };
+  const bushes = [{ ...bush({ x: 128, y: 64, width: 64, height: 64 }), id: 'bush', cell: { x: 2, y: 1 } }];
+  const blockers = getOccupiedBushBlockers({ x: 122, y: 90, width: 16, height: 16 }, bushes, 64);
+  const walkable = createGridWalkability({ grid, bounds, character, obstacles: [] });
+  assert.equal(walkable({ x: 2, y: 1 }, blockers), false);
+  assert.equal(walkable.canTraverse({ x: 1, y: 1 }, { x: 2, y: 1 }, blockers), false);
+  const movement = createGridAlignedMovementController(character, 64);
+  let position = { x: 96, y: 96 };
+  for (let i = 0; i < 64; i++) position = movement.move(position, { x: 1, y: 0 }, 2, 1/60, bounds, blockers.map(b => b.collider));
+  assert.ok(position.x <= 104, 'physical collider cannot enter occupied bush');
+  assert.equal(walkable.canTraverse({ x: 1, y: 1 }, { x: 2, y: 1 }, []), true);
+});
 
 test('occupied bush blockers include partial overlaps, exclude empty and dead bushes, and expire on exit', () => {
   const player = { x: 122, y: 90, width: 16, height: 16 };
